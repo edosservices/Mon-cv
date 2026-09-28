@@ -1,6 +1,8 @@
 # UniPay Congo
 
-LIMETE WIFI MANAGER prépare l’appel UniPay. Aucune transaction live n’est lancée par les tests. Le mode live n’est jamais choisi tout seul.
+LIMETE WIFI MANAGER prépare l’appel UniPay. Aucune transaction live n’est lancée par les tests ni par l’audit logiciel. Le mode live n’est jamais choisi tout seul.
+
+Si `UNIPAY_MODE` n’est pas exactement `live`, l’en-tête envoyé est `X-UniPay-Mode: test`. Aucune transaction LIVE n’est alors produite par l’application. Les tests passent par `Http::fake()` et `Http::preventStrayRequests()` : ils n’appellent pas l’API réelle.
 
 Le site public d’UniPay décrit une API REST. Il ne publie pas, dans cette intégration, le schéma exact des champs. Le corps envoyé est celui décrit ci-dessous. Avant un passage en live, comparez-le au contrat remis par UniPay et ajustez `UNIPAY_BASE_URL` sur l’adresse qu’ils fournissent.
 

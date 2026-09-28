@@ -47,22 +47,11 @@ L’application répond sur `http://127.0.0.1:8000`.
 
 ## Comptes de développement
 
-Le seeder crée un super admin. Le mot de passe vient de l’environnement, avec une valeur locale seulement si elle n’est pas définie :
+Le seeder crée un super admin. L’e-mail et le mot de passe viennent de `.env` (`SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`). Ne les commitez pas.
 
-```env
-SUPER_ADMIN_EMAIL=admin@limetewifi.local
-SUPER_ADMIN_PASSWORD=local-admin-change-me
-```
+En environnement `local` seulement, un tenant de démonstration est aussi créé : entreprise LIMETE WIFI, e-mail `demo@limetewifi.local`, mot de passe `DEMO_PASSWORD`, zone publique `/wifi/limete`. Le routeur associé utilise l’adresse de documentation `192.0.2.55`. Ce n’est pas un MikroTik réel et il ne doit pas servir à déclarer un test réussi.
 
-En environnement `local`, un tenant de démonstration est aussi créé :
-
-- Entreprise : LIMETE WIFI
-- Email : `demo@limetewifi.local`
-- Mot de passe : valeur de `DEMO_PASSWORD`, sinon `local-demo-change-me`
-- Zone publique : `/wifi/limete`
-- MikroTik fictif : `192.0.2.55`, utilisateur `demo`, mot de passe `not-a-real-router-password`
-
-Ces identifiants ne sont pas ceux d’un routeur réel. Changez-les avant toute mise en ligne, et ne lancez pas le seeder de démonstration en production. Le tenant de démo n’est créé que si `APP_ENV=local`.
+Ne lancez pas ce seeder en production.
 
 ## Abonnements
 
@@ -84,7 +73,7 @@ Les transactions sont enregistrées dans `payments`.
 
 Le moyen `manual` fonctionne sans clé : le client ou l’entrepreneur indique une référence, puis la vente ou l’abonnement reste `pending` jusqu’à confirmation.
 
-Les autres moyens refusent de démarrer si leur clé est absente :
+Airtel Money, Orange Money, M-Pesa et carte restent en attente si leur clé est absente. Aucun appel opérateur n’est envoyé :
 
 ```env
 AIRTEL_MONEY_API_KEY=
@@ -140,16 +129,30 @@ Un identifiant d’une autre entreprise répond 404. Le filtre `tenant_id` est a
 
 Les jetons d’API sont dans `personal_access_tokens` (Sanctum), qui joue le rôle de la table de jetons.
 
+## Documentation
+
+| Sujet | Fichier |
+|---|---|
+| Installation, comptes, parcours | ce README |
+| Mise en production, caches, limites connues | [docs/production.md](docs/production.md) |
+| Premier MikroTik réel, pas encore exécuté | [docs/mikrotik-real-test.md](docs/mikrotik-real-test.md) |
+| UniPay, webhook, mode test | [docs/unipay.md](docs/unipay.md) |
+| Checklist avant merge | [docs/FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md) |
+
 ## Tests
 
 ```bash
 php artisan test
+php artisan route:list
+php artisan migrate:status
 ```
 
-Les tests utilisent SQLite en mémoire. Ils vérifient l’inscription, l’isolation entre tenants, l’absence du mot de passe MikroTik dans le HTML, la vente publique et le blocage d’un compte suspendu.
+Les tests utilisent SQLite en mémoire. Ils ne joignent ni un MikroTik physique ni une API de paiement live.
 
-## Ce qui reste à brancher
+## Ce qui reste hors de ce dépôt
 
-- Les contrats réels Airtel Money, Orange Money, M-Pesa et carte, dès que les clés et la documentation opérateur sont disponibles.
-- Un routeur MikroTik de test pour valider la connexion API en conditions réelles.
+- Un routeur MikroTik joignable, à enregistrer depuis l’interface. `192.0.2.55` ne compte pas.
+- Une clé UniPay de test, puis, plus tard et explicitement, le mode live.
+- Les contrats Airtel Money, Orange Money, M-Pesa et carte.
 - Les prix SaaS, à saisir par le super admin.
+- Le cron du serveur pour `limete:expire-vouchers` et `limete:sweep-subscriptions`.
