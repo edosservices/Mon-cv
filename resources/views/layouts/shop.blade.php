@@ -1,5 +1,6 @@
 @php
     $brand = $zone->brandColor();
+    $brand2 = $zone->secondaryColor();
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -9,14 +10,14 @@
     <meta name="theme-color" content="{{ $brand }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="{{ $zone->name }}">
-    <title>@yield('title', $zone->name)</title>
+    <meta name="apple-mobile-web-app-title" content="{{ $zone->displayLabel() }}">
+    <title>@yield('title', $zone->displayLabel())</title>
     <link rel="manifest" href="{{ route('shop.manifest', $zone->slug) }}">
     <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="shop" style="--shop: {{ $brand }}">
+<body class="shop" style="--shop: {{ $brand }}; --shop-2: {{ $brand2 }}">
     <a class="skip" href="#contenu">Aller au contenu</a>
     <div class="shop-wrap">
         <header class="shop-top">
@@ -24,10 +25,10 @@
                 @if($zone->logoUrl())
                     <img class="shop-logo" src="{{ $zone->logoUrl() }}" alt="">
                 @else
-                    <span class="shop-mark" aria-hidden="true">{{ mb_substr($zone->name, 0, 1) }}</span>
+                    <span class="shop-mark" aria-hidden="true">{{ mb_substr($zone->displayLabel(), 0, 1) }}</span>
                 @endif
                 <span>
-                    <strong>{{ $zone->name }}</strong>
+                    <strong>{{ $zone->displayLabel() }}</strong>
                     @if($zone->location)<small>{{ $zone->location }}</small>@endif
                 </span>
             </a>
@@ -62,6 +63,12 @@
         <footer class="shop-foot">
             @if($zone->whatsappDigits())
                 <a href="https://wa.me/{{ $zone->whatsappDigits() }}">WhatsApp {{ $zone->whatsapp }}</a>
+            @endif
+            @if($zone->phone)
+                <p>{{ $zone->phone }}</p>
+            @endif
+            @if($zone->email)
+                <p>{{ $zone->email }}</p>
             @endif
             <p>{{ $zone->name }}</p>
         </footer>

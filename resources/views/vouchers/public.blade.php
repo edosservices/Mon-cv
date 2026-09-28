@@ -9,10 +9,14 @@
         <a class="btn btn-primary" href="{{ route('shop.show', $zone->slug) }}">Choisir un nouveau forfait</a>
     </section>
 @else
+    @if($voucher->saleItem?->sale?->status === 'paid')
+        <p class="status-pill"><span class="dot" aria-hidden="true"></span> Paiement confirmé</p>
+    @endif
     <p class="ready">Votre ticket est prêt</p>
 @endif
 
 @include('vouchers.ticket')
+@include('vouchers.network')
 @include('vouchers.actions')
 
 @if($voucher->status !== 'expired')

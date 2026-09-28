@@ -38,6 +38,7 @@ class HotspotSessionController extends Controller
                     'planSeconds' => $payload['planSeconds'],
                     'startedAt' => $payload['startedAt'],
                     'expiresAt' => $payload['expiresAt'],
+                    'unlimited' => $payload['unlimited'],
                 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).';',
             ];
             if (is_string($payload['ticketUrl']) && $payload['ticketUrl'] !== '') {
@@ -55,7 +56,7 @@ class HotspotSessionController extends Controller
     private function voucher(string $username): ?Voucher
     {
         $matches = Voucher::withoutGlobalScope('tenant')
-            ->with('plan:id,name,duration_seconds')
+            ->with('plan:id,name,duration_seconds,unlimited_data')
             ->where('username', $username)
             ->get();
 
@@ -82,6 +83,10 @@ class HotspotSessionController extends Controller
             return;
         }
 
+        if ((int) $router->tenant_id !== (int) $voucher->tenant_id || (int) $router->wifi_zone_id !== (int) $voucher->wifi_zone_id) {
+            return;
+        }
+
         app(TenantManager::class)->set($voucher->tenant_id);
 
         try {
@@ -100,6 +105,7 @@ class HotspotSessionController extends Controller
             'expiresAt' => $voucher->expires_at?->toIso8601String(),
             'ticketUrl' => $voucher->public_token ? route('tickets.public', $voucher->public_token) : null,
             'status' => $voucher->status,
+            'unlimited' => (bool) $voucher->plan?->unlimited_data,
         ];
     }
 }

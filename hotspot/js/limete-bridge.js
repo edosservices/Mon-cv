@@ -22,7 +22,8 @@
       planLabel: data.planLabel || null,
       planSeconds: data.planSeconds || null,
       startedAt: data.startedAt || null,
-      expiresAt: data.expiresAt
+      expiresAt: data.expiresAt,
+      unlimited: data.unlimited === true
     };
     if (typeof data.ticketUrl === "string" && data.ticketUrl.indexOf("/ticket/") !== -1) {
       global.LIMETE_TICKET = data.ticketUrl;

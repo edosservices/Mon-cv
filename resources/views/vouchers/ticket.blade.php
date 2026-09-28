@@ -28,7 +28,8 @@
         @if($voucher->wifiZone->logoUrl())
             <img src="{{ $voucher->wifiZone->logoUrl() }}" alt="">
         @endif
-        <p>{{ $voucher->wifiZone->name }}</p>
+        <p>{{ $voucher->wifiZone->displayLabel() }}</p>
+        <p class="fine">{{ $voucher->wifiZone->name }}</p>
     </header>
     <div class="pass-body">
         <p class="pass-plan">{{ $voucher->plan->name }}</p>
@@ -65,7 +66,7 @@
             <strong>{{ $voucher->remainingLabel() }}</strong>
         </div>
         @if($voucher->isSynced())
-            <p class="sync sync-ok">Compte WiFi prêt</p>
+            <p class="sync sync-ok">Compte WiFi prêt. Synchronisé.</p>
         @else
             <p class="sync">
                 @if($voucher->saleItem?->sale?->status === 'paid')
@@ -73,7 +74,7 @@
                 @else
                     Votre ticket est créé. Le WiFi est temporairement en cours de synchronisation.
                 @endif
-                Non synchronisé.
+                Non synchronisé. Ticket créé, synchronisation MikroTik en attente.
             </p>
         @endif
         @if(!empty($qr))

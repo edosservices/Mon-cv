@@ -6,6 +6,20 @@
 <section class="panel" aria-labelledby="order-title">
     <p class="eyebrow">Votre commande</p>
     <h1 id="order-title">{{ $plan->name }}</h1>
+    <dl class="summary">
+        <div>
+            <dt>Zone</dt>
+            <dd>{{ $zone->displayLabel() }}</dd>
+        </div>
+        <div>
+            <dt>Durée</dt>
+            <dd>{{ $plan->validityLabel() }}</dd>
+        </div>
+        <div>
+            <dt>Prix</dt>
+            <dd>{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</dd>
+        </div>
+    </dl>
     <p class="plan-offer">{{ $plan->internetLabel() }}</p>
     <p class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
     <p class="help">Client : {{ $customer['phone'] }}</p>

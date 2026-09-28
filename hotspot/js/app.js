@@ -113,12 +113,15 @@
       elapsedScope: "session",
       remainSeconds: null,
       remainKnown: false,
-      percent: null
+      percent: null,
+      internet: null
     };
 
     var plan = matchPlan(input.username, config);
     if (plan && plan.label) view.planLabel = plan.label;
     if (session && session.planLabel) view.planLabel = session.planLabel;
+    if (session && session.unlimited === true) view.internet = "Illimité";
+    if (session && session.unlimited === false) view.internet = "Selon le forfait";
 
     if (session && session.expiresAt) {
       var exp = new Date(session.expiresAt);
@@ -244,6 +247,7 @@
       ? "Le temps de votre ticket est terminé. Contactez l'assistance si vous pensez qu'il vous reste du temps."
       : "Votre accès Internet est actif.");
     setText("plan-label", view.planLabel);
+    if (view.internet) setText("plan-net", view.internet);
 
     if (view.startText) setText("start-value", view.startText);
     if (view.endText) setText("end-value", view.endText);

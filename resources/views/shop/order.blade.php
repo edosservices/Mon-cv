@@ -29,6 +29,7 @@
         </dl>
     </section>
     @include('vouchers.ticket')
+    @include('vouchers.network')
     @include('vouchers.actions')
     @if($voucher->status !== 'expired')
         <section class="panel" id="connexion">

@@ -6,6 +6,7 @@ use App\Models\WifiZone;
 use App\Services\AuditLogger;
 use App\Services\PlanLimiter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -58,22 +59,42 @@ class WifiZoneController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
+            'display_name' => ['nullable', 'string', 'max:160'],
             'location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'slogan' => ['nullable', 'string', 'max:200'],
             'phone' => ['nullable', 'string', 'max:30'],
             'whatsapp' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:160'],
             'primary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'secondary_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'logo' => ['nullable', 'image', 'max:1024'],
+            'logo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:1024'],
+            'banner' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:1024'],
         ]);
 
         if ($request->hasFile('logo')) {
+            $this->deleteStored($zone?->logo_path, 'logos');
             $data['logo_path'] = $request->file('logo')->store('logos', 'public');
         }
 
-        unset($data['logo']);
+        if ($request->hasFile('banner')) {
+            $this->deleteStored($zone?->banner_path, 'banners');
+            $data['banner_path'] = $request->file('banner')->store('banners', 'public');
+        }
+
+        unset($data['logo'], $data['banner']);
 
         return $data;
+    }
+
+    private function deleteStored(?string $path, string $directory): void
+    {
+        if (! is_string($path) || ! str_starts_with($path, $directory.'/') || str_contains($path, '..')) {
+            return;
+        }
+
+        Storage::disk('public')->delete($path);
     }
 
     private function slug(string $name): string

@@ -238,7 +238,7 @@ class MikrotikService
         return $profiles;
     }
 
-    public function createHotspotUser(Mikrotik $router, Voucher $voucher): Voucher
+    public function createHotspotUser(Mikrotik $router, Voucher $voucher, bool $remember = true): Voucher
     {
         $this->assertPair($router, $voucher);
         $voucher->loadMissing('plan');
@@ -268,11 +268,13 @@ class MikrotikService
             ], [$voucher->password]);
         }
 
-        $voucher->forceFill([
-            'mikrotik_id' => $router->id,
-            'sync_status' => 'synced',
-            'sync_error' => null,
-        ])->save();
+        if ($remember) {
+            $voucher->forceFill([
+                'mikrotik_id' => $router->id,
+                'sync_status' => 'synced',
+                'sync_error' => null,
+            ])->save();
+        }
 
         Log::info('mikrotik.hotspot_user_created', $this->context($router, '/ip/hotspot/user/add') + [
             'username' => $voucher->username,
@@ -325,6 +327,71 @@ class MikrotikService
         $this->command($router, ['/ip/hotspot/active/remove', '=.id='.$activeId]);
     }
 
+    /**
+     * Routeurs autorisés : même entrepreneur, même WiFi Zone, routeur actif.
+     * Le choix ne dépend pas de l'adresse IP du client.
+     * Plusieurs routeurs en ligne reçoivent le même compte. mikrotik_id garde le premier succès.
+     */
+    public function authorizedRouters(Voucher $voucher)
+    {
+        $voucher->loadMissing('wifiZone.mikrotiks');
+
+        return ($voucher->wifiZone?->mikrotiks ?? collect())
+            ->filter(fn (Mikrotik $router) => $router->is_active
+                && (int) $router->tenant_id === (int) $voucher->tenant_id
+                && (int) $router->wifi_zone_id === (int) $voucher->wifi_zone_id)
+            ->values();
+    }
+
+    /**
+     * État réseau lu sur un routeur déjà en ligne de la zone du ticket.
+     * session-time-left n'est pas la durée commerciale.
+     *
+     * @return array{state: string, ip: ?string, mac: ?string, session_time_left: ?string}
+     */
+    public function networkSession(Voucher $voucher): array
+    {
+        $unavailable = [
+            'state' => 'session non disponible',
+            'ip' => null,
+            'mac' => null,
+            'session_time_left' => null,
+        ];
+        $online = $this->authorizedRouters($voucher)
+            ->filter(fn (Mikrotik $router) => $router->status === 'online')
+            ->values();
+
+        if ($online->isEmpty()) {
+            return $unavailable;
+        }
+
+        $router = $online->firstWhere('id', $voucher->mikrotik_id) ?? $online->first();
+
+        try {
+            $rows = $this->getHotspotActiveUsers($router);
+        } catch (RuntimeException) {
+            return $unavailable;
+        }
+
+        foreach ($rows as $row) {
+            if (($row['user'] ?? '') === $voucher->username) {
+                return [
+                    'state' => 'connecté',
+                    'ip' => $row['address'] ?? null,
+                    'mac' => $row['mac-address'] ?? null,
+                    'session_time_left' => $row['session-time-left'] ?? null,
+                ];
+            }
+        }
+
+        return [
+            'state' => 'déconnecté',
+            'ip' => null,
+            'mac' => null,
+            'session_time_left' => null,
+        ];
+    }
+
     public function provisionVoucher(Voucher $voucher): Voucher
     {
         if ($voucher->sync_status === 'synced' && $voucher->mikrotik_id) {
@@ -332,17 +399,31 @@ class MikrotikService
         }
 
         $voucher->loadMissing('plan', 'wifiZone.mikrotiks');
-        $router = $this->routerForZone($voucher);
+        $routers = $this->authorizedRouters($voucher);
 
-        if (! $router) {
+        if ($routers->isEmpty()) {
             return $this->markUnsynced($voucher, 'pending', 'Aucun MikroTik associé à cette WiFi Zone. Le ticket est enregistré, mais il n’a pas été créé sur un routeur.');
         }
 
-        try {
-            return $this->createHotspotUser($router, $voucher);
-        } catch (Throwable $exception) {
-            return $this->markUnsynced($voucher, 'failed', $this->redact($exception->getMessage(), [$router->password, $voucher->password]));
+        $online = $routers->filter(fn (Mikrotik $router) => $router->status === 'online')->values();
+        $targets = $online->isNotEmpty() ? $online : collect([$routers->first()]);
+        $remembered = false;
+        $error = null;
+
+        foreach ($targets as $router) {
+            try {
+                $this->createHotspotUser($router, $voucher, ! $remembered);
+                $remembered = true;
+            } catch (Throwable $exception) {
+                $error = $this->redact($exception->getMessage(), [$router->password, $voucher->password]);
+            }
         }
+
+        if ($remembered) {
+            return $voucher->refresh();
+        }
+
+        return $this->markUnsynced($voucher, 'failed', $error ?? 'Le compte n’a pas été créé sur le MikroTik.');
     }
 
     /**
@@ -536,16 +617,6 @@ class MikrotikService
         return $this->safeHost($host);
     }
 
-    private function routerForZone(Voucher $voucher): ?Mikrotik
-    {
-        $routers = ($voucher->wifiZone?->mikrotiks ?? collect())->where('is_active', true);
-        if ($routers->isEmpty() && ($voucher->wifiZone?->mikrotiks?->isNotEmpty() ?? false)) {
-            return null;
-        }
-
-        return $routers->firstWhere('status', 'online') ?? $routers->first();
-    }
-
     private function markUnsynced(Voucher $voucher, string $status, string $message): Voucher
     {
         $voucher->forceFill([
@@ -619,6 +690,10 @@ class MikrotikService
 
         if ((int) $voucher->tenant_id !== (int) $router->tenant_id) {
             throw new RuntimeException('Ce ticket et ce MikroTik n’appartiennent pas au même entrepreneur.');
+        }
+
+        if ((int) $voucher->wifi_zone_id !== (int) $router->wifi_zone_id) {
+            throw new RuntimeException('Ce ticket n’est pas autorisé sur ce MikroTik. Il appartient à une autre WiFi Zone.');
         }
     }
 

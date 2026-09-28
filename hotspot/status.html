@@ -86,6 +86,14 @@
           <dt>📡 Adresse IP</dt>
           <dd>$(ip)</dd>
         </div>
+        <div class="fact fact-wide">
+          <dt>MAC</dt>
+          <dd>$(mac)</dd>
+        </div>
+        <div class="fact fact-wide">
+          <dt>Session routeur</dt>
+          <dd>$(session-time-left)</dd>
+        </div>
       </dl>
       <p class="fine" id="dates-note">L'expiration du forfait continue même si vous vous déconnectez. Elle s'affiche lorsque le ticket la fournit.</p>
 
@@ -104,7 +112,7 @@
       </section>
 
       <div class="actions">
-        <a class="btn btn-ghost" href="$(link-logout)">SE DÉCONNECTER</a>
+        <a class="btn btn-ghost" href="$(link-logout)">Déconnexion</a>
         <a class="btn btn-wa" id="wa-link" href="https://wa.me/243860392283">
           Assistance WhatsApp
           <small>+243 860 392 283</small>
@@ -119,6 +127,7 @@
   </div>
 
   <!-- Coller au-dessus le bloc LIMETE_SHOP et session.js affiché dans MikroTik. -->
+  <script src="js/brand.js?v=1"></script>
   <script src="js/limete-bridge.js?v=1"></script>
   <script src="js/plan-data.js?v=3"></script>
   <script src="js/app.js?v=3"></script>

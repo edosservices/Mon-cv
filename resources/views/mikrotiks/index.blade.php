@@ -96,7 +96,7 @@
                 @php
                     $origin = rtrim(url('/'), '/');
                     $shop = route('shop.show', $router->wifiZone->slug);
-                    $portal = "<script>\nwindow.LIMETE_SHOP = ".json_encode($shop, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).";\nwindow.LIMETE_ORIGIN = ".json_encode($origin, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).";\n</script>\n<script src=\"".$origin."/hotspot/session.js?username=$(username)\"></script>";
+                    $portal = "<script>\nwindow.LIMETE_SHOP = ".json_encode($shop, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).";\nwindow.LIMETE_ORIGIN = ".json_encode($origin, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).";\nwindow.LIMETE_ZONE = ".json_encode($router->wifiZone->slug, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).";\n</script>\n<script src=\"".$origin."/hotspot/session.js?username=$(username)\"></script>";
                     $onLogin = str_replace('__LIMETE_APP_URL__', $origin, file_get_contents(base_path('hotspot/on-login.rsc')));
                 @endphp
                 <label class="mt-4 block text-sm font-semibold">Portail de {{ $router->wifiZone->name }}

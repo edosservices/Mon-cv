@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Rules\CustomerPhone;
+use App\Services\Mikrotik\MikrotikService;
 use App\Services\Payments\PaymentManager;
 use App\Services\SaleService;
 use App\Support\QrCodes;
@@ -127,12 +128,15 @@ class WifiShopController extends Controller
             $this->remember($zone, 'customer_tickets', $voucher->public_token);
         }
 
+        $shown = $sale->status === 'paid' ? $voucher : null;
+
         return view('shop.order', [
             'zone' => $zone,
             'sale' => $sale,
-            'voucher' => $sale->status === 'paid' ? $voucher : null,
-            'qr' => $voucher && $sale->status === 'paid' ? QrCodes::svg(route('tickets.public', $voucher->public_token)) : null,
-            'step' => $sale->status === 'paid' && $voucher ? 4 : 3,
+            'voucher' => $shown,
+            'qr' => $shown ? QrCodes::svg(route('tickets.public', $shown->public_token)) : null,
+            'network' => $shown ? $this->networkState($shown) : null,
+            'step' => $shown ? 4 : 3,
         ]);
     }
 
@@ -195,8 +199,18 @@ class WifiShopController extends Controller
             'zone' => $voucher->wifiZone,
             'voucher' => $voucher,
             'qr' => QrCodes::svg(route('tickets.public', $voucher->public_token)),
+            'network' => $this->networkState($voucher),
             'step' => 4,
         ]);
+    }
+
+    public function brand(string $slug)
+    {
+        $zone = $this->zone($slug);
+
+        return response()->json($zone->publicBrand())
+            ->header('Cache-Control', 'no-store')
+            ->header('Access-Control-Allow-Origin', '*');
     }
 
     public function manifest(string $slug)
@@ -226,6 +240,23 @@ class WifiShopController extends Controller
             'voucher' => $voucher,
             'qr' => QrCodes::svg(route('tickets.public', $voucher->public_token)),
         ])->download('ticket-'.$voucher->username.'.pdf');
+    }
+
+    /**
+     * @return array{state: string, ip: ?string, mac: ?string, session_time_left: ?string}
+     */
+    private function networkState(Voucher $voucher): array
+    {
+        try {
+            return app(MikrotikService::class)->networkSession($voucher);
+        } catch (\Throwable) {
+            return [
+                'state' => 'session non disponible',
+                'ip' => null,
+                'mac' => null,
+                'session_time_left' => null,
+            ];
+        }
     }
 
     private function publicVoucher(string $token): Voucher

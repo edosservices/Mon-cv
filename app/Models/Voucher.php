@@ -62,13 +62,17 @@ class Voucher extends Model
             ? $this->expires_at->timezone(config('app.timezone'))->format('d/m/Y H:i')
             : 'après activation';
 
-        return implode("\n", [
-            $this->wifiZone->name ?? 'WiFi',
-            'Forfait : '.($this->plan->name ?? 'Forfait'),
-            'Code : '.$this->username,
-            'Expiration : '.$expires,
-            'Ticket : '.route('tickets.public', $this->public_token),
-        ]);
+        $label = $this->wifiZone?->displayLabel() ?: 'WiFi';
+        $lines = [$label];
+        if ($this->wifiZone && $this->wifiZone->name !== $label) {
+            $lines[] = $this->wifiZone->name;
+        }
+        $lines[] = 'Forfait : '.($this->plan->name ?? 'Forfait');
+        $lines[] = 'Code : '.$this->username;
+        $lines[] = 'Expiration : '.$expires;
+        $lines[] = 'Ticket : '.route('tickets.public', $this->public_token);
+
+        return implode("\n", $lines);
     }
 
     public function refreshExpiry(): void

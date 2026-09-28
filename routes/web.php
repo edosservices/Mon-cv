@@ -38,6 +38,7 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::get('/wifi/{slug}', [WifiShopController::class, 'show'])->name('shop.show');
+Route::get('/wifi/{slug}/marque', [WifiShopController::class, 'brand'])->name('shop.brand');
 Route::get('/wifi/{slug}/manifest.webmanifest', [WifiShopController::class, 'manifest'])->name('shop.manifest');
 Route::get('/wifi/{slug}/forfait/{plan}', [WifiShopController::class, 'plan'])->whereNumber('plan')->name('shop.plan');
 Route::post('/wifi/{slug}/forfait/{plan}', [WifiShopController::class, 'saveCustomer'])->whereNumber('plan')->middleware('throttle:20,1')->name('shop.customer');

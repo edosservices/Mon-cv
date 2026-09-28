@@ -74,7 +74,7 @@ class MikrotikPreparation
         $directory ??= base_path('hotspot');
         $required = [
             'login.html', 'status.html', 'logout.html', 'error.html',
-            'css/style.css', 'js/app.js', 'js/plan-data.js', 'js/limete-bridge.js', 'md5.js',
+            'css/style.css', 'js/app.js', 'js/plan-data.js', 'js/limete-bridge.js', 'js/brand.js', 'md5.js',
         ];
         $rows = [];
         foreach ($required as $file) {

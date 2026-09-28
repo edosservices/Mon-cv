@@ -4,6 +4,12 @@
 <section class="shop-hero">
     <p class="status-pill"><span class="dot" aria-hidden="true"></span> WiFi disponible</p>
     <h1>Internet rapide et accessible</h1>
+    @if($zone->slogan)
+        <p class="lede">{{ $zone->slogan }}</p>
+    @endif
+    @if($zone->bannerUrl())
+        <img class="shop-logo" src="{{ $zone->bannerUrl() }}" alt="">
+    @endif
     @if($zone->description)
         <p class="lede">{{ $zone->description }}</p>
     @else
@@ -35,6 +41,9 @@
                     <h3>{{ $plan->name }}</h3>
                     <p class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
                     <p class="plan-offer">{{ $plan->internetLabel() }}</p>
+                    @if($plan->unlimited_data)
+                        <p class="plan-time">Illimité</p>
+                    @endif
                     <p class="plan-time">{{ $plan->validityLabel() }}</p>
                     <a class="btn btn-primary" href="{{ route('shop.plan', [$zone->slug, $plan->id]) }}">Acheter</a>
                 </article>
