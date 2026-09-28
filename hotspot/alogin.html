@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071e3d">
+  <meta name="robots" content="noindex">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="-1">
+  $(if refresh-timeout)
+  <meta http-equiv="refresh" content="$(refresh-timeout-secs); url=$(link-redirect)">
+  $(else)
+  <meta http-equiv="refresh" content="4; url=$(link-redirect)">
+  $(endif)
+  <title>Connexion réussie — LIMETE WIFI +243</title>
+  <link rel="icon" href="img/logo-LIMETEWIFI.png">
+  <link rel="stylesheet" href="css/style.css?v=1">
+  <script>
+    function startClock() {
+      $(if popup == 'true')
+      open("$(link-status)", "hotspot_status", "toolbar=0,location=0,directories=0,status=0,menubars=0,resizable=1,width=420,height=720");
+      $(endif)
+    }
+  </script>
+</head>
+<body onload="startClock()">
+  <div class="shell">
+    <aside class="brand">
+      <img class="logo logo-desktop" src="img/logo-LIMETEWIFI.png" alt="LIMETE WIFI +243" onerror="this.remove()">
+      <p class="brand-kicker">Réseau WiFi</p>
+      <h1>LIMETE WIFI +243</h1>
+      <p class="tagline">Internet rapide, partout, tout le temps.</p>
+    </aside>
+
+    <main class="card">
+      <img class="logo logo-mobile" src="img/logo-LIMETEWIFI.png" alt="LIMETE WIFI +243" onerror="this.remove()">
+      <section class="banner is-active">
+        <p class="badge">🟢 Actif</p>
+        <h2>Connexion réussie</h2>
+        <p>Vous êtes connecté. Vous pouvez continuer, ou consulter votre forfait.</p>
+      </section>
+
+      $(if username)
+      <p class="who">
+        <span>Nom</span>
+        <strong>$(username)</strong>
+      </p>
+      $(endif)
+
+      <div class="actions">
+        <a class="btn btn-primary" href="$(link-status)">Mon statut</a>
+        <a class="btn btn-ghost" href="$(link-redirect)">Continuer</a>
+        <a class="btn btn-wa" href="https://wa.me/243860392283">
+          💬 Assistance WhatsApp
+          <small>+243 860 392 283</small>
+        </a>
+      </div>
+      <p class="fine">LIMETE WIFI +243</p>
+    </main>
+  </div>
+</body>
+</html>

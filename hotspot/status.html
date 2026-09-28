@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071e3d">
+  <meta name="robots" content="noindex">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="-1">
+  $(if refresh-timeout)
+  <meta http-equiv="refresh" content="$(refresh-timeout-secs)">
+  $(endif)
+  <title>Mon statut — LIMETE WIFI +243</title>
+  <link rel="icon" href="img/logo-LIMETEWIFI.png">
+  <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+  <!-- Valeurs HotSpot, lues par app.js. Le temps de connexion n'est pas la durée du ticket. -->
+  <div id="mt-data" hidden>
+    <span id="mt-username">$(username)</span>
+    <span id="mt-ip">$(ip)</span>
+    <span id="mt-mac">$(mac)</span>
+    <span id="mt-uptime">$(uptime)</span>
+    <span id="mt-uptime-secs">$(uptime-secs)</span>
+    <span id="mt-left">$(session-time-left)</span>
+    <span id="mt-left-secs">$(session-time-left-secs)</span>
+  </div>
+
+  <div class="shell">
+    <aside class="brand">
+      <img class="logo logo-desktop" src="img/logo-LIMETEWIFI.png" alt="LIMETE WIFI +243" onerror="this.remove()">
+      <p class="brand-kicker">Mon statut</p>
+      <h1>LIMETE WIFI +243</h1>
+      <p class="tagline">Internet rapide, partout, tout le temps.</p>
+      <ul class="brand-points">
+        <li>Forfait à durée limitée</li>
+        <li>Volume Internet illimité</li>
+        <li>Même ticket pour revenir</li>
+      </ul>
+    </aside>
+
+    <main class="card">
+      <img class="logo logo-mobile" src="img/logo-LIMETEWIFI.png" alt="LIMETE WIFI +243" onerror="this.remove()">
+
+      <section class="banner is-active" id="status-banner">
+        <p class="badge" id="state-badge">🟢 Actif</p>
+        <h2 id="state-title">VOUS ÊTES CONNECTÉ</h2>
+        <p id="state-text">Votre accès Internet est actif.</p>
+      </section>
+
+      <p class="who">
+        <span>Nom</span>
+        <strong id="user-name">$(username)</strong>
+      </p>
+
+      <div class="offers">
+        <div class="offer">
+          <span>Forfait</span>
+          <strong id="plan-label">Selon votre ticket</strong>
+        </div>
+        <div class="offer offer-net">
+          <span>Internet</span>
+          <strong>♾️ INTERNET ILLIMITÉ</strong>
+        </div>
+      </div>
+
+      <dl class="facts">
+        <div class="fact">
+          <dt>🟢 Début</dt>
+          <dd id="start-value">—</dd>
+        </div>
+        <div class="fact">
+          <dt>🔴 Expiration</dt>
+          <dd id="end-value">—</dd>
+        </div>
+        <div class="fact">
+          <dt>⏱️ Temps écoulé</dt>
+          <dd id="elapsed-value">$(uptime)</dd>
+          <small id="elapsed-note">Cette connexion</small>
+        </div>
+        <div class="fact">
+          <dt>⏳ Temps restant</dt>
+          <dd id="remain-value">$(if session-time-left)$(session-time-left)$(else)Selon votre ticket$(endif)</dd>
+        </div>
+        <div class="fact fact-wide">
+          <dt>📡 Adresse IP</dt>
+          <dd>$(ip)</dd>
+        </div>
+      </dl>
+      <p class="fine" id="dates-note">Les dates s'affichent lorsqu'elles sont enregistrées avec le ticket.</p>
+
+      <section class="progress-block" aria-labelledby="remain-title">
+        <p class="progress-kicker" id="remain-title">⏳ TEMPS RESTANT</p>
+        <p class="remain-big" id="remain-big">$(if session-time-left)$(session-time-left)$(else)Selon votre ticket$(endif)</p>
+        <div class="track" id="track" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="fill" id="fill"></div>
+        </div>
+        <p class="percent" id="percent-label"></p>
+      </section>
+
+      <div class="actions">
+        <a class="btn btn-ghost" href="$(link-logout)">🚪 Se déconnecter</a>
+        <a class="btn btn-wa" id="wa-link" href="https://wa.me/243860392283">
+          💬 Assistance WhatsApp
+          <small>+243 860 392 283</small>
+        </a>
+      </div>
+      <p class="fine">LIMETE WIFI +243</p>
+    </main>
+  </div>
+
+  <script src="js/plan-data.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+</body>
+</html>

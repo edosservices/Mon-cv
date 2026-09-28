@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071e3d">
+  <meta name="robots" content="noindex">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="-1">
+  $(if refresh-timeout)
+  <meta http-equiv="refresh" content="$(refresh-timeout-secs); url=$(link-redirect)">
+  $(else)
+  <meta http-equiv="refresh" content="0; url=$(link-redirect)">
+  $(endif)
+  <title>Redirection — LIMETE WIFI +243</title>
+  <link rel="icon" href="img/logo-LIMETEWIFI.png">
+  <link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+  <div class="shell">
+    <main class="card">
+      <img class="logo logo-mobile" src="img/logo-LIMETEWIFI.png" alt="LIMETE WIFI +243" onerror="this.remove()">
+      <h1>Un instant…</h1>
+      <p class="lead">Redirection en cours. Si rien ne se passe, utilisez le bouton.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="$(link-redirect)">Continuer</a>
+        <a class="btn btn-ghost" href="$(link-login)">Page de connexion</a>
+      </div>
+      <p class="fine">LIMETE WIFI +243</p>
+    </main>
+  </div>
+</body>
+</html>
