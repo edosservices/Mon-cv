@@ -61,6 +61,14 @@ class VoucherController extends Controller
     {
         $result = $mikrotik->provisionVoucher($voucher);
 
+        $audit = app(AuditLogger::class);
+        $audit->record(
+            $result->sync_status === 'synced' ? 'voucher.sync_success' : 'voucher.sync_failed',
+            $result,
+            null,
+            ['sync_status' => $result->sync_status, 'sync_error' => $result->sync_error],
+        );
+
         if ($result->sync_status === 'synced') {
             return back()->with('status', 'Le compte '.$result->username.' a été créé sur le MikroTik.');
         }

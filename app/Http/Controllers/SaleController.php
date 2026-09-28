@@ -29,6 +29,10 @@ class SaleController extends Controller
 
     public function confirm(Sale $sale, SaleService $sales)
     {
+        if ($sale->status === 'paid') {
+            return redirect()->route('sales.show', $sale)->with('status', 'Paiement déjà confirmé.');
+        }
+
         abort_unless($sale->status === 'pending', 422);
         $sales->confirm($sale);
 

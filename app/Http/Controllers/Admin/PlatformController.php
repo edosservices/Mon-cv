@@ -6,12 +6,14 @@ use App\Enums\SubscriptionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Payment;
+use App\Models\PaymentProviderSetting;
 use App\Models\SaasPlan;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Notifications\PlatformNotification;
 use App\Services\AuditLogger;
 use App\Services\DashboardMetrics;
+use App\Services\Payments\PaymentManager;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 
@@ -85,11 +87,39 @@ class PlatformController extends Controller
         ]);
     }
 
-    public function payments()
+    public function payments(PaymentManager $payments)
     {
+        $providers = collect(config('limete.payment_providers'))->map(function (string $label, string $key) use ($payments) {
+            $setting = PaymentProviderSetting::query()->where('provider', $key)->first();
+
+            return [
+                'key' => $key,
+                'label' => $label,
+                'configured' => $payments->configured($key),
+                'enabled' => $setting?->enabled ?? true,
+            ];
+        });
+
         return view('admin.payments', [
             'payments' => Payment::withoutGlobalScope('tenant')->with('tenant')->latest()->paginate(30),
+            'providers' => $providers,
         ]);
+    }
+
+    public function updateProvider(Request $request, string $provider, AuditLogger $audit)
+    {
+        abort_unless(array_key_exists($provider, config('limete.payment_providers')), 404);
+        $enabled = $request->boolean('enabled');
+        PaymentProviderSetting::query()->updateOrCreate(
+            ['provider' => $provider],
+            ['enabled' => $enabled],
+        );
+        $audit->record('payment.provider', null, null, [
+            'provider' => $provider,
+            'enabled' => $enabled,
+        ]);
+
+        return back()->with('status', 'Fournisseur mis à jour.');
     }
 
     public function confirmPayment(int $paymentId, SubscriptionService $service, AuditLogger $audit)

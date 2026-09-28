@@ -27,6 +27,14 @@
             <a class="shop-link" href="{{ route('shop.tickets', $zone->slug) }}">Mes tickets</a>
         </header>
 
+        @isset($step)
+            <ol class="progress" aria-label="Étapes">
+                @foreach(['Forfait', 'Paiement', 'Confirmation', 'Ticket'] as $index => $label)
+                    <li class="{{ $step === $index ? 'is-current' : ($step > $index ? 'is-done' : '') }}">{{ $label }}</li>
+                @endforeach
+            </ol>
+        @endisset
+
         @if(session('status'))
             <p class="note note-ok" role="status">{{ session('status') }}</p>
         @endif

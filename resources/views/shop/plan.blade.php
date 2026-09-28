@@ -18,7 +18,13 @@
     @csrf
     <input type="hidden" name="plan_id" value="{{ $plan->id }}">
     <h2>Comment souhaitez-vous payer ?</h2>
-    <p class="help">Aucun ticket n’est créé avant la confirmation du paiement. Si l’opérateur n’est pas configuré, la commande reste en attente.</p>
+    <p class="help">Aucun ticket n’est créé avant la confirmation du paiement. Si l’opérateur n’est pas configuré, la commande reste en attente. Revenir sur cette page ne confirme pas le paiement.</p>
+    <label class="field">Téléphone
+        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone') }}" placeholder="+243 …" required>
+    </label>
+    <label class="field">Nom <span>(facultatif)</span>
+        <input name="name" type="text" autocomplete="name" value="{{ old('name') }}" maxlength="120">
+    </label>
     <div class="choices">
         @foreach($providers as $key => $label)
             <label class="choice">
@@ -27,12 +33,6 @@
             </label>
         @endforeach
     </div>
-    <label class="field">Téléphone
-        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone') }}" placeholder="+243 …" required>
-    </label>
-    <label class="field">Nom <span>(facultatif)</span>
-        <input name="name" type="text" autocomplete="name" value="{{ old('name') }}" maxlength="120">
-    </label>
     <label class="field">Référence <span>(si vous l’avez)</span>
         <input name="transaction_reference" type="text" value="{{ old('transaction_reference') }}" maxlength="80" placeholder="Reçu ou référence comptoir">
     </label>

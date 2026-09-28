@@ -7,6 +7,7 @@
         ['vouchers.index', 'Vouchers', 'vouchers.manage'],
         ['plans.index', 'Forfaits', 'plans.manage'],
         ['sales.index', 'Ventes', 'sales.view'],
+        ['payments.index', 'Paiements', 'sales.view'],
         ['active-users.index', 'Connectés', 'sessions.view'],
         ['sessions.index', 'Sessions', 'sessions.view'],
         ['statistics', 'Statistiques', 'statistics.view'],

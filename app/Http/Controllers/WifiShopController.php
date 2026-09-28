@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Sale;
 use App\Models\Voucher;
 use App\Models\WifiZone;
+use App\Services\Payments\PaymentManager;
 use App\Services\SaleService;
 use App\Support\QrCodes;
 use App\Support\TenantManager;
@@ -21,6 +22,7 @@ class WifiShopController extends Controller
         return view('shop.show', [
             'zone' => $zone,
             'plans' => $this->plans($zone),
+            'step' => 0,
         ]);
     }
 
@@ -33,7 +35,8 @@ class WifiShopController extends Controller
         return view('shop.plan', [
             'zone' => $zone,
             'plan' => $plan,
-            'providers' => config('limete.payment_providers'),
+            'providers' => app(PaymentManager::class)->enabledProviders(),
+            'step' => 1,
         ]);
     }
 
@@ -71,12 +74,31 @@ class WifiShopController extends Controller
             ->firstOrFail();
 
         $voucher = $sale->items->first()?->voucher;
-        if ($voucher) {
+        if ($voucher && $sale->status === 'paid') {
+            $voucher->load('plan', 'wifiZone');
             $voucher->refreshExpiry();
             $this->remember($zone, 'customer_tickets', $voucher->public_token);
         }
 
-        return view('shop.order', ['zone' => $zone, 'sale' => $sale, 'voucher' => $voucher]);
+        return view('shop.order', [
+            'zone' => $zone,
+            'sale' => $sale,
+            'voucher' => $sale->status === 'paid' ? $voucher : null,
+            'qr' => $voucher && $sale->status === 'paid' ? QrCodes::svg(route('tickets.public', $voucher->public_token)) : null,
+            'step' => $sale->status === 'paid' && $voucher ? 3 : 2,
+        ]);
+    }
+
+    public function refreshPayment(string $slug, string $token, PaymentManager $payments)
+    {
+        $zone = $this->zone($slug);
+        $sale = Sale::where('public_token', $token)->where('wifi_zone_id', $zone->id)->with('payment')->firstOrFail();
+
+        if ($sale->payment) {
+            $payments->gateway($sale->payment->provider)->checkPayment($sale->payment);
+        }
+
+        return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
     }
 
     public function tickets(string $slug)
@@ -126,6 +148,7 @@ class WifiShopController extends Controller
             'zone' => $voucher->wifiZone,
             'voucher' => $voucher,
             'qr' => QrCodes::svg(route('tickets.public', $voucher->public_token)),
+            'step' => 3,
         ]);
     }
 

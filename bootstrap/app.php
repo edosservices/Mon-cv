@@ -31,6 +31,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->prependToPriorityList(SubstituteBindings::class, SetTenant::class);
+        $middleware->validateCsrfTokens(except: [
+            'payments/*/webhook',
+        ]);
         $middleware->web(append: [ResolveCustomDomain::class]);
         $middleware->throttleApi();
         $middleware->redirectGuestsTo('/login');

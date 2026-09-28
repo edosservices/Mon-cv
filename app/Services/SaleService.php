@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PaymentStatus;
+use App\Jobs\SyncHotspotUser;
 use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\Plan;
@@ -10,7 +11,6 @@ use App\Models\Sale;
 use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Notifications\PlatformNotification;
-use App\Services\Mikrotik\MikrotikService;
 use App\Services\Payments\PaymentManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,12 +20,15 @@ class SaleService
     public function __construct(
         private PaymentManager $payments,
         private VoucherGenerator $vouchers,
-        private MikrotikService $mikrotik,
         private AuditLogger $audit,
     ) {}
 
     public function placeOrder(WifiZone $zone, Plan $plan, array $customer, string $provider, ?string $reference = null): Sale
     {
+        if (! $this->payments->enabled($provider)) {
+            throw new \RuntimeException('Ce moyen de paiement est désactivé.');
+        }
+
         return DB::transaction(function () use ($zone, $plan, $customer, $provider, $reference) {
             $buyer = null;
             if (filled($customer['phone'] ?? null) || filled($customer['name'] ?? null)) {
@@ -58,11 +61,18 @@ class SaleService
                 'amount' => $sale->total_amount,
                 'currency' => $sale->currency,
                 'provider' => $provider,
+                'internal_reference' => $this->internalReference(),
                 'status' => PaymentStatus::Pending->value,
             ]);
 
-            $this->payments->gateway($provider)->initiate($payment, [
+            $this->payments->gateway($provider)->createPayment($payment, [
                 'transaction_reference' => $reference,
+            ]);
+            $this->audit->record('payment.created', $payment, null, [
+                'provider' => $provider,
+                'internal_reference' => $payment->internal_reference,
+                'amount' => number_format((float) $sale->total_amount, 2, '.', ''),
+                'currency' => $sale->currency,
             ]);
 
             $sale->forceFill(['payment_id' => $payment->id])->save();
@@ -78,32 +88,51 @@ class SaleService
     public function confirm(Sale $sale): Sale
     {
         return DB::transaction(function () use ($sale) {
-            $sale->load('payment', 'items.plan', 'wifiZone');
-            $payment = $sale->payment;
+            $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
+            $sale->load('payment', 'items.plan', 'items.voucher', 'wifiZone');
+            $item = $sale->items->first();
 
-            if ($payment && $payment->status !== PaymentStatus::Success->value) {
-                $payment->forceFill([
-                    'status' => PaymentStatus::Success->value,
-                    'paid_at' => now(),
-                ])->save();
+            if ($sale->status === 'paid' && $item?->voucher) {
+                return $sale->fresh(['items.voucher', 'payment', 'customer']);
             }
 
-            $item = $sale->items->first();
-            $voucher = $item?->voucher;
+            $payment = $sale->payment;
+            if ($payment && $payment->status !== PaymentStatus::Success->value) {
+                $payment->transitionTo(PaymentStatus::Success);
+                $payment->save();
+                $this->audit->record('payment.success', $payment, null, [
+                    'provider' => $payment->provider,
+                    'internal_reference' => $payment->internal_reference,
+                    'amount' => number_format((float) $payment->amount, 2, '.', ''),
+                    'currency' => $payment->currency,
+                ]);
+            }
 
+            $voucher = $item?->voucher;
             if (! $voucher && $item) {
                 $voucher = $this->vouchers->create($sale->wifiZone, $item->plan, 1, true)[0];
                 $voucher->forceFill(['customer_id' => $sale->customer_id])->save();
                 $item->forceFill(['voucher_id' => $voucher->id])->save();
+                $this->audit->record('voucher.activated', $voucher, null, [
+                    'activated_at' => $voucher->activated_at?->toIso8601String(),
+                    'expires_at' => $voucher->expires_at?->toIso8601String(),
+                ]);
+                dispatch_sync(new SyncHotspotUser($voucher->id));
+                $voucher = $voucher->fresh();
+                $this->audit->record(
+                    $voucher->sync_status === 'synced' ? 'voucher.sync_success' : 'voucher.sync_failed',
+                    $voucher,
+                    null,
+                    ['sync_status' => $voucher->sync_status, 'sync_error' => $voucher->sync_error],
+                );
             }
 
             $sale->forceFill(['status' => 'paid'])->save();
-            if ($voucher) {
-                $this->mikrotik->provisionVoucher($voucher->fresh(['plan', 'wifiZone.mikrotiks']));
-            }
             $this->audit->record('sale.confirmed', $sale, null, ['status' => 'paid']);
-            $sale->wifiZone->tenant->users()->whereHas('role', fn ($query) => $query->where('slug', 'entrepreneur'))->first()
-                ?->notify(new PlatformNotification('ticket.generated', 'Ticket généré', 'Le ticket '.$voucher->username.' est prêt.'));
+            if ($voucher) {
+                $sale->wifiZone->tenant->users()->whereHas('role', fn ($query) => $query->where('slug', 'entrepreneur'))->first()
+                    ?->notify(new PlatformNotification('ticket.generated', 'Ticket généré', 'Le ticket '.$voucher->username.' est prêt.'));
+            }
 
             return $sale->fresh(['items.voucher', 'payment', 'customer']);
         });
@@ -132,6 +161,7 @@ class SaleService
             'amount' => $sale->total_amount,
             'currency' => $sale->currency,
             'provider' => 'manual',
+            'internal_reference' => $this->internalReference(),
             'transaction_reference' => 'COMPTOIR-'.$sale->id,
             'status' => PaymentStatus::Success->value,
             'paid_at' => now(),
@@ -144,9 +174,18 @@ class SaleService
             'amount' => $sale->total_amount,
         ]);
 
-        $this->mikrotik->provisionVoucher($voucher->fresh(['plan', 'wifiZone.mikrotiks']));
+        dispatch_sync(new SyncHotspotUser($voucher->id));
         $this->audit->record('sale.counter', $sale);
 
         return $sale->load('items.voucher');
+    }
+
+    private function internalReference(): string
+    {
+        do {
+            $reference = 'PAY-'.Str::upper(Str::random(10));
+        } while (Payment::withoutGlobalScope('tenant')->where('internal_reference', $reference)->exists());
+
+        return $reference;
     }
 }

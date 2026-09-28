@@ -43,6 +43,9 @@ body {
     .shop-mark { background: var(--shop, #0b5ed7); color: white; font-weight: 700; }
     .shop-link { color: var(--shop, #0b5ed7); font-weight: 700; text-decoration: none; }
     .shop-link.center { display: block; margin-top: 16px; text-align: center; }
+    .progress { display: flex; gap: 6px; margin: 16px 0 0; padding: 0; list-style: none; }
+    .progress li { flex: 1 1 0; min-width: 0; text-align: center; font-size: 0.68rem; font-weight: 700; color: #5c6e86; }
+    .progress li.is-current, .progress li.is-done { color: var(--shop, #0b5ed7); }
     .shop-hero, .shop-section { margin-top: 22px; }
     .shop-hero h1, .panel h1 { margin: 8px 0 0; font-size: 1.8rem; line-height: 1.15; letter-spacing: -0.03em; }
     .lede { margin: 8px 0 0; color: #3e5270; }

@@ -8,6 +8,8 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MikrotikController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingController;
@@ -37,6 +39,8 @@ Route::get('/wifi/{slug}', [WifiShopController::class, 'show'])->name('shop.show
 Route::get('/wifi/{slug}/forfait/{plan}', [WifiShopController::class, 'plan'])->whereNumber('plan')->name('shop.plan');
 Route::post('/wifi/{slug}', [WifiShopController::class, 'checkout'])->middleware('throttle:20,1')->name('shop.checkout');
 Route::get('/wifi/{slug}/commande/{token}', [WifiShopController::class, 'order'])->name('shop.order');
+Route::post('/wifi/{slug}/commande/{token}/actualiser', [WifiShopController::class, 'refreshPayment'])->middleware('throttle:30,1')->name('shop.payment.refresh');
+Route::post('/payments/{provider}/webhook', PaymentWebhookController::class)->middleware('throttle:60,1')->name('payments.webhook');
 Route::get('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'tickets'])->name('shop.tickets');
 Route::post('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'lookup'])->middleware('throttle:10,1')->name('shop.lookup');
 Route::get('/ticket/{token}', [WifiShopController::class, 'ticket'])->name('tickets.public');
@@ -50,6 +54,7 @@ Route::middleware(['auth', 'tenant', 'role:super_admin'])->prefix('admin')->name
     Route::get('/plans', [PlatformController::class, 'plans'])->name('plans');
     Route::patch('/plans/{saasPlan}', [PlatformController::class, 'updatePlan'])->name('plans.update');
     Route::get('/payments', [PlatformController::class, 'payments'])->name('payments');
+    Route::post('/payments/providers/{provider}', [PlatformController::class, 'updateProvider'])->name('payments.providers');
     Route::get('/logs', [PlatformController::class, 'logs'])->name('logs');
     Route::post('/payments/{paymentId}/confirm', [PlatformController::class, 'confirmPayment'])->name('payments.confirm');
 });
@@ -70,6 +75,7 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');
         Route::post('/vouchers', [VoucherController::class, 'store'])->middleware('permission:vouchers.manage')->name('vouchers.store');
         Route::post('/vouchers/{voucher}/sync', [VoucherController::class, 'sync'])->middleware('permission:vouchers.manage')->name('vouchers.sync');
+        Route::post('/vouchers/{voucher}/retry-sync', [VoucherController::class, 'sync'])->middleware('permission:vouchers.manage')->name('vouchers.retry');
         Route::get('/vouchers/{voucher}', [VoucherController::class, 'show'])->middleware('permission:vouchers.manage')->name('vouchers.show');
         Route::get('/vouchers/{voucher}/pdf', [VoucherController::class, 'pdf'])->middleware('permission:vouchers.manage')->name('vouchers.pdf');
         Route::patch('/vouchers/{voucher}', [VoucherController::class, 'updateStatus'])->middleware('permission:vouchers.manage')->name('vouchers.status');
@@ -77,6 +83,7 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::post('/vouchers/{voucher}/sell', [SaleController::class, 'sellVoucher'])->middleware('permission:sales.confirm')->name('vouchers.sell');
         Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:customers.manage')->name('customers.index');
         Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('permission:customers.manage')->name('customers.show');
+        Route::get('/payments', [PaymentController::class, 'index'])->middleware('permission:sales.view')->name('payments.index');
         Route::get('/sales', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sales.index');
         Route::get('/sales/{sale}', [SaleController::class, 'show'])->middleware('permission:sales.view')->name('sales.show');
         Route::post('/sales/{sale}/confirm', [SaleController::class, 'confirm'])->middleware('permission:sales.confirm')->name('sales.confirm');

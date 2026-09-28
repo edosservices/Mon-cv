@@ -93,7 +93,7 @@ MPESA_API_KEY=
 CARD_GATEWAY_SECRET=
 ```
 
-Ces clés restent dans `.env`, jamais dans Git ni dans le navigateur. Les connecteurs Airtel Money, Orange Money, M-Pesa et carte sont des points d’extension : l’appel opérateur n’est pas inventé ici, faute d’identifiants et de contrat d’API.
+Ces clés restent dans `.env`, jamais dans Git ni dans le navigateur. Les connecteurs Airtel Money, Orange Money, M-Pesa et carte sont des adaptateurs : aucun appel HTTP opérateur n’est fait, faute de contrat d’API officiel. Un webhook sandbox `POST /payments/{provider}/webhook` accepte une notification signée en HMAC seulement si le secret webhook est défini. Le retour du client sur la page de commande ne confirme jamais un paiement. Le comptoir confirme encore le paiement manuel.
 
 ## MikroTik
 
