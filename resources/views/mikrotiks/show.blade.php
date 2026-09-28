@@ -21,6 +21,7 @@
         'interfaces' => 'Interfaces',
         'ip' => 'IP',
         'portal' => 'Portail',
+        'prepare' => 'Préparer',
         'journal' => 'Journal',
     ];
 @endphp
@@ -315,14 +316,24 @@
     </section>
 @endif
 
+@if($tab === 'prepare')
+    @include('mikrotiks.partials.prepare')
+@endif
+
 @if($tab === 'journal')
     <section class="rounded-2xl bg-white p-4 text-sm shadow-sm">
         <h2 class="font-semibold">Journal</h2>
         <ul class="mt-3 space-y-2">
             @forelse($logs as $log)
                 <li class="rounded-xl bg-slate-50 p-3">
-                    <p class="font-semibold">{{ $log->action }}</p>
+                    <p class="font-semibold">{{ $log->user->name ?? 'Système' }} — {{ $router->name }}</p>
+                    <p>{{ $log->action }}</p>
                     <p>{{ $log->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</p>
+                    @if(is_array($log->new_values))
+                        @if(!empty($log->new_values['change']))<p>Changement : {{ $log->new_values['change'] }}</p>@endif
+                        @if(!empty($log->new_values['result']))<p>Résultat : {{ $log->new_values['result'] }}</p>@endif
+                        @if(!empty($log->new_values['error']))<p>Erreur : {{ $log->new_values['error'] }}</p>@endif
+                    @endif
                 </li>
             @empty
                 <li>Non détecté</li>

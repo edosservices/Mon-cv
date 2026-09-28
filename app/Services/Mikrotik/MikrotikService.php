@@ -77,6 +77,7 @@ class MikrotikService
         $addresses = $this->askOptional($host, $port, $username, $password, ['/ip/address/print'], $timeout, $secure);
         $pools = $this->askOptional($host, $port, $username, $password, ['/ip/pool/print'], $timeout, $secure);
         $users = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/user/print'], $timeout, $secure);
+        $garden = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/walled-garden/print'], $timeout, $secure);
         $row = $resource[0] ?? [];
         $servers = array_map(fn (array $item) => $this->pick($item, ['name', 'interface', 'profile', 'address-pool', 'addresses', 'disabled']), $hotspots);
         $dnsName = $this->firstFilled($hotspots, 'dns-name') ?? $this->firstFilled($serverProfiles, 'dns-name');
@@ -110,6 +111,8 @@ class MikrotikService
             'profile_rows' => array_map(fn (array $item) => $this->pick($item, ['name', 'rate-limit', 'session-timeout', 'idle-timeout', 'keepalive-timeout', 'shared-users', 'disabled']), $userProfiles),
             'users' => array_map(fn (array $item) => $this->pick($item, ['name', 'profile', 'uptime', 'bytes-in', 'bytes-out', 'disabled', 'comment', 'limit-uptime']), $users),
             'sessions' => array_map(fn (array $item) => $this->pick($item, ['.id', 'user', 'address', 'mac-address', 'uptime', 'session-time-left', 'bytes-in', 'bytes-out', 'server']), $active),
+            'walled_garden' => array_map(fn (array $item) => $this->pick($item, ['.id', 'dst-host', 'action']), $garden),
+            'hotspot_profile_rows' => array_map(fn (array $item) => $this->pick($item, ['.id', 'name', 'dns-name', 'hotspot-address', 'html-directory']), $serverProfiles),
         ];
     }
 
@@ -161,6 +164,8 @@ class MikrotikService
                     'profile_rows' => $found['profile_rows'],
                     'users' => $found['users'],
                     'sessions' => $found['sessions'],
+                    'walled_garden' => $found['walled_garden'],
+                    'hotspot_profile_rows' => $found['hotspot_profile_rows'],
                 ],
             ];
             if (! filled($router->dns) && filled($found['dns_name'])) {
@@ -473,6 +478,64 @@ class MikrotikService
         };
     }
 
+    /**
+     * @param  array<int, string>  $queries
+     * @return array<int, array<string, string>>
+     */
+    public function readPrint(Mikrotik $router, string $path, array $queries = []): array
+    {
+        $this->assertOwned($router);
+        $allowed = [
+            '/system/identity/print',
+            '/system/resource/print',
+            '/ip/hotspot/print',
+            '/ip/hotspot/profile/print',
+            '/ip/hotspot/user/profile/print',
+            '/ip/hotspot/user/print',
+            '/ip/hotspot/active/print',
+            '/ip/hotspot/walled-garden/print',
+            '/interface/print',
+            '/ip/pool/print',
+        ];
+        if (! in_array($path, $allowed, true)) {
+            throw new RuntimeException('Lecture non autorisée.');
+        }
+        foreach ($queries as $query) {
+            if (! is_string($query) || ! str_starts_with($query, '?') || str_contains($query, ' ')) {
+                throw new RuntimeException('Lecture non autorisée.');
+            }
+        }
+
+        return $this->records($this->command($router, array_merge([$path], $queries)));
+    }
+
+    /**
+     * @param  array<int, string>  $words
+     * @param  array<int, string>  $secrets
+     * @param  array<string, mixed>  $context
+     * @return array<int, array<string, string>>
+     */
+    public function guardedCommand(Mikrotik $router, array $words, array $secrets = [], array $context = []): array
+    {
+        $this->assertOwned($router);
+        $this->assertSafeWords($words, $context);
+
+        return $this->command($router, $words, $secrets);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function portalHostsFor(Mikrotik $router): array
+    {
+        return $this->portalHosts($router);
+    }
+
+    public function isSafeDns(string $host): bool
+    {
+        return $this->safeHost($host);
+    }
+
     private function routerForZone(Voucher $voucher): ?Mikrotik
     {
         $routers = ($voucher->wifiZone?->mikrotiks ?? collect())->where('is_active', true);
@@ -770,5 +833,91 @@ class MikrotikService
         }
 
         return $message;
+    }
+
+    /**
+     * @param  array<int, string>  $words
+     * @param  array<string, mixed>  $context
+     */
+    private function assertSafeWords(array $words, array $context): void
+    {
+        $path = $words[0] ?? '';
+        $joined = strtolower(implode(' ', $words));
+        foreach (['reset-configuration', '/ip/address/', '/ip/route/', '/ip/firewall/', '/system/reboot', '/system/shutdown'] as $denied) {
+            if (str_contains($joined, $denied)) {
+                throw new RuntimeException('Commande refusée.');
+            }
+        }
+
+        $allowed = [
+            '/ip/hotspot/profile/set',
+            '/ip/hotspot/walled-garden/add',
+            '/ip/hotspot/walled-garden/remove',
+            '/ip/hotspot/add',
+            '/ip/hotspot/user/profile/add',
+            '/ip/hotspot/user/profile/remove',
+            '/ip/hotspot/user/add',
+            '/ip/hotspot/user/remove',
+        ];
+        if (! in_array($path, $allowed, true)) {
+            throw new RuntimeException('Commande refusée.');
+        }
+
+        $keys = $this->wordKeys($words);
+        if ($path === '/ip/hotspot/profile/set' && array_diff($keys, ['.id', 'dns-name']) !== []) {
+            throw new RuntimeException('Commande refusée.');
+        }
+        if ($path === '/ip/hotspot/add' && (array_diff($keys, ['name', 'interface', 'address-pool', 'profile']) !== [] || ! in_array('name', $keys, true) || ! in_array('interface', $keys, true))) {
+            throw new RuntimeException('Commande refusée.');
+        }
+        if ($path === '/ip/hotspot/user/profile/add' && array_diff($keys, ['name', 'session-timeout', 'rate-limit', 'idle-timeout', 'shared-users']) !== []) {
+            throw new RuntimeException('Commande refusée.');
+        }
+        if ($path === '/ip/hotspot/user/add') {
+            $name = (string) $this->wordValue($words, 'name');
+            if (! str_starts_with($name, 'LIMETE_TEST_') || array_diff($keys, ['name', 'password', 'profile', 'comment', 'limit-uptime']) !== []) {
+                throw new RuntimeException('Commande refusée.');
+            }
+        }
+        if (in_array($path, ['/ip/hotspot/walled-garden/remove', '/ip/hotspot/user/profile/remove'], true) && ($context['rollback'] ?? false) !== true) {
+            throw new RuntimeException('Commande refusée.');
+        }
+        if ($path === '/ip/hotspot/user/remove' && ! str_starts_with((string) ($context['username'] ?? ''), 'LIMETE_TEST_')) {
+            throw new RuntimeException('Commande refusée.');
+        }
+        if ($path === '/ip/hotspot/remove') {
+            throw new RuntimeException('Commande refusée.');
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $words
+     * @return array<int, string>
+     */
+    private function wordKeys(array $words): array
+    {
+        $keys = [];
+        foreach (array_slice($words, 1) as $word) {
+            if (preg_match('/^=([^=]+)=/', $word, $matches)) {
+                $keys[] = $matches[1];
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * @param  array<int, string>  $words
+     */
+    private function wordValue(array $words, string $key): ?string
+    {
+        $prefix = '='.$key.'=';
+        foreach (array_slice($words, 1) as $word) {
+            if (str_starts_with($word, $prefix)) {
+                return substr($word, strlen($prefix));
+            }
+        }
+
+        return null;
     }
 }

@@ -96,6 +96,11 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::post('/mikrotiks/{mikrotik}/hotspot', [MikrotikController::class, 'selectHotspot'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.hotspot');
         Route::post('/mikrotiks/{mikrotik}/disconnect', [MikrotikController::class, 'disconnectSession'])->middleware('permission:sessions.disconnect')->name('mikrotiks.disconnect');
         Route::post('/mikrotiks/{mikrotik}/portal', [MikrotikController::class, 'applyPortal'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.portal');
+        Route::post('/mikrotiks/{mikrotik}/prepare/read', [MikrotikController::class, 'prepareRead'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.prepare.read');
+        Route::post('/mikrotiks/{mikrotik}/prepare/apply', [MikrotikController::class, 'prepareApply'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.prepare.apply');
+        Route::post('/mikrotiks/{mikrotik}/prepare/verify', [MikrotikController::class, 'prepareVerify'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.prepare.verify');
+        Route::post('/mikrotiks/{mikrotik}/prepare/dns', [MikrotikController::class, 'prepareDns'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.prepare.dns');
+        Route::post('/mikrotiks/{mikrotik}/snapshots/{snapshot}/restore', [MikrotikController::class, 'restoreSnapshot'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.snapshots.restore');
         Route::resource('mikrotiks', MikrotikController::class)->middleware('permission:mikrotiks.manage');
         Route::resource('plans', PlanController::class)->except('show')->middleware('permission:plans.manage');
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');

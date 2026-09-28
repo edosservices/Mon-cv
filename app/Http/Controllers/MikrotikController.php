@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Mikrotik;
 use App\Models\Plan;
+use App\Models\MikrotikSnapshot;
 use App\Models\PlanMikrotikProfile;
 use App\Models\WifiZone;
 use App\Services\AuditLogger;
+use App\Services\Mikrotik\MikrotikPreparation;
 use App\Services\Mikrotik\MikrotikService;
 use App\Services\PlanLimiter;
 use Illuminate\Http\Request;
@@ -82,9 +84,9 @@ class MikrotikController extends Controller
         return back()->withInput($request->except('password'))->with('probe', $found);
     }
 
-    public function show(Request $request, Mikrotik $mikrotik, MikrotikService $service)
+    public function show(Request $request, Mikrotik $mikrotik, MikrotikService $service, MikrotikPreparation $preparation)
     {
-        $tabs = ['overview', 'connection', 'hotspot', 'profiles', 'plans', 'users', 'sessions', 'interfaces', 'ip', 'portal', 'journal'];
+        $tabs = ['overview', 'connection', 'hotspot', 'profiles', 'plans', 'users', 'sessions', 'interfaces', 'ip', 'portal', 'prepare', 'journal'];
         $tab = $request->string('tab')->toString();
         if (! in_array($tab, $tabs, true)) {
             $tab = 'overview';
@@ -120,6 +122,8 @@ class MikrotikController extends Controller
                 ->orderByDesc('created_at')
                 ->limit(40)
                 ->get(),
+            'plan' => $tab === 'prepare' ? $preparation->present($mikrotik) : null,
+            'verifyReport' => session('verify_report'),
         ]);
     }
 
@@ -277,6 +281,71 @@ class MikrotikController extends Controller
         $audit->record('mikrotik.portal_applied', $mikrotik, null, ['commands' => $applied]);
 
         return back()->with('status', $applied.' élément(s) appliqué(s) au MikroTik.');
+    }
+
+    public function prepareRead(Mikrotik $mikrotik, MikrotikService $service)
+    {
+        $router = $service->syncRouter($mikrotik);
+        if ($router->status !== 'online') {
+            return back()->with('warning', 'Impossible de joindre le MikroTik.');
+        }
+
+        return back()->with('status', 'Configuration lue sur le routeur. Aucune modification n’a été appliquée.');
+    }
+
+    public function prepareApply(Request $request, Mikrotik $mikrotik, MikrotikPreparation $preparation)
+    {
+        $data = $request->validate([
+            'group' => ['required', Rule::in(['dns', 'walled_garden', 'hotspot', 'profile'])],
+            'confirm' => ['accepted'],
+            'dns' => ['nullable', 'string', 'max:160'],
+            'hotspot_name' => ['nullable', 'string', 'max:32'],
+            'interface' => ['nullable', 'string', 'max:32'],
+            'address_pool' => ['nullable', 'string', 'max:32'],
+            'profile_name' => ['nullable', 'string', 'max:32'],
+            'session_timeout' => ['nullable', 'string', 'max:20'],
+            'rate_limit' => ['nullable', 'string', 'max:40'],
+            'idle_timeout' => ['nullable', 'string', 'max:20'],
+            'shared_users' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+
+        try {
+            $message = $preparation->apply($mikrotik, $data['group'], $data);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $exception->getMessage());
+        }
+
+        return back()->with('status', $message);
+    }
+
+    public function prepareVerify(Mikrotik $mikrotik, MikrotikPreparation $preparation)
+    {
+        $report = $preparation->verify($mikrotik);
+
+        return back()->with('verify_report', $report);
+    }
+
+    public function prepareDns(Request $request, Mikrotik $mikrotik, MikrotikPreparation $preparation)
+    {
+        $data = $request->validate(['dns' => ['required', 'string', 'max:160']]);
+        $result = $preparation->checkDns($mikrotik, $data['dns']);
+
+        return back()->with('status', $result['label']);
+    }
+
+    public function restoreSnapshot(Mikrotik $mikrotik, MikrotikSnapshot $snapshot, MikrotikPreparation $preparation)
+    {
+        if ((int) $snapshot->mikrotik_id !== (int) $mikrotik->id) {
+            abort(404);
+        }
+
+        try {
+            $message = $preparation->restore($mikrotik, $snapshot);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $exception->getMessage());
+        }
+
+        return back()->with('status', $message);
     }
 
     private function validated(Request $request, bool $creating): array
