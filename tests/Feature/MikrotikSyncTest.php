@@ -36,10 +36,11 @@ class MikrotikSyncTest extends TestCase
         $this->assertSame('synced', $synced->sync_status);
         $this->assertSame($router->id, $synced->mikrotik_id);
         $this->assertNull($synced->sync_error);
-        $this->assertSame('/ip/hotspot/user/add', $fake->commands[0]['words'][0]);
-        $this->assertContains('=name=LW8F42', $fake->commands[0]['words']);
-        $this->assertContains('=password=7391', $fake->commands[0]['words']);
-        $this->assertContains('=profile=24H', $fake->commands[0]['words']);
+        $add = collect($fake->commands)->first(fn (array $call) => ($call['words'][0] ?? '') === '/ip/hotspot/user/add');
+        $this->assertNotNull($add);
+        $this->assertContains('=name=LW8F42', $add['words']);
+        $this->assertContains('=password=7391', $add['words']);
+        $this->assertContains('=profile=24H', $add['words']);
         $this->assertLogsHideSecrets($lines, ['7391', 'secret-router']);
     }
 

@@ -28,8 +28,10 @@
             <p class="text-sm">Identity : {{ $router->identity ?: '—' }}</p>
             <p class="text-sm">RouterOS : {{ $router->routeros_version ?: '—' }}</p>
             <p class="break-all text-sm">IP : {{ $router->host }}:{{ $router->api_port }}</p>
-            <p class="text-sm">HotSpot : {{ array_key_exists('hotspot', $details) ? ($details['hotspot'] ? '✓' : 'Non') : '—' }}</p>
-            <p class="text-sm">Utilisateurs : {{ $details['active_users'] ?? '—' }}</p>
+            <p class="text-sm">HotSpot : {{ $router->hotspot_server ?: (array_key_exists('hotspot', $details) ? ($details['hotspot'] ? '✓' : 'Non') : '—') }}</p>
+            <p class="text-sm">DNS : {{ $router->dns ?: ($details['dns_name'] ?? null ?: 'DNS non configuré') }}</p>
+            <p class="text-sm">Utilisateurs : {{ $details['hotspot_users'] ?? '—' }}</p>
+            <p class="text-sm">Actifs : {{ $details['active_users'] ?? '—' }}</p>
             <p class="text-sm">Dernière vérification {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</p>
             @if(in_array($router->status, ['offline', 'error'], true))
                 <p class="mt-2 text-sm font-semibold">Impossible de joindre le MikroTik.</p>
@@ -42,6 +44,7 @@
             <div class="mt-3 flex flex-wrap gap-2 text-sm">
                 <form method="POST" action="{{ route('mikrotiks.test', $router) }}">@csrf<button class="rounded-xl border px-4 py-3 font-semibold">TESTER LA CONNEXION</button></form>
                 <form method="POST" action="{{ route('mikrotiks.sync', $router) }}">@csrf<button class="rounded-xl border px-4 py-3 font-semibold">Synchroniser</button></form>
+                <a class="rounded-xl border px-4 py-3 font-semibold" href="{{ route('mikrotiks.show', $router) }}">Gérer</a>
                 <a class="rounded-xl border px-4 py-3 font-semibold" href="{{ route('active-users.index') }}">Utilisateurs</a>
                 <a class="rounded-xl border px-4 py-3 font-semibold" href="{{ route('mikrotiks.edit', $router) }}">Modifier</a>
                 <form method="POST" action="{{ route('mikrotiks.destroy', $router) }}">@csrf @method('DELETE')<button class="rounded-xl border px-4 py-3 font-semibold text-red-700">Supprimer</button></form>
@@ -68,7 +71,10 @@
                             <input type="hidden" name="plan_id" value="{{ $plan->id }}">
                             <p class="font-semibold">{{ $plan->name }}</p>
                             <p class="text-slate-500">Le nom du forfait n’est pas le profil du routeur.</p>
-                            @if($plan->mikrotik_profile && ! $names->contains($plan->mikrotik_profile))
+                            @php $linked = $router->planLinks->firstWhere('plan_id', $plan->id); @endphp
+                            @if(! $linked && ! $plan->mikrotik_profile)
+                                <p class="mt-1 font-semibold text-amber-800">Profil non associé</p>
+                            @elseif($plan->mikrotik_profile && ! $names->contains($plan->mikrotik_profile))
                                 <p class="mt-1 font-semibold text-amber-800">Profil non trouvé</p>
                             @endif
                             <label class="mt-2 block">Profil MikroTik

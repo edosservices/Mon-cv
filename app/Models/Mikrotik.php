@@ -13,8 +13,10 @@ class Mikrotik extends Model
     use BelongsToTenant, SoftDeletes;
 
     protected $fillable = [
-        'tenant_id', 'wifi_zone_id', 'name', 'host', 'api_port', 'username',
-        'password', 'routeros_version', 'identity', 'status', 'last_seen_at', 'last_error', 'details',
+        'tenant_id', 'wifi_zone_id', 'name', 'description', 'host', 'dns', 'api_port',
+        'api_ssl_port', 'connection_type', 'username', 'password', 'timeout',
+        'routeros_version', 'architecture', 'board', 'identity', 'hotspot_server',
+        'status', 'is_active', 'last_seen_at', 'last_error', 'details',
     ];
 
     protected $hidden = ['password'];
@@ -25,6 +27,10 @@ class Mikrotik extends Model
             'password' => 'encrypted',
             'last_seen_at' => 'datetime',
             'details' => 'array',
+            'is_active' => 'boolean',
+            'api_port' => 'integer',
+            'api_ssl_port' => 'integer',
+            'timeout' => 'integer',
         ];
     }
 
@@ -41,5 +47,29 @@ class Mikrotik extends Model
     public function profiles(): HasMany
     {
         return $this->hasMany(MikrotikProfile::class);
+    }
+
+    public function planLinks(): HasMany
+    {
+        return $this->hasMany(PlanMikrotikProfile::class);
+    }
+
+    public function usesSecureApi(): bool
+    {
+        return $this->connection_type === 'api-ssl';
+    }
+
+    public function connectionPort(): int
+    {
+        if ($this->usesSecureApi()) {
+            return (int) ($this->api_ssl_port ?: 8729);
+        }
+
+        return (int) ($this->api_port ?: 8728);
+    }
+
+    public function detail(string $key, mixed $default = null): mixed
+    {
+        return $this->details[$key] ?? $default;
     }
 }

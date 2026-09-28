@@ -10,6 +10,7 @@
                 <p>Créé sur le MikroTik.</p>
             @else
                 <p class="font-medium">Non synchronisé avec le MikroTik.</p>
+                <p class="mt-1">Ticket créé, synchronisation MikroTik en attente.</p>
                 <p class="mt-1 text-amber-800">{{ $voucher->sync_error ?: 'Le compte n’a pas été créé sur le routeur.' }}</p>
                 <form method="POST" action="{{ route('vouchers.sync', $voucher) }}" class="mt-3">@csrf<button class="rounded-lg border px-3 py-2">Réessayer sur le MikroTik</button></form>
             @endif

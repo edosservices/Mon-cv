@@ -84,7 +84,7 @@ class PlatformTest extends TestCase
     {
         $this->app->instance(HotspotRouter::class, new class implements HotspotRouter
         {
-            public function command(string $host, int $port, string $username, string $password, array $words, int $timeout = 5): array
+            public function command(string $host, int $port, string $username, string $password, array $words, int $timeout = 5, bool $secure = false): array
             {
                 throw new RuntimeException('Connexion impossible au routeur.');
             }

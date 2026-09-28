@@ -4,6 +4,7 @@ namespace App\Services\Mikrotik;
 
 use App\Models\Mikrotik;
 use App\Models\MikrotikProfile;
+use App\Models\PlanMikrotikProfile;
 use App\Models\Voucher;
 use App\Support\TenantManager;
 use Illuminate\Support\Facades\Log;
@@ -64,20 +65,27 @@ class MikrotikService
         ];
     }
 
-    public function discover(string $host, int $port, string $username, string $password): array
+    public function discover(string $host, int $port, string $username, string $password, int $timeout = 5, bool $secure = false): array
     {
-        $identity = $this->ask($host, $port, $username, $password, ['/system/identity/print']);
-        $resource = $this->ask($host, $port, $username, $password, ['/system/resource/print']);
-        $hotspots = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/print']);
-        $serverProfiles = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/profile/print']);
-        $userProfiles = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/user/profile/print']);
-        $active = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/active/print']);
+        $identity = $this->ask($host, $port, $username, $password, ['/system/identity/print'], $timeout, $secure);
+        $resource = $this->ask($host, $port, $username, $password, ['/system/resource/print'], $timeout, $secure);
+        $hotspots = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/print'], $timeout, $secure);
+        $serverProfiles = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/profile/print'], $timeout, $secure);
+        $userProfiles = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/user/profile/print'], $timeout, $secure);
+        $active = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/active/print'], $timeout, $secure);
+        $interfaces = $this->askOptional($host, $port, $username, $password, ['/interface/print'], $timeout, $secure);
+        $addresses = $this->askOptional($host, $port, $username, $password, ['/ip/address/print'], $timeout, $secure);
+        $pools = $this->askOptional($host, $port, $username, $password, ['/ip/pool/print'], $timeout, $secure);
+        $users = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/user/print'], $timeout, $secure);
         $row = $resource[0] ?? [];
+        $servers = array_map(fn (array $item) => $this->pick($item, ['name', 'interface', 'profile', 'address-pool', 'addresses', 'disabled']), $hotspots);
+        $dnsName = $this->firstFilled($hotspots, 'dns-name') ?? $this->firstFilled($serverProfiles, 'dns-name');
 
         Log::info('mikrotik.discovered', [
             'host' => $host,
             'port' => $port,
             'username' => $username,
+            'secure' => $secure,
         ]);
 
         return [
@@ -86,11 +94,22 @@ class MikrotikService
             'uptime' => $row['uptime'] ?? null,
             'cpu' => $row['cpu-load'] ?? null,
             'memory' => $this->memoryLabel($row),
+            'memory_percent' => $this->memoryPercent($row),
             'architecture' => $row['architecture-name'] ?? $row['board-name'] ?? null,
+            'board' => $row['board-name'] ?? null,
+            'disk' => $this->diskLabel($row),
             'hotspot' => $hotspots !== [],
             'server_profiles' => $this->names($serverProfiles),
             'user_profiles' => $this->names($userProfiles),
             'active_users' => count($active),
+            'hotspot_servers' => $servers,
+            'interfaces' => array_map(fn (array $item) => $this->pick($item, ['name', 'type', 'running', 'mac-address', 'rx-byte', 'tx-byte']), $interfaces),
+            'addresses' => array_map(fn (array $item) => $this->pick($item, ['address', 'interface', 'network']), $addresses),
+            'pools' => array_map(fn (array $item) => $this->pick($item, ['name', 'ranges']), $pools),
+            'dns_name' => $dnsName,
+            'profile_rows' => array_map(fn (array $item) => $this->pick($item, ['name', 'rate-limit', 'session-timeout', 'idle-timeout', 'keepalive-timeout', 'shared-users', 'disabled']), $userProfiles),
+            'users' => array_map(fn (array $item) => $this->pick($item, ['name', 'profile', 'uptime', 'bytes-in', 'bytes-out', 'disabled', 'comment', 'limit-uptime']), $users),
+            'sessions' => array_map(fn (array $item) => $this->pick($item, ['.id', 'user', 'address', 'mac-address', 'uptime', 'session-time-left', 'bytes-in', 'bytes-out', 'server']), $active),
         ];
     }
 
@@ -99,31 +118,58 @@ class MikrotikService
         $this->assertOwned($router);
 
         try {
-            $found = $this->discover($router->host, (int) $router->api_port, $router->username, $router->password);
+            $found = $this->discover(
+                $router->host,
+                $router->connectionPort(),
+                $router->username,
+                $router->password,
+                (int) ($router->timeout ?: 5),
+                $router->usesSecureApi(),
+            );
             $userCount = null;
             try {
-                $userCount = count($this->records($this->command($router, ['/ip/hotspot/user/print'])));
                 $this->replaceProfiles($router, $this->getHotspotProfiles($router));
+                $userCount = count($found['users']);
             } catch (RuntimeException) {
                 $userCount = null;
             }
-            $router->forceFill([
+            $fill = [
                 'status' => 'online',
                 'identity' => $found['identity'] ?: $router->identity,
                 'routeros_version' => $found['version'] ?: $router->routeros_version,
+                'architecture' => $found['architecture'] ?: $router->architecture,
+                'board' => $found['board'] ?: $router->board,
                 'last_seen_at' => now(),
                 'last_error' => null,
                 'details' => [
                     'uptime' => $found['uptime'],
                     'cpu' => $found['cpu'],
                     'memory' => $found['memory'],
+                    'memory_percent' => $found['memory_percent'],
                     'architecture' => $found['architecture'],
+                    'board' => $found['board'],
+                    'disk' => $found['disk'],
                     'hotspot' => $found['hotspot'],
                     'server_profiles' => $found['server_profiles'],
                     'active_users' => $found['active_users'],
                     'hotspot_users' => $userCount,
+                    'hotspot_servers' => $found['hotspot_servers'],
+                    'interfaces' => $found['interfaces'],
+                    'addresses' => $found['addresses'],
+                    'pools' => $found['pools'],
+                    'dns_name' => $found['dns_name'],
+                    'profile_rows' => $found['profile_rows'],
+                    'users' => $found['users'],
+                    'sessions' => $found['sessions'],
                 ],
-            ])->save();
+            ];
+            if (! filled($router->dns) && filled($found['dns_name'])) {
+                $fill['dns'] = $found['dns_name'];
+            }
+            if (! filled($router->hotspot_server) && count($found['hotspot_servers']) === 1) {
+                $fill['hotspot_server'] = $found['hotspot_servers'][0]['name'] ?? null;
+            }
+            $router->forceFill($fill)->save();
         } catch (RuntimeException $exception) {
             $router->forceFill([
                 'status' => $this->isOffline($exception) ? 'offline' : 'error',
@@ -153,14 +199,14 @@ class MikrotikService
     {
         $this->assertOwned($router);
 
-        return $this->records($this->command($router, ['/ip/hotspot/user/print']));
+        return array_map(fn (array $row) => $this->stripSecrets($row), $this->records($this->command($router, ['/ip/hotspot/user/print'])));
     }
 
     public function getHotspotActiveUsers(Mikrotik $router): array
     {
         $this->assertOwned($router);
 
-        return $this->records($this->command($router, ['/ip/hotspot/active/print']));
+        return array_map(fn (array $row) => $this->stripSecrets($row), $this->records($this->command($router, ['/ip/hotspot/active/print'])));
     }
 
     public function getHotspotProfiles(Mikrotik $router): array
@@ -179,7 +225,7 @@ class MikrotikService
                     'tenant_id' => $router->tenant_id,
                     'rate_limit' => $profile['rate-limit'] ?? null,
                     'shared_users' => isset($profile['shared-users']) ? (int) $profile['shared-users'] : null,
-                    'raw' => $profile,
+                    'raw' => $this->stripSecrets($profile),
                 ]
             );
         }
@@ -191,20 +237,31 @@ class MikrotikService
     {
         $this->assertPair($router, $voucher);
         $voucher->loadMissing('plan');
-        $profile = $voucher->plan?->mikrotik_profile;
+        $profile = $this->profileNameFor($router, $voucher);
 
         if (! filled($profile)) {
-            throw new RuntimeException('Le forfait n’a pas de profil MikroTik. Le compte n’a pas été créé sur le routeur.');
+            throw new RuntimeException('Profil non associé. Le forfait n’a pas de profil MikroTik. Le compte n’a pas été créé sur le routeur.');
         }
 
-        $this->command($router, [
-            '/ip/hotspot/user/add',
-            '=name='.$voucher->username,
-            '=password='.$voucher->password,
-            '=profile='.$profile,
-            '=limit-uptime='.RouterOsProtocol::secondsToRouterTime((int) $voucher->plan->duration_seconds),
-            '=comment=limete-manager',
-        ], [$voucher->password]);
+        $known = MikrotikProfile::query()->where('mikrotik_id', $router->id)->pluck('name');
+        if ($known->isNotEmpty() && ! $known->contains($profile)) {
+            throw new RuntimeException('Profil non associé. Le profil RouterOS est introuvable sur ce MikroTik. Le compte n’a pas été créé sur le routeur.');
+        }
+
+        $existing = array_values(array_filter(
+            $this->records($this->command($router, ['/ip/hotspot/user/print', '?name='.$voucher->username], [$voucher->password])),
+            fn (array $row) => ($row['name'] ?? '') === $voucher->username,
+        ));
+        if ($existing === []) {
+            $this->command($router, [
+                '/ip/hotspot/user/add',
+                '=name='.$voucher->username,
+                '=password='.$voucher->password,
+                '=profile='.$profile,
+                '=limit-uptime='.RouterOsProtocol::secondsToRouterTime((int) $voucher->plan->duration_seconds),
+                '=comment=limete-manager',
+            ], [$voucher->password]);
+        }
 
         $voucher->forceFill([
             'mikrotik_id' => $router->id,
@@ -216,6 +273,11 @@ class MikrotikService
             'username' => $voucher->username,
             'profile' => $profile,
             'voucher_id' => $voucher->id,
+        ]);
+        app(\App\Services\AuditLogger::class)->record('voucher.synced', $voucher, null, [
+            'username' => $voucher->username,
+            'profile' => $profile,
+            'mikrotik_id' => $router->id,
         ]);
 
         return $voucher->refresh();
@@ -303,6 +365,65 @@ class MikrotikService
         ];
     }
 
+    /**
+     * @return array{synced: int, unsynced: int, error: ?string, online: bool}
+     */
+    public function syncPending(Mikrotik $router): array
+    {
+        $this->assertOwned($router);
+        $checked = $this->testConnection($router);
+        if ($checked->status !== 'online') {
+            return ['synced' => 0, 'unsynced' => 0, 'error' => $checked->last_error, 'online' => false];
+        }
+
+        $vouchers = Voucher::query()
+            ->where('wifi_zone_id', $router->wifi_zone_id)
+            ->where('sync_status', '!=', 'synced')
+            ->get()
+            ->all();
+        $summary = $this->provisionMany($vouchers);
+        $summary['online'] = true;
+
+        return $summary;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function suggestedPortalCommands(Mikrotik $router): array
+    {
+        $commands = [];
+        foreach ($this->portalHosts($router) as $host) {
+            $commands[] = '/ip hotspot walled-garden add dst-host='.$host;
+        }
+        if ($this->safeHost((string) $router->dns)) {
+            $commands[] = '/ip hotspot profile set [find] dns-name='.$router->dns;
+        }
+
+        return $commands;
+    }
+
+    public function applyPortalConfiguration(Mikrotik $router): int
+    {
+        $this->assertOwned($router);
+        $applied = 0;
+        foreach ($this->portalHosts($router) as $host) {
+            $this->command($router, ['/ip/hotspot/walled-garden/add', '=dst-host='.$host]);
+            $applied++;
+        }
+
+        if ($this->safeHost((string) $router->dns)) {
+            $profiles = $this->records($this->command($router, ['/ip/hotspot/profile/print']));
+            $id = $profiles[0]['.id'] ?? null;
+            if (is_string($id) && $id !== '') {
+                $this->command($router, ['/ip/hotspot/profile/set', '=.id='.$id, '=dns-name='.$router->dns]);
+                $applied++;
+            }
+        }
+
+        return $applied;
+    }
+
     public function createUser(Mikrotik $router, Voucher $voucher): void
     {
         $this->createHotspotUser($router, $voucher);
@@ -354,7 +475,10 @@ class MikrotikService
 
     private function routerForZone(Voucher $voucher): ?Mikrotik
     {
-        $routers = $voucher->wifiZone?->mikrotiks ?? collect();
+        $routers = ($voucher->wifiZone?->mikrotiks ?? collect())->where('is_active', true);
+        if ($routers->isEmpty() && ($voucher->wifiZone?->mikrotiks?->isNotEmpty() ?? false)) {
+            return null;
+        }
 
         return $routers->firstWhere('status', 'online') ?? $routers->first();
     }
@@ -398,10 +522,12 @@ class MikrotikService
         try {
             $rows = $this->router->command(
                 $router->host,
-                (int) $router->api_port,
+                $router->connectionPort(),
                 $router->username,
                 $router->password,
                 $words,
+                (int) ($router->timeout ?: 5),
+                $router->usesSecureApi(),
             );
         } catch (RuntimeException $exception) {
             $message = $this->redact($exception->getMessage(), $secrets);
@@ -433,22 +559,137 @@ class MikrotikService
         }
     }
 
-    private function ask(string $host, int $port, string $username, string $password, array $words): array
+    private function ask(string $host, int $port, string $username, string $password, array $words, int $timeout = 5, bool $secure = false): array
     {
         try {
-            return $this->records($this->router->command($host, $port, $username, $password, $words));
+            return $this->records($this->router->command($host, $port, $username, $password, $words, $timeout, $secure));
         } catch (RuntimeException $exception) {
             throw new RuntimeException($this->redact($exception->getMessage(), [$password]), 0, $exception);
         }
     }
 
-    private function askOptional(string $host, int $port, string $username, string $password, array $words): array
+    private function askOptional(string $host, int $port, string $username, string $password, array $words, int $timeout = 5, bool $secure = false): array
     {
         try {
-            return $this->ask($host, $port, $username, $password, $words);
+            return $this->ask($host, $port, $username, $password, $words, $timeout, $secure);
         } catch (RuntimeException) {
             return [];
         }
+    }
+
+    private function profileNameFor(Mikrotik $router, Voucher $voucher): ?string
+    {
+        $link = PlanMikrotikProfile::query()
+            ->where('mikrotik_id', $router->id)
+            ->where('plan_id', $voucher->plan_id)
+            ->with('profile')
+            ->first();
+
+        if (filled($link?->profile?->name)) {
+            return $link->profile->name;
+        }
+
+        $fallback = $voucher->plan?->mikrotik_profile;
+
+        return filled($fallback) ? (string) $fallback : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function portalHosts(Mikrotik $router): array
+    {
+        $router->loadMissing('wifiZone');
+        $hosts = [];
+        foreach ([
+            parse_url((string) config('app.url'), PHP_URL_HOST),
+            $router->dns,
+            $router->detail('dns_name'),
+        ] as $host) {
+            if ($this->safeHost((string) $host)) {
+                $hosts[] = strtolower((string) $host);
+            }
+        }
+        foreach (['wa.me', 'api.whatsapp.com', 'web.whatsapp.com'] as $host) {
+            $hosts[] = $host;
+        }
+
+        return array_values(array_unique($hosts));
+    }
+
+    private function safeHost(string $host): bool
+    {
+        return $host !== '' && (bool) preg_match('/^[a-z0-9][a-z0-9.-]{0,158}[a-z0-9]$/i', $host);
+    }
+
+    private function pick(array $row, array $keys): array
+    {
+        $out = [];
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $row) && $row[$key] !== '') {
+                $out[$key] = $row[$key];
+            }
+        }
+
+        return $out;
+    }
+
+    private function firstFilled(array $rows, string $key): ?string
+    {
+        foreach ($rows as $row) {
+            if (filled($row[$key] ?? null)) {
+                return (string) $row[$key];
+            }
+        }
+
+        return null;
+    }
+
+    private function stripSecrets(array $row): array
+    {
+        $clean = [];
+        foreach ($row as $key => $value) {
+            if (is_string($key) && $this->secretKey($key)) {
+                continue;
+            }
+            $clean[$key] = is_array($value) ? $this->stripSecrets($value) : $value;
+        }
+
+        return $clean;
+    }
+
+    private function secretKey(string $key): bool
+    {
+        $key = strtolower($key);
+
+        return str_contains($key, 'password') || str_contains($key, 'secret');
+    }
+
+    private function memoryPercent(array $resource): ?int
+    {
+        $free = $resource['free-memory'] ?? null;
+        $total = $resource['total-memory'] ?? null;
+        if (! is_numeric($free) || ! is_numeric($total) || (int) $total <= 0) {
+            return null;
+        }
+
+        return (int) round((((int) $total - (int) $free) / (int) $total) * 100);
+    }
+
+    private function diskLabel(array $resource): ?string
+    {
+        $free = $resource['free-hdd-space'] ?? null;
+        $total = $resource['total-hdd-space'] ?? null;
+        if (! is_numeric($free) && ! is_numeric($total)) {
+            return null;
+        }
+
+        $format = fn ($bytes) => round(((int) $bytes) / 1048576, 1).' Mo';
+        if (is_numeric($free) && is_numeric($total)) {
+            return $format($free).' libres / '.$format($total);
+        }
+
+        return $format(is_numeric($total) ? $total : $free);
     }
 
     private function names(array $rows): array

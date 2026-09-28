@@ -6,9 +6,12 @@ use RuntimeException;
 
 class RouterOsClient implements HotspotRouter
 {
-    public function command(string $host, int $port, string $username, string $password, array $words, int $timeout = 5): array
+    public function command(string $host, int $port, string $username, string $password, array $words, int $timeout = 5, bool $secure = false): array
     {
-        $socket = @fsockopen($host, $port, $errno, $error, $timeout);
+        $error = '';
+        $socket = $secure
+            ? $this->openSecure($host, $port, $timeout, $error)
+            : @fsockopen($host, $port, $errno, $error, $timeout);
 
         if (! $socket) {
             throw new RuntimeException($error !== '' ? $error : 'Connexion impossible au routeur.');
@@ -34,6 +37,30 @@ class RouterOsClient implements HotspotRouter
         } finally {
             fclose($socket);
         }
+    }
+
+    private function openSecure(string $host, int $port, int $timeout, ?string &$error = null)
+    {
+        $context = stream_context_create([
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+                'allow_self_signed' => true,
+            ],
+        ]);
+        $errno = 0;
+        $message = '';
+        $socket = @stream_socket_client(
+            'ssl://'.$host.':'.$port,
+            $errno,
+            $message,
+            $timeout,
+            STREAM_CLIENT_CONNECT,
+            $context,
+        );
+        $error = $message;
+
+        return $socket;
     }
 
     private function writeSentence($socket, array $words): void

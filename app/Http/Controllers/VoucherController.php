@@ -73,7 +73,7 @@ class VoucherController extends Controller
             return back()->with('status', 'Le compte '.$result->username.' a été créé sur le MikroTik.');
         }
 
-        return back()->with('warning', 'Le ticket est enregistré, mais il n’a pas été créé sur le MikroTik. '.$result->sync_error);
+        return back()->with('warning', 'Ticket créé, synchronisation MikroTik en attente. Le ticket est enregistré, mais il n’a pas été créé sur le MikroTik. '.$result->sync_error);
     }
 
     public function show(Voucher $voucher)
@@ -147,7 +147,7 @@ class VoucherController extends Controller
     private function provisionMessage(int $count, array $summary): string
     {
         if ($summary['synced'] === 0) {
-            return $count.' ticket(s) enregistré(s). Aucun compte n’a été créé sur le MikroTik. '.$summary['error'];
+            return $count.' ticket(s) enregistré(s). Aucun compte n’a été créé sur le MikroTik. Ticket créé, synchronisation MikroTik en attente. '.$summary['error'];
         }
 
         if ($summary['unsynced'] > 0) {

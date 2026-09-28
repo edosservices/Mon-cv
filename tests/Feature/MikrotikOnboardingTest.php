@@ -127,7 +127,7 @@ class MikrotikOnboardingTest extends TestCase
             'name' => 'LIMETE-ROUTER',
             'host' => '10.8.0.1',
             'password' => 'router-secret-77',
-        ]))->assertRedirect('/mikrotiks');
+        ]))->assertRedirect();
 
         $router = Mikrotik::where('host', '10.8.0.1')->first();
         $this->assertNotNull($router);

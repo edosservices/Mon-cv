@@ -11,9 +11,9 @@ class FakeHotspotRouter implements HotspotRouter
 
     public function __construct(private $handler = null) {}
 
-    public function command(string $host, int $port, string $username, string $password, array $words, int $timeout = 5): array
+    public function command(string $host, int $port, string $username, string $password, array $words, int $timeout = 5, bool $secure = false): array
     {
-        $this->commands[] = compact('host', 'port', 'username', 'password', 'words');
+        $this->commands[] = compact('host', 'port', 'username', 'password', 'words', 'timeout', 'secure');
 
         if ($this->handler instanceof \Throwable) {
             throw $this->handler;
