@@ -16,7 +16,7 @@ class MikrotikController extends Controller
     public function index()
     {
         return view('mikrotiks.index', [
-            'routers' => Mikrotik::with('wifiZone')->latest()->get(),
+            'routers' => Mikrotik::with(['wifiZone', 'profiles'])->latest()->get(),
         ]);
     }
 
@@ -68,19 +68,21 @@ class MikrotikController extends Controller
     public function test(Mikrotik $mikrotik, MikrotikService $service)
     {
         $service->testConnection($mikrotik);
+        $label = $service->statusLabel($mikrotik);
+        $detail = $mikrotik->last_error ? ' — '.$mikrotik->last_error : '';
 
-        return back()->with('status', 'Test terminé : '.$mikrotik->status.'.');
+        return back()->with($mikrotik->status === 'online' ? 'status' : 'warning', $label.$detail);
     }
 
     public function syncProfiles(Mikrotik $mikrotik, MikrotikService $service)
     {
         try {
-            $service->getProfiles($mikrotik);
+            $profiles = $service->getHotspotProfiles($mikrotik);
         } catch (RuntimeException $exception) {
-            return back()->with('warning', $exception->getMessage());
+            return back()->with('warning', 'Synchronisation impossible. '.$exception->getMessage());
         }
 
-        return back()->with('status', 'Profils synchronisés.');
+        return back()->with('status', count($profiles).' profil(s) HotSpot synchronisé(s).');
     }
 
     private function validated(Request $request, bool $creating): array

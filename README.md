@@ -101,7 +101,7 @@ Les mots de passe des routeurs sont chiffrés avec la clé de l’application. I
 
 `MikrotikService` parle au routeur uniquement depuis le serveur, via l’API RouterOS (port 8728 par défaut). La connexion en clair est celle de RouterOS 6.43 ou plus récent. Le bouton « Tester la connexion » met à jour l’état : connecté, hors ligne ou erreur.
 
-Sans routeur joignable, la vente est quand même enregistrée. Le ticket est créé et `sync_status` indique que l’envoi au routeur a échoué.
+Sans routeur joignable, la vente et le ticket restent enregistrés. `sync_status` indique qu’ils ne sont pas sur le MikroTik, et `mikrotik_id` n’est rempli qu’après une création réussie du compte HotSpot.
 
 Le dossier `hotspot/` se copie dans les fichiers HotSpot du routeur. Il n’embarque aucun secret d’API.
 

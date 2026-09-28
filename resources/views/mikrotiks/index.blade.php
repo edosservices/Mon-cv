@@ -15,12 +15,16 @@
                         @else 🔴 Hors ligne @endif
                         @if($router->last_seen_at) · vu {{ $router->last_seen_at->timezone(config('app.timezone'))->format('d/m/Y H:i') }} @endif
                     </p>
+                    @if($router->identity)<p class="text-sm">Identité {{ $router->identity }}</p>@endif
                     @if($router->routeros_version)<p class="text-sm">RouterOS {{ $router->routeros_version }}</p>@endif
+                    @if($router->profiles->isNotEmpty())
+                        <p class="text-sm">Profils : {{ $router->profiles->pluck('name')->join(', ') }}</p>
+                    @endif
                     @if($router->last_error)<p class="text-sm text-amber-800">{{ $router->last_error }}</p>@endif
                 </div>
                 <div class="flex flex-col gap-2 text-sm">
                     <a class="text-electric" href="{{ route('mikrotiks.edit', $router) }}">Modifier</a>
-                    <form method="POST" action="{{ route('mikrotiks.test', $router) }}">@csrf<button>Tester la connexion</button></form>
+                    <form method="POST" action="{{ route('mikrotiks.test', $router) }}">@csrf<button>TESTER LA CONNEXION</button></form>
                     <form method="POST" action="{{ route('mikrotiks.profiles', $router) }}">@csrf<button>Synchroniser les profils</button></form>
                 </div>
             </div>

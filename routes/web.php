@@ -65,6 +65,7 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::resource('plans', PlanController::class)->except('show')->middleware('permission:plans.manage');
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');
         Route::post('/vouchers', [VoucherController::class, 'store'])->middleware('permission:vouchers.manage')->name('vouchers.store');
+        Route::post('/vouchers/{voucher}/sync', [VoucherController::class, 'sync'])->middleware('permission:vouchers.manage')->name('vouchers.sync');
         Route::get('/vouchers/{voucher}', [VoucherController::class, 'show'])->middleware('permission:vouchers.manage')->name('vouchers.show');
         Route::get('/vouchers/{voucher}/pdf', [VoucherController::class, 'pdf'])->middleware('permission:vouchers.manage')->name('vouchers.pdf');
         Route::patch('/vouchers/{voucher}', [VoucherController::class, 'updateStatus'])->middleware('permission:vouchers.manage')->name('vouchers.status');

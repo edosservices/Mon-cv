@@ -18,13 +18,21 @@
 </form>
 <div class="overflow-x-auto rounded-2xl bg-white shadow-sm">
     <table class="w-full min-w-[640px] text-left text-sm">
-        <thead class="text-slate-500"><tr><th class="p-3">Code</th><th>Forfait</th><th>Statut</th><th>Expiration</th><th></th></tr></thead>
+        <thead class="text-slate-500"><tr><th class="p-3">Code</th><th>Forfait</th><th>Statut</th><th>MikroTik</th><th>Expiration</th><th></th></tr></thead>
         <tbody>
         @foreach($vouchers as $voucher)
             <tr class="border-t">
                 <td class="p-3 font-medium">{{ $voucher->username }}</td>
                 <td>{{ $voucher->plan->name ?? '' }}</td>
                 <td>{{ $voucher->status }}</td>
+                <td>
+                    @if($voucher->sync_status === 'synced')
+                        Créé sur le MikroTik
+                    @else
+                        Non synchronisé
+                        @if($voucher->sync_error)<span class="block text-amber-800">{{ $voucher->sync_error }}</span>@endif
+                    @endif
+                </td>
                 <td>{{ $voucher->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</td>
                 <td class="pr-3 text-right"><a class="text-electric" href="{{ route('vouchers.show', $voucher) }}">Voir</a></td>
             </tr>

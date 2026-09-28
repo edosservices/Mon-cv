@@ -12,6 +12,7 @@ use App\Services\DashboardMetrics;
 use App\Services\Mikrotik\MikrotikService;
 use App\Services\PlanLimiter;
 use App\Services\VoucherGenerator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -104,6 +105,8 @@ class ApiController extends Controller
             }
 
             return $service->testCredentials($data['host'], (int) ($data['api_port'] ?? 8728), $data['username'], $data['password']);
+        } catch (ModelNotFoundException $exception) {
+            throw $exception;
         } catch (RuntimeException $exception) {
             return response()->json(['status' => 'error', 'message' => $exception->getMessage()], 422);
         }
@@ -121,7 +124,7 @@ class ApiController extends Controller
     public function disconnect(Request $request, Mikrotik $mikrotik, MikrotikService $service)
     {
         $data = $request->validate(['active_id' => ['required', 'string']]);
-        $service->disconnectUser($mikrotik, $data['active_id']);
+        $service->disconnectActiveUser($mikrotik, $data['active_id']);
 
         return response()->json(['status' => 'disconnected']);
     }
@@ -131,7 +134,7 @@ class ApiController extends Controller
         return Voucher::with('plan:id,name')->latest()->paginate(50);
     }
 
-    public function storeVoucher(Request $request, VoucherGenerator $generator)
+    public function storeVoucher(Request $request, VoucherGenerator $generator, MikrotikService $mikrotik)
     {
         $data = $request->validate([
             'wifi_zone_id' => ['required', 'integer'],
@@ -139,8 +142,16 @@ class ApiController extends Controller
             'count' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
         $created = $generator->create(WifiZone::findOrFail($data['wifi_zone_id']), Plan::findOrFail($data['plan_id']), (int) ($data['count'] ?? 1));
+        $summary = $mikrotik->provisionMany($created);
 
-        return response()->json(['count' => count($created)], 201);
+        return response()->json([
+            'count' => count($created),
+            'synced' => $summary['synced'],
+            'unsynced' => $summary['unsynced'],
+            'message' => $summary['unsynced'] > 0
+                ? 'Tickets enregistrés. '.$summary['unsynced'].' compte(s) non créé(s) sur le MikroTik.'
+                : 'Tickets créés sur le MikroTik.',
+        ], 201);
     }
 
     public function bulkVouchers(Request $request, VoucherGenerator $generator)
@@ -188,6 +199,6 @@ class ApiController extends Controller
 
     private function routerPayload(Mikrotik $router): array
     {
-        return $router->only(['id', 'name', 'host', 'api_port', 'username', 'status', 'routeros_version', 'wifi_zone_id', 'last_seen_at', 'last_error']);
+        return $router->only(['id', 'name', 'host', 'api_port', 'username', 'status', 'routeros_version', 'identity', 'wifi_zone_id', 'last_seen_at', 'last_error']);
     }
 }

@@ -5,6 +5,15 @@
     @include('vouchers.ticket', ['public' => false])
     <div class="space-y-3">
         <a class="inline-block rounded-lg bg-electric px-4 py-2 text-sm text-white" href="{{ route('vouchers.pdf', $voucher) }}">Télécharger le PDF</a>
+        <article class="rounded-2xl bg-white p-4 text-sm shadow-sm">
+            @if($voucher->sync_status === 'synced')
+                <p>Créé sur le MikroTik.</p>
+            @else
+                <p class="font-medium">Non synchronisé avec le MikroTik.</p>
+                <p class="mt-1 text-amber-800">{{ $voucher->sync_error ?: 'Le compte n’a pas été créé sur le routeur.' }}</p>
+                <form method="POST" action="{{ route('vouchers.sync', $voucher) }}" class="mt-3">@csrf<button class="rounded-lg border px-3 py-2">Réessayer sur le MikroTik</button></form>
+            @endif
+        </article>
         <form method="POST" action="{{ route('vouchers.status', $voucher) }}" class="rounded-2xl bg-white p-4 shadow-sm">
             @csrf @method('PATCH')
             <label class="text-sm">Statut

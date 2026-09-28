@@ -14,7 +14,6 @@ use App\Services\Mikrotik\MikrotikService;
 use App\Services\Payments\PaymentManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Throwable;
 
 class SaleService
 {
@@ -99,7 +98,9 @@ class SaleService
             }
 
             $sale->forceFill(['status' => 'paid'])->save();
-            $this->pushToRouter($voucher);
+            if ($voucher) {
+                $this->mikrotik->provisionVoucher($voucher->fresh(['plan', 'wifiZone.mikrotiks']));
+            }
             $this->audit->record('sale.confirmed', $sale, null, ['status' => 'paid']);
             $sale->wifiZone->tenant->users()->whereHas('role', fn ($query) => $query->where('slug', 'entrepreneur'))->first()
                 ?->notify(new PlatformNotification('ticket.generated', 'Ticket généré', 'Le ticket '.$voucher->username.' est prêt.'));
@@ -143,35 +144,9 @@ class SaleService
             'amount' => $sale->total_amount,
         ]);
 
-        $this->pushToRouter($voucher->fresh('plan'));
+        $this->mikrotik->provisionVoucher($voucher->fresh(['plan', 'wifiZone.mikrotiks']));
         $this->audit->record('sale.counter', $sale);
 
         return $sale->load('items.voucher');
-    }
-
-    private function pushToRouter(?Voucher $voucher): void
-    {
-        if (! $voucher) {
-            return;
-        }
-
-        $router = $voucher->wifiZone->mikrotiks()->where('status', '!=', 'offline')->first()
-            ?? $voucher->wifiZone->mikrotiks()->first();
-
-        if (! $router) {
-            $voucher->forceFill(['sync_status' => 'pending', 'sync_error' => 'Aucun MikroTik associé.'])->save();
-
-            return;
-        }
-
-        try {
-            $this->mikrotik->createUser($router, $voucher->load('plan'));
-        } catch (Throwable $exception) {
-            $voucher->forceFill([
-                'mikrotik_id' => $router->id,
-                'sync_status' => 'failed',
-                'sync_error' => $exception->getMessage(),
-            ])->save();
-        }
     }
 }
