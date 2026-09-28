@@ -36,6 +36,7 @@ class MikrotikService
         } catch (RuntimeException $exception) {
             $router->forceFill([
                 'status' => $this->isOffline($exception) ? 'offline' : 'error',
+                'last_seen_at' => now(),
                 'last_error' => $this->redact($exception->getMessage(), [$router->password]),
             ])->save();
         }
@@ -61,6 +62,77 @@ class MikrotikService
             'status' => 'online',
             'version' => $this->records($rows)[0]['version'] ?? null,
         ];
+    }
+
+    public function discover(string $host, int $port, string $username, string $password): array
+    {
+        $identity = $this->ask($host, $port, $username, $password, ['/system/identity/print']);
+        $resource = $this->ask($host, $port, $username, $password, ['/system/resource/print']);
+        $hotspots = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/print']);
+        $serverProfiles = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/profile/print']);
+        $userProfiles = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/user/profile/print']);
+        $active = $this->askOptional($host, $port, $username, $password, ['/ip/hotspot/active/print']);
+        $row = $resource[0] ?? [];
+
+        Log::info('mikrotik.discovered', [
+            'host' => $host,
+            'port' => $port,
+            'username' => $username,
+        ]);
+
+        return [
+            'identity' => $identity[0]['name'] ?? null,
+            'version' => $row['version'] ?? null,
+            'uptime' => $row['uptime'] ?? null,
+            'cpu' => $row['cpu-load'] ?? null,
+            'memory' => $this->memoryLabel($row),
+            'architecture' => $row['architecture-name'] ?? $row['board-name'] ?? null,
+            'hotspot' => $hotspots !== [],
+            'server_profiles' => $this->names($serverProfiles),
+            'user_profiles' => $this->names($userProfiles),
+            'active_users' => count($active),
+        ];
+    }
+
+    public function syncRouter(Mikrotik $router): Mikrotik
+    {
+        $this->assertOwned($router);
+
+        try {
+            $found = $this->discover($router->host, (int) $router->api_port, $router->username, $router->password);
+            $userCount = null;
+            try {
+                $userCount = count($this->records($this->command($router, ['/ip/hotspot/user/print'])));
+                $this->replaceProfiles($router, $this->getHotspotProfiles($router));
+            } catch (RuntimeException) {
+                $userCount = null;
+            }
+            $router->forceFill([
+                'status' => 'online',
+                'identity' => $found['identity'] ?: $router->identity,
+                'routeros_version' => $found['version'] ?: $router->routeros_version,
+                'last_seen_at' => now(),
+                'last_error' => null,
+                'details' => [
+                    'uptime' => $found['uptime'],
+                    'cpu' => $found['cpu'],
+                    'memory' => $found['memory'],
+                    'architecture' => $found['architecture'],
+                    'hotspot' => $found['hotspot'],
+                    'server_profiles' => $found['server_profiles'],
+                    'active_users' => $found['active_users'],
+                    'hotspot_users' => $userCount,
+                ],
+            ])->save();
+        } catch (RuntimeException $exception) {
+            $router->forceFill([
+                'status' => $this->isOffline($exception) ? 'offline' : 'error',
+                'last_seen_at' => now(),
+                'last_error' => $this->redact($exception->getMessage(), [$router->password]),
+            ])->save();
+        }
+
+        return $router->refresh();
     }
 
     public function getIdentity(Mikrotik $router): array
@@ -359,6 +431,63 @@ class MikrotikService
         if ((int) $voucher->tenant_id !== (int) $router->tenant_id) {
             throw new RuntimeException('Ce ticket et ce MikroTik n’appartiennent pas au même entrepreneur.');
         }
+    }
+
+    private function ask(string $host, int $port, string $username, string $password, array $words): array
+    {
+        try {
+            return $this->records($this->router->command($host, $port, $username, $password, $words));
+        } catch (RuntimeException $exception) {
+            throw new RuntimeException($this->redact($exception->getMessage(), [$password]), 0, $exception);
+        }
+    }
+
+    private function askOptional(string $host, int $port, string $username, string $password, array $words): array
+    {
+        try {
+            return $this->ask($host, $port, $username, $password, $words);
+        } catch (RuntimeException) {
+            return [];
+        }
+    }
+
+    private function names(array $rows): array
+    {
+        return array_values(array_filter(array_map(
+            fn (array $row) => isset($row['name']) && $row['name'] !== '' ? (string) $row['name'] : null,
+            $rows,
+        )));
+    }
+
+    private function memoryLabel(array $resource): ?string
+    {
+        $free = $resource['free-memory'] ?? null;
+        $total = $resource['total-memory'] ?? null;
+        if (! is_numeric($free) && ! is_numeric($total)) {
+            return null;
+        }
+
+        $format = fn ($bytes) => round(((int) $bytes) / 1048576, 1).' Mo';
+
+        if (is_numeric($free) && is_numeric($total)) {
+            return $format($free).' libres / '.$format($total);
+        }
+
+        return $format(is_numeric($total) ? $total : $free);
+    }
+
+    private function replaceProfiles(Mikrotik $router, array $profiles): void
+    {
+        $names = $this->names($profiles);
+        $query = MikrotikProfile::query()->where('mikrotik_id', $router->id);
+
+        if ($names === []) {
+            $query->delete();
+
+            return;
+        }
+
+        $query->whereNotIn('name', $names)->delete();
     }
 
     private function records(array $rows): array

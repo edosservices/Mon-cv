@@ -1,33 +1,91 @@
 @extends('layouts.app')
-@section('heading', 'MikroTik')
+@section('heading', 'Mes MikroTik')
 @section('content')
-<div class="mb-4"><a class="rounded-lg bg-electric px-4 py-2 text-sm text-white" href="{{ route('mikrotiks.create') }}">Connecter un routeur</a></div>
+<div class="mb-4">
+    <a class="inline-flex rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('mikrotiks.create') }}">+ Ajouter un MikroTik</a>
+</div>
 <div class="space-y-3">
     @forelse($routers as $router)
-        <article class="rounded-2xl bg-white p-4 shadow-sm">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h2 class="font-semibold">{{ $router->name }}</h2>
-                    <p class="text-sm text-slate-500">{{ $router->host }}:{{ $router->api_port }} · {{ $router->wifiZone->name ?? 'Zone non liée' }}</p>
-                    <p class="mt-1 text-sm">Statut
-                        @if($router->status === 'online') 🟢 Connecté
-                        @elseif($router->status === 'error') ⚠️ Erreur
-                        @else 🔴 Hors ligne @endif
-                    </p>
-                    <p class="text-sm">Identity {{ $router->identity ?: '—' }}</p>
-                    <p class="text-sm">Dernière vérification {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</p>
-                    @if($router->routeros_version)<p class="text-sm">RouterOS {{ $router->routeros_version }}</p>@endif
-                    @if($router->profiles->isNotEmpty())
-                        <p class="text-sm">Profils : {{ $router->profiles->pluck('name')->join(', ') }}</p>
-                    @endif
-                    @if($router->last_error)<p class="text-sm text-amber-800">{{ $router->last_error }}</p>@endif
-                </div>
-                <div class="flex flex-col gap-2 text-sm">
-                    <a class="text-electric" href="{{ route('mikrotiks.edit', $router) }}">Modifier</a>
-                    <form method="POST" action="{{ route('mikrotiks.test', $router) }}">@csrf<button>TESTER LA CONNEXION</button></form>
-                    <form method="POST" action="{{ route('mikrotiks.profiles', $router) }}">@csrf<button>Synchroniser les profils</button></form>
-                </div>
+        @php
+            $details = $router->details ?? [];
+            $names = $router->profiles->pluck('name');
+            $zonePlans = $plans->filter(function ($plan) use ($router) {
+                if (! $router->wifi_zone_id) {
+                    return $plan->wifi_zone_id === null;
+                }
+
+                return $plan->wifi_zone_id === null || (int) $plan->wifi_zone_id === (int) $router->wifi_zone_id;
+            });
+        @endphp
+        <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+            <p class="text-sm font-semibold">
+                @if($router->status === 'online') ● CONNECTÉ
+                @elseif($router->status === 'error') ● ERREUR
+                @else ● HORS LIGNE @endif
+            </p>
+            <h2 class="mt-1 text-lg font-semibold">{{ $router->name }}</h2>
+            <p class="text-sm">Zone : {{ $router->wifiZone->name ?? 'Zone non liée' }}</p>
+            <p class="text-sm">Identity : {{ $router->identity ?: '—' }}</p>
+            <p class="text-sm">RouterOS : {{ $router->routeros_version ?: '—' }}</p>
+            <p class="break-all text-sm">IP : {{ $router->host }}:{{ $router->api_port }}</p>
+            <p class="text-sm">HotSpot : {{ array_key_exists('hotspot', $details) ? ($details['hotspot'] ? '✓' : 'Non') : '—' }}</p>
+            <p class="text-sm">Utilisateurs : {{ $details['active_users'] ?? '—' }}</p>
+            <p class="text-sm">Dernière vérification {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</p>
+            @if(in_array($router->status, ['offline', 'error'], true))
+                <p class="mt-2 text-sm font-semibold">Impossible de joindre le MikroTik.</p>
+            @endif
+            @if($router->last_error)<p class="mt-1 break-words text-sm text-amber-800">{{ $router->last_error }}</p>@endif
+            @if($details['uptime'] ?? null)<p class="text-sm">Uptime {{ $details['uptime'] }}</p>@endif
+            @if(($details['cpu'] ?? null) !== null && $details['cpu'] !== '')<p class="text-sm">CPU {{ $details['cpu'] }}</p>@endif
+            @if($details['memory'] ?? null)<p class="text-sm">Mémoire {{ $details['memory'] }}</p>@endif
+
+            <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                <form method="POST" action="{{ route('mikrotiks.test', $router) }}">@csrf<button class="rounded-xl border px-4 py-3 font-semibold">TESTER LA CONNEXION</button></form>
+                <form method="POST" action="{{ route('mikrotiks.sync', $router) }}">@csrf<button class="rounded-xl border px-4 py-3 font-semibold">Synchroniser</button></form>
+                <a class="rounded-xl border px-4 py-3 font-semibold" href="{{ route('active-users.index') }}">Utilisateurs</a>
+                <a class="rounded-xl border px-4 py-3 font-semibold" href="{{ route('mikrotiks.edit', $router) }}">Modifier</a>
+                <form method="POST" action="{{ route('mikrotiks.destroy', $router) }}">@csrf @method('DELETE')<button class="rounded-xl border px-4 py-3 font-semibold text-red-700">Supprimer</button></form>
             </div>
+
+            <section class="mt-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="font-semibold">Profils MikroTik</h3>
+                    <form method="POST" action="{{ route('mikrotiks.profiles', $router) }}">@csrf<button class="rounded-xl border px-3 py-2 text-sm">Synchroniser les profils</button></form>
+                </div>
+                @if($names->isEmpty())
+                    <p class="mt-2 text-sm text-slate-500">Aucun profil lu. Synchronisez le routeur.</p>
+                @else
+                    <ul class="mt-2 flex flex-wrap gap-2 text-sm">
+                        @foreach($names as $name)
+                            <li class="rounded-full bg-slate-100 px-3 py-1">{{ $name }} ✓</li>
+                        @endforeach
+                    </ul>
+                @endif
+                <div class="mt-3 space-y-2">
+                    @foreach($zonePlans as $plan)
+                        <form method="POST" action="{{ route('mikrotiks.plan-profile', $router) }}" class="min-w-0 rounded-xl bg-slate-50 p-3 text-sm">
+                            @csrf
+                            <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+                            <p class="font-semibold">{{ $plan->name }}</p>
+                            <p class="text-slate-500">Le nom du forfait n’est pas le profil du routeur.</p>
+                            @if($plan->mikrotik_profile && ! $names->contains($plan->mikrotik_profile))
+                                <p class="mt-1 font-semibold text-amber-800">Profil non trouvé</p>
+                            @endif
+                            <label class="mt-2 block">Profil MikroTik
+                                <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3" name="mikrotik_profile" required>
+                                    @foreach($names as $name)
+                                        <option value="{{ $name }}" @selected($plan->mikrotik_profile === $name)>{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            @if($names->isNotEmpty())
+                                <button class="mt-2 rounded-xl border px-3 py-2">Associer</button>
+                            @endif
+                        </form>
+                    @endforeach
+                </div>
+            </section>
+
             @if($router->wifiZone)
                 @php
                     $origin = rtrim(url('/'), '/');
@@ -42,7 +100,7 @@
             @endif
         </article>
     @empty
-        <p class="text-sm text-slate-500">Aucun MikroTik.</p>
+        <p class="text-sm text-slate-500">Aucun MikroTik. Ajoutez le routeur de votre WiFi Zone.</p>
     @endforelse
 </div>
 @endsection

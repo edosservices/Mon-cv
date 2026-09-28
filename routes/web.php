@@ -88,8 +88,11 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         });
         Route::resource('wifi-zones', WifiZoneController::class)->except('show')->parameters(['wifi-zones' => 'wifiZone'])->middleware('permission:zones.manage');
         Route::resource('mikrotiks', MikrotikController::class)->except('show')->middleware('permission:mikrotiks.manage');
+        Route::post('/mikrotiks/probe', [MikrotikController::class, 'probe'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.probe');
         Route::post('/mikrotiks/{mikrotik}/test', [MikrotikController::class, 'test'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.test');
+        Route::post('/mikrotiks/{mikrotik}/sync', [MikrotikController::class, 'sync'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.sync');
         Route::post('/mikrotiks/{mikrotik}/profiles', [MikrotikController::class, 'syncProfiles'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.profiles');
+        Route::post('/mikrotiks/{mikrotik}/plan-profile', [MikrotikController::class, 'assignProfile'])->middleware('permission:plans.manage')->name('mikrotiks.plan-profile');
         Route::resource('plans', PlanController::class)->except('show')->middleware('permission:plans.manage');
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');
         Route::post('/vouchers', [VoucherController::class, 'store'])->middleware('permission:vouchers.manage')->name('vouchers.store');

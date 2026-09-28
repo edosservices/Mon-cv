@@ -14,7 +14,7 @@ class Mikrotik extends Model
 
     protected $fillable = [
         'tenant_id', 'wifi_zone_id', 'name', 'host', 'api_port', 'username',
-        'password', 'routeros_version', 'identity', 'status', 'last_seen_at', 'last_error',
+        'password', 'routeros_version', 'identity', 'status', 'last_seen_at', 'last_error', 'details',
     ];
 
     protected $hidden = ['password'];
@@ -24,6 +24,7 @@ class Mikrotik extends Model
         return [
             'password' => 'encrypted',
             'last_seen_at' => 'datetime',
+            'details' => 'array',
         ];
     }
 
