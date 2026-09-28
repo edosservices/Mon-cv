@@ -184,7 +184,14 @@ class PaymentTest extends TestCase
         PaymentProviderSetting::query()->where('provider', 'airtel_money')->update(['enabled' => false]);
         [$user, $zone] = $this->shop();
 
-        $this->get('/wifi/'.$zone->slug.'/forfait/'.$zone->plans()->first()->id)
+        $planId = $zone->plans()->first()->id;
+        $this->get('/wifi/'.$zone->slug.'/forfait/'.$planId)
+            ->assertOk()
+            ->assertDontSee('Airtel Money');
+        $this->post('/wifi/'.$zone->slug.'/forfait/'.$planId, [
+            'phone' => '+243810000321',
+        ])->assertRedirect();
+        $this->get('/wifi/'.$zone->slug.'/forfait/'.$planId.'/paiement')
             ->assertOk()
             ->assertDontSee('Airtel Money');
         $this->post('/wifi/'.$zone->slug, [

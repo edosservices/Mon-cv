@@ -17,7 +17,7 @@ class VoucherController extends Controller
 {
     public function index(Request $request)
     {
-        $vouchers = Voucher::with(['plan', 'wifiZone'])
+        $vouchers = Voucher::with(['plan', 'wifiZone', 'customer', 'saleItem.sale.payment'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->latest()
             ->paginate(20)

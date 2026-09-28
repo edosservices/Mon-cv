@@ -9,7 +9,7 @@
   <meta http-equiv="expires" content="-1">
   <title>Connexion — LIMETE WIFI +243</title>
   <link rel="icon" href="img/logo-LIMETEWIFI.png">
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css?v=3">
   <!-- HTTP-CHAP : actif seulement si le routeur envoie un chap-id. -->
   $(if chap-id)
   <script src="md5.js"></script>
@@ -52,8 +52,8 @@
 
     <main class="card">
       <img class="logo logo-mobile" src="img/logo-LIMETEWIFI.png" alt="LIMETE WIFI +243" onerror="this.remove()">
-      <h1>Bienvenue sur LIMETE WIFI</h1>
-      <p class="lead">Connectez-vous avec les informations de votre ticket et profitez d'une connexion Internet rapide.</p>
+      <h1>Bienvenue</h1>
+      <p class="lead">Entrez le code de votre ticket pour vous connecter au WiFi.</p>
 
       $(if error)
       <div class="alert" id="error-box" role="alert">
@@ -68,8 +68,8 @@
         <input type="hidden" name="popup" value="false">
 
         <div class="field">
-          <label for="username">Nom d'utilisateur</label>
-          <input id="username" name="username" type="text" value="$(username)" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Sur le ticket" required>
+          <label for="username">Code du ticket</label>
+          <input id="username" class="code-input" name="username" type="text" value="$(username)" autocomplete="username" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Sur le ticket" required>
         </div>
 
         <div class="field">
@@ -81,7 +81,7 @@
         </div>
 
         <div class="actions">
-          <button type="submit" class="btn btn-primary" id="login-button">📶 Se connecter →</button>
+          <button type="submit" class="btn btn-primary" id="login-button">SE CONNECTER</button>
         </div>
       </form>
 
@@ -92,7 +92,7 @@
 
       <section class="buy" id="buy-box" hidden>
         <p>Vous n'avez pas encore de ticket ?</p>
-        <a class="btn btn-primary" id="buy-link" href="#">Acheter un forfait</a>
+        <a class="btn btn-primary" id="buy-link" href="#">ACHETER UN FORFAIT</a>
       </section>
 
       <a class="status-link" href="$(link-status)">Mon statut</a>
@@ -108,7 +108,7 @@
     </main>
   </div>
 
-  <script src="js/plan-data.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/plan-data.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

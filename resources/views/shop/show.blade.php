@@ -3,12 +3,17 @@
 @section('content')
 <section class="shop-hero">
     <p class="status-pill"><span class="dot" aria-hidden="true"></span> WiFi disponible</p>
-    <h1>{{ $zone->name }}</h1>
+    <h1>Internet rapide et accessible</h1>
     @if($zone->description)
         <p class="lede">{{ $zone->description }}</p>
     @else
         <p class="lede">Choisissez un forfait, payez, puis recevez votre ticket.</p>
     @endif
+    <ol class="path" aria-label="Parcours">
+        <li>Choisir</li>
+        <li>Payer</li>
+        <li>Recevoir</li>
+    </ol>
 </section>
 
 <section class="shop-section" aria-labelledby="plans-title">
@@ -23,12 +28,14 @@
     @else
         <div class="plan-list">
             @foreach($plans as $plan)
-                <article class="plan-card" style="animation-delay: {{ $loop->index * 40 }}ms">
-                    <p class="plan-kicker">Forfait</p>
+                <article class="plan-card">
+                    @if($plan->badgeLabel())
+                        <p class="plan-badge">{{ $plan->badgeLabel() }}</p>
+                    @endif
                     <h3>{{ $plan->name }}</h3>
                     <p class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
-                    <p class="plan-meta">{{ $plan->unlimited_data ? 'Internet illimité' : ($plan->description ?: 'Selon le forfait') }}</p>
-                    <p class="plan-meta">Validité : {{ $plan->validityLabel() }}</p>
+                    <p class="plan-offer">{{ $plan->internetLabel() }}</p>
+                    <p class="plan-time">{{ $plan->validityLabel() }}</p>
                     <a class="btn btn-primary" href="{{ route('shop.plan', [$zone->slug, $plan->id]) }}">Acheter</a>
                 </article>
             @endforeach

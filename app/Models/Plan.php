@@ -13,7 +13,7 @@ class Plan extends Model
 
     protected $fillable = [
         'tenant_id', 'wifi_zone_id', 'name', 'duration_seconds', 'price',
-        'currency', 'mikrotik_profile', 'description', 'unlimited_data', 'status',
+        'currency', 'mikrotik_profile', 'description', 'badge', 'unlimited_data', 'status',
     ];
 
     protected function casts(): array
@@ -63,5 +63,19 @@ class Plan extends Model
         }
 
         return $this->durationLabel();
+    }
+
+    public function badgeLabel(): ?string
+    {
+        return match ($this->badge) {
+            'populaire' => 'Populaire',
+            'meilleure_offre' => 'Meilleure offre',
+            default => null,
+        };
+    }
+
+    public function internetLabel(): string
+    {
+        return $this->unlimited_data ? 'Internet illimité' : ($this->description ?: 'Selon le forfait');
     }
 }

@@ -4,7 +4,7 @@
         ['wifi-zones.index', 'WiFi Zones', 'zones.manage'],
         ['mikrotiks.index', 'MikroTik', 'mikrotiks.manage'],
         ['customers.index', 'Clients', 'customers.manage'],
-        ['vouchers.index', 'Vouchers', 'vouchers.manage'],
+        ['vouchers.index', 'Tickets', 'vouchers.manage'],
         ['plans.index', 'Forfaits', 'plans.manage'],
         ['sales.index', 'Ventes', 'sales.view'],
         ['payments.index', 'Paiements', 'sales.view'],

@@ -18,6 +18,13 @@
     </label>
     <label class="block text-sm">Profil MikroTik<input class="mt-1 w-full rounded-lg border px-3 py-2" name="mikrotik_profile" value="{{ old('mikrotik_profile', $plan->mikrotik_profile) }}"></label>
     <label class="block text-sm">Description<textarea class="mt-1 w-full rounded-lg border px-3 py-2" name="description">{{ old('description', $plan->description) }}</textarea></label>
+    <label class="block text-sm">Badge
+        <select class="mt-1 w-full rounded-lg border px-3 py-2" name="badge">
+            <option value="">Aucun</option>
+            <option value="populaire" @selected(old('badge', $plan->badge) === 'populaire')>Populaire</option>
+            <option value="meilleure_offre" @selected(old('badge', $plan->badge) === 'meilleure_offre')>Meilleure offre</option>
+        </select>
+    </label>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="unlimited_data" value="1" @checked(old('unlimited_data', $plan->unlimited_data))> Internet illimité</label>
     <label class="block text-sm">Statut
         <select class="mt-1 w-full rounded-lg border px-3 py-2" name="status">

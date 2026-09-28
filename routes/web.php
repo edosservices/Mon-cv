@@ -36,7 +36,10 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::get('/wifi/{slug}', [WifiShopController::class, 'show'])->name('shop.show');
+Route::get('/wifi/{slug}/manifest.webmanifest', [WifiShopController::class, 'manifest'])->name('shop.manifest');
 Route::get('/wifi/{slug}/forfait/{plan}', [WifiShopController::class, 'plan'])->whereNumber('plan')->name('shop.plan');
+Route::post('/wifi/{slug}/forfait/{plan}', [WifiShopController::class, 'saveCustomer'])->whereNumber('plan')->middleware('throttle:20,1')->name('shop.customer');
+Route::get('/wifi/{slug}/forfait/{plan}/paiement', [WifiShopController::class, 'pay'])->whereNumber('plan')->name('shop.pay');
 Route::post('/wifi/{slug}', [WifiShopController::class, 'checkout'])->middleware('throttle:20,1')->name('shop.checkout');
 Route::get('/wifi/{slug}/commande/{token}', [WifiShopController::class, 'order'])->name('shop.order');
 Route::post('/wifi/{slug}/commande/{token}/actualiser', [WifiShopController::class, 'refreshPayment'])->middleware('throttle:30,1')->name('shop.payment.refresh');

@@ -35,6 +35,25 @@
     @endforeach
 </div>
 <section class="mt-6 rounded-2xl bg-white p-4 shadow-sm">
+    <h2 class="font-semibold">Statut MikroTik</h2>
+    <div class="mt-3 space-y-3">
+        @forelse($routers as $router)
+            <article class="rounded-xl bg-slate-50 p-3">
+                <p class="font-semibold">{{ $router->name }}</p>
+                <p class="mt-1 text-sm">
+                    @if($router->status === 'online') 🟢 Connecté
+                    @elseif($router->status === 'error') 🟠 Erreur
+                    @else 🔴 Hors ligne @endif
+                </p>
+                <p class="text-sm text-slate-600">Dernière vérification : {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</p>
+                @if($router->last_error)<p class="text-sm text-amber-800">{{ $router->last_error }}</p>@endif
+            </article>
+        @empty
+            <p class="text-sm text-slate-500">Aucun routeur relié.</p>
+        @endforelse
+    </div>
+</section>
+<section class="mt-6 rounded-2xl bg-white p-4 shadow-sm">
     <h2 class="font-semibold">Ventes par forfait</h2>
     <ul class="mt-3 space-y-2">
         @forelse($metrics['sales_by_plan'] as $name => $total)

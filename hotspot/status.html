@@ -12,7 +12,7 @@
   $(endif)
   <title>Mon statut — LIMETE WIFI +243</title>
   <link rel="icon" href="img/logo-LIMETEWIFI.png">
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
   <!-- Valeurs HotSpot, lues par app.js. Le temps de connexion n'est pas la durée du ticket. -->
@@ -60,17 +60,17 @@
         </div>
         <div class="offer offer-net">
           <span>Internet</span>
-          <strong>♾️ INTERNET ILLIMITÉ</strong>
+          <strong id="plan-net">ILLIMITÉ</strong>
         </div>
       </div>
 
       <dl class="facts">
         <div class="fact">
-          <dt>🟢 Début</dt>
+          <dt>Activé</dt>
           <dd id="start-value">—</dd>
         </div>
         <div class="fact">
-          <dt>🔴 Expiration</dt>
+          <dt>Expiration</dt>
           <dd id="end-value">—</dd>
         </div>
         <div class="fact">
@@ -79,7 +79,7 @@
           <small id="elapsed-note">Cette connexion</small>
         </div>
         <div class="fact">
-          <dt>⏳ Temps restant</dt>
+          <dt>Temps restant</dt>
           <dd id="remain-value">Selon votre ticket</dd>
         </div>
         <div class="fact fact-wide">
@@ -90,12 +90,17 @@
       <p class="fine" id="dates-note">L'expiration du forfait continue même si vous vous déconnectez. Elle s'affiche lorsque le ticket la fournit.</p>
 
       <section class="progress-block" aria-labelledby="remain-title">
-        <p class="progress-kicker" id="remain-title">⏳ TEMPS RESTANT</p>
+        <p class="progress-kicker" id="remain-title">TEMPS RESTANT</p>
         <p class="remain-big" id="remain-big">Selon votre ticket</p>
         <div class="track" id="track" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="fill" id="fill"></div>
         </div>
         <p class="percent" id="percent-label"></p>
+      </section>
+
+      <section class="buy" id="ticket-box" hidden>
+        <p>Votre ticket numérique</p>
+        <a class="btn btn-primary" id="ticket-link" href="#">MON TICKET</a>
       </section>
 
       <div class="actions">
@@ -107,13 +112,13 @@
       </div>
       <section class="buy" id="buy-box" hidden>
         <p>Vous n'avez pas encore de ticket ?</p>
-        <a class="btn btn-primary" id="buy-link" href="#">Acheter un forfait</a>
+        <a class="btn btn-primary" id="buy-link" href="#">ACHETER UN FORFAIT</a>
       </section>
       <p class="fine">LIMETE WIFI +243</p>
     </main>
   </div>
 
-  <script src="js/plan-data.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/plan-data.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

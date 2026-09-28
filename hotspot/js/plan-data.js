@@ -27,6 +27,9 @@
  * Le portail est copié sur le routeur. Pour le bouton d'achat :
  *   window.LIMETE_SHOP = "https://exemple.test/wifi/limete";
  *
+ * Pour le lien vers le ticket public, sans mot de passe :
+ *   window.LIMETE_TICKET = "https://exemple.test/ticket/le-jeton-public";
+ *
  * matchTicketCode : laisser false. Le passer à true seulement si
  * les identifiants contiennent un code clair (24h, 48h, 7j, 15j, 30j).
  * Cela nomme le forfait. Cela ne crée toujours pas de date.
@@ -49,5 +52,8 @@
   }
   if (typeof global.LIMETE_SHOP === "undefined") {
     global.LIMETE_SHOP = null;
+  }
+  if (typeof global.LIMETE_TICKET === "undefined") {
+    global.LIMETE_TICKET = null;
   }
 })(window);

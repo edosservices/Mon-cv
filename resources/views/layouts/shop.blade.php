@@ -7,10 +7,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="{{ $brand }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="{{ $zone->name }}">
     <title>@yield('title', $zone->name)</title>
+    <link rel="manifest" href="{{ route('shop.manifest', $zone->slug) }}">
+    <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="shop" style="--shop: {{ $brand }}">
+    <a class="skip" href="#contenu">Aller au contenu</a>
     <div class="shop-wrap">
         <header class="shop-top">
             <a class="shop-brand" href="{{ route('shop.show', $zone->slug) }}">
@@ -28,12 +35,14 @@
         </header>
 
         @isset($step)
-            <ol class="progress" aria-label="Étapes">
-                @foreach(['Forfait', 'Paiement', 'Confirmation', 'Ticket'] as $index => $label)
-                    <li class="{{ $step === $index ? 'is-current' : ($step > $index ? 'is-done' : '') }}">{{ $label }}</li>
+            <ol class="progress" aria-label="Étapes d’achat">
+                @foreach(['Forfait', 'Informations', 'Paiement', 'Confirmation', 'Ticket'] as $index => $label)
+                    <li class="{{ $step === $index ? 'is-current' : ($step > $index ? 'is-done' : '') }}" @if($step === $index) aria-current="step" @endif>{{ $label }}</li>
                 @endforeach
             </ol>
         @endisset
+
+        <main id="contenu">
 
         @if(session('status'))
             <p class="note note-ok" role="status">{{ session('status') }}</p>
@@ -48,6 +57,7 @@
         @endif
 
         @yield('content')
+        </main>
 
         <footer class="shop-foot">
             @if($zone->whatsappDigits())
@@ -60,11 +70,27 @@
         document.querySelectorAll('form[data-wait]').forEach(function (form) {
             form.addEventListener('submit', function () {
                 var button = form.querySelector('[type="submit"]');
-                if (!button) return;
+                if (!button || button.disabled) return;
                 button.disabled = true;
                 button.textContent = 'Patientez…';
             });
         });
+        document.querySelectorAll('[data-copy]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var value = button.getAttribute('data-copy') || '';
+                var done = function () { button.textContent = 'Code copié'; };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(value).then(done).catch(function () { window.prompt('Copiez le code', value); });
+                    return;
+                }
+                window.prompt('Copiez le code', value);
+            });
+        });
+        var poll = document.querySelector('[data-poll]');
+        if (poll) {
+            var seconds = parseInt(poll.getAttribute('data-poll'), 10) || 15;
+            window.setTimeout(function () { window.location.reload(); }, seconds * 1000);
+        }
     </script>
 </body>
 </html>

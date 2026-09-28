@@ -45,18 +45,28 @@ class ShopTest extends TestCase
             ->assertSee('Votre forfait')
             ->assertSee('24 HEURES')
             ->assertSee('1 000 FC')
+            ->assertSee('Entrez votre numéro de téléphone')
+            ->assertDontSee($plan->password ?? 'secret-router');
+
+        $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [
+            'phone' => '+243810000222',
+        ])->assertRedirect('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement');
+
+        $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
+            ->assertOk()
             ->assertSee('Comment souhaitez-vous payer')
             ->assertSee('Airtel Money')
             ->assertSee('Orange Money')
             ->assertSee('M-Pesa')
             ->assertSee('Carte bancaire')
             ->assertSee('Paiement manuel / comptoir')
-            ->assertDontSee($plan->password ?? 'secret-router');
+            ->assertSee('+243810000222');
 
         $other = Platform::entrepreneur('Bob Wifi', 'bob-shop@example.com');
         $foreign = Platform::plan($other, Platform::zone($other));
 
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$foreign->id)->assertNotFound();
+        $this->get('/wifi/'.$zone->slug.'/forfait/'.$foreign->id.'/paiement')->assertNotFound();
     }
 
     public function test_checkout_stays_pending_until_payment_is_confirmed(): void

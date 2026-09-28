@@ -60,11 +60,13 @@ class PlanController extends Controller
             'currency' => ['required', 'string', 'size:3'],
             'mikrotik_profile' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:1000'],
+            'badge' => ['nullable', Rule::in(['populaire', 'meilleure_offre'])],
             'unlimited_data' => ['nullable', 'boolean'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
         ]);
 
         $data['unlimited_data'] = $request->boolean('unlimited_data');
+        $data['badge'] = $data['badge'] ?: null;
 
         return $data;
     }

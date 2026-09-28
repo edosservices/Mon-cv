@@ -6,6 +6,7 @@ use App\Enums\VoucherStatus;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Voucher extends Model
@@ -48,6 +49,26 @@ class Voucher extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function saleItem(): HasOne
+    {
+        return $this->hasOne(SaleItem::class);
+    }
+
+    public function shareText(): string
+    {
+        $expires = $this->expires_at
+            ? $this->expires_at->timezone(config('app.timezone'))->format('d/m/Y H:i')
+            : 'après activation';
+
+        return implode("\n", [
+            $this->wifiZone->name ?? 'WiFi',
+            'Forfait : '.($this->plan->name ?? 'Forfait'),
+            'Code : '.$this->username,
+            'Expiration : '.$expires,
+            'Ticket : '.route('tickets.public', $this->public_token),
+        ]);
     }
 
     public function refreshExpiry(): void

@@ -333,6 +333,17 @@
     box.hidden = false;
   }
 
+  function initTicket() {
+    var url = global.LIMETE_TICKET;
+    var box = document.getElementById("ticket-box");
+    var link = document.getElementById("ticket-link");
+    if (!box || !link || typeof url !== "string") return;
+    if (url.indexOf("https://") !== 0 && url.indexOf("http://") !== 0) return;
+    if (url.indexOf("/ticket/") === -1) return;
+    link.href = url;
+    box.hidden = false;
+  }
+
   function boot() {
     initPasswordToggle();
     initLoginForm();
@@ -340,6 +351,7 @@
     initStatus();
     initWhatsApp();
     initShop();
+    initTicket();
   }
 
   global.LimetePortal = {

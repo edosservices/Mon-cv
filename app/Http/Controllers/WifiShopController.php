@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Sale;
 use App\Models\Voucher;
 use App\Models\WifiZone;
+use App\Rules\CustomerPhone;
 use App\Services\Payments\PaymentManager;
 use App\Services\SaleService;
 use App\Support\QrCodes;
@@ -35,8 +36,48 @@ class WifiShopController extends Controller
         return view('shop.plan', [
             'zone' => $zone,
             'plan' => $plan,
-            'providers' => app(PaymentManager::class)->enabledProviders(),
             'step' => 1,
+        ]);
+    }
+
+    public function saveCustomer(Request $request, string $slug, int $plan)
+    {
+        $zone = $this->zone($slug);
+        $plan = $this->plans($zone)->firstWhere('id', $plan);
+        abort_unless($plan, 404);
+
+        $data = $request->validate([
+            'name' => ['nullable', 'string', 'max:120'],
+            'phone' => ['required', 'string', 'max:30', new CustomerPhone],
+        ], [
+            'phone.required' => 'Entrez votre numéro de téléphone.',
+        ]);
+
+        $data['phone'] = $this->normalizePhone($data['phone']);
+        session([$this->draftKey($zone, $plan) => $data]);
+
+        return redirect()->route('shop.pay', [$zone->slug, $plan->id]);
+    }
+
+    public function pay(string $slug, int $plan)
+    {
+        $zone = $this->zone($slug);
+        $plan = $this->plans($zone)->firstWhere('id', $plan);
+        abort_unless($plan, 404);
+
+        $draft = session($this->draftKey($zone, $plan));
+        if (! is_array($draft) || empty($draft['phone'])) {
+            return redirect()
+                ->route('shop.plan', [$zone->slug, $plan->id])
+                ->with('warning', 'Entrez votre numéro de téléphone pour continuer.');
+        }
+
+        return view('shop.pay', [
+            'zone' => $zone,
+            'plan' => $plan,
+            'customer' => $draft,
+            'providers' => app(PaymentManager::class)->enabledProviders(),
+            'step' => 2,
         ]);
     }
 
@@ -46,13 +87,18 @@ class WifiShopController extends Controller
         $data = $request->validate([
             'plan_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['required', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30', new CustomerPhone],
             'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card'],
             'transaction_reference' => ['nullable', 'string', 'max:80'],
+        ], [
+            'phone.required' => 'Entrez votre numéro de téléphone.',
+            'provider.required' => 'Choisissez un moyen de paiement.',
+            'provider.in' => 'Ce moyen de paiement n’est pas disponible.',
         ]);
 
         $plan = $this->plans($zone)->firstWhere('id', (int) $data['plan_id']);
         abort_unless($plan, 404);
+        $data['phone'] = $this->normalizePhone($data['phone']);
 
         try {
             $sale = $sales->placeOrder($zone, $plan, $data, $data['provider'], $data['transaction_reference'] ?? null);
@@ -60,6 +106,7 @@ class WifiShopController extends Controller
             return back()->with('warning', $exception->getMessage())->withInput();
         }
 
+        session()->forget($this->draftKey($zone, $plan));
         $this->remember($zone, 'customer_sales', $sale->public_token);
 
         return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
@@ -85,7 +132,7 @@ class WifiShopController extends Controller
             'sale' => $sale,
             'voucher' => $sale->status === 'paid' ? $voucher : null,
             'qr' => $voucher && $sale->status === 'paid' ? QrCodes::svg(route('tickets.public', $voucher->public_token)) : null,
-            'step' => $sale->status === 'paid' && $voucher ? 3 : 2,
+            'step' => $sale->status === 'paid' && $voucher ? 4 : 3,
         ]);
     }
 
@@ -148,8 +195,27 @@ class WifiShopController extends Controller
             'zone' => $voucher->wifiZone,
             'voucher' => $voucher,
             'qr' => QrCodes::svg(route('tickets.public', $voucher->public_token)),
-            'step' => 3,
+            'step' => 4,
         ]);
+    }
+
+    public function manifest(string $slug)
+    {
+        $zone = $this->zone($slug);
+
+        return response()->json([
+            'name' => $zone->name,
+            'short_name' => mb_substr($zone->name, 0, 12),
+            'start_url' => route('shop.show', $zone->slug),
+            'scope' => url('/'),
+            'display' => 'standalone',
+            'background_color' => '#f3f6fb',
+            'theme_color' => $zone->brandColor(),
+            'icons' => [
+                ['src' => asset('icons/icon-192.png'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => asset('icons/icon-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+            ],
+        ], 200, ['Content-Type' => 'application/manifest+json']);
     }
 
     public function pdf(string $token)
@@ -169,13 +235,13 @@ class WifiShopController extends Controller
             ->firstOrFail();
 
         app(TenantManager::class)->set($voucher->tenant_id);
-        $voucher->load('plan', 'wifiZone', 'customer');
+        $voucher->load('plan', 'wifiZone', 'customer', 'saleItem.sale');
         $voucher->refreshExpiry();
         if ($voucher->wifiZone) {
             $this->remember($voucher->wifiZone, 'customer_tickets', $voucher->public_token);
         }
 
-        return $voucher->fresh(['plan', 'wifiZone', 'customer']);
+        return $voucher->fresh(['plan', 'wifiZone', 'customer', 'saleItem.sale']);
     }
 
     private function zone(string $slug): WifiZone
@@ -235,6 +301,26 @@ class WifiShopController extends Controller
         $key = $bucket.'.'.$zone->id;
         $tokens = array_values(array_unique([...session($key, []), $token]));
         session([$key => array_slice($tokens, -20)]);
+    }
+
+    private function draftKey(WifiZone $zone, Plan $plan): string
+    {
+        return 'shop_draft.'.$zone->id.'.'.$plan->id;
+    }
+
+    private function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        if (str_starts_with($digits, '243')) {
+            return '+'.$digits;
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+
+        return '+243'.$digits;
     }
 
     private function digits(?string $value): string

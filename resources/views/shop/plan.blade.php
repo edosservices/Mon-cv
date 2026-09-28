@@ -3,39 +3,39 @@
 @section('content')
 <a class="back" href="{{ route('shop.show', $zone->slug) }}">Tous les forfaits</a>
 
-<section class="panel">
+<section class="panel" aria-labelledby="plan-title">
     <p class="eyebrow">Votre forfait</p>
-    <h1>{{ $plan->name }}</h1>
-    <p class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
-    <ul class="facts">
-        <li>{{ $plan->unlimited_data ? 'Internet illimité' : ($plan->description ?: 'Selon le forfait') }}</li>
-        <li>Validité : {{ $plan->validityLabel() }}</li>
-        <li>Le temps démarre à la confirmation du paiement et continue même si vous vous déconnectez.</li>
-    </ul>
+    <h1 id="plan-title">{{ $plan->name }}</h1>
+    <dl class="summary">
+        <div>
+            <dt>Durée</dt>
+            <dd>{{ $plan->validityLabel() }}</dd>
+        </div>
+        <div>
+            <dt>Internet</dt>
+            <dd>{{ $plan->unlimited_data ? 'Illimité' : 'Selon le forfait' }}</dd>
+        </div>
+        <div>
+            <dt>Prix</dt>
+            <dd class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</dd>
+        </div>
+    </dl>
+    <p class="help">Le temps démarre à la confirmation du paiement et continue même si vous vous déconnectez.</p>
 </section>
 
-<form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
+<form class="panel" method="POST" action="{{ route('shop.customer', [$zone->slug, $plan->id]) }}" data-wait>
     @csrf
-    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-    <h2>Comment souhaitez-vous payer ?</h2>
-    <p class="help">Aucun ticket n’est créé avant la confirmation du paiement. Si l’opérateur n’est pas configuré, la commande reste en attente. Revenir sur cette page ne confirme pas le paiement.</p>
-    <label class="field">Téléphone
-        <input name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone') }}" placeholder="+243 …" required>
+    <h2>Entrez votre numéro de téléphone</h2>
+    <p class="help">Ce numéro sert à retrouver votre ticket. Il ne confirme pas le paiement.</p>
+    <label class="field" for="phone">Téléphone
+        <span class="phone-line">
+            <span class="phone-prefix">+243</span>
+            <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone') }}" placeholder="812 345 678" required>
+        </span>
     </label>
-    <label class="field">Nom <span>(facultatif)</span>
-        <input name="name" type="text" autocomplete="name" value="{{ old('name') }}" maxlength="120">
+    <label class="field" for="name">Nom <span>(facultatif)</span>
+        <input id="name" name="name" type="text" autocomplete="name" value="{{ old('name') }}" maxlength="120">
     </label>
-    <div class="choices">
-        @foreach($providers as $key => $label)
-            <label class="choice">
-                <input type="radio" name="provider" value="{{ $key }}" @checked(old('provider', 'manual') === $key) required>
-                <span>{{ $label }}</span>
-            </label>
-        @endforeach
-    </div>
-    <label class="field">Référence <span>(si vous l’avez)</span>
-        <input name="transaction_reference" type="text" value="{{ old('transaction_reference') }}" maxlength="80" placeholder="Reçu ou référence comptoir">
-    </label>
-    <button class="btn btn-primary" type="submit">Confirmer la commande</button>
+    <button class="btn btn-primary" type="submit">Continuer</button>
 </form>
 @endsection
