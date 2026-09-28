@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActiveUserController;
 use App\Http\Controllers\Admin\PlatformController;
+use App\Http\Controllers\Admin\ProductionCheckController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerController;
@@ -69,6 +70,10 @@ Route::middleware(['auth', 'tenant', 'role:super_admin'])->prefix('admin')->name
     Route::get('/payments', [PlatformController::class, 'payments'])->name('payments');
     Route::post('/payments/providers/{provider}', [PlatformController::class, 'updateProvider'])->name('payments.providers');
     Route::get('/logs', [PlatformController::class, 'logs'])->name('logs');
+    Route::get('/production-check', [ProductionCheckController::class, 'show'])->name('production-check');
+    Route::post('/production-check/mikrotiks/{mikrotik}/test', [ProductionCheckController::class, 'test'])->name('production-check.test');
+    Route::post('/production-check/mikrotiks/{mikrotik}/test-user', [ProductionCheckController::class, 'createTestUser'])->name('production-check.test-user');
+    Route::delete('/production-check/mikrotiks/{mikrotik}/test-user', [ProductionCheckController::class, 'deleteTestUser'])->name('production-check.test-user.delete');
     Route::post('/payments/{paymentId}/confirm', [PlatformController::class, 'confirmPayment'])->name('payments.confirm');
 });
 

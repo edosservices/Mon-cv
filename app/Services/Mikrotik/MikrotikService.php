@@ -6,6 +6,7 @@ use App\Models\Mikrotik;
 use App\Models\MikrotikProfile;
 use App\Models\PlanMikrotikProfile;
 use App\Models\Voucher;
+use App\Support\Correlation;
 use App\Support\TenantManager;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -576,6 +577,8 @@ class MikrotikService
             '/ip/hotspot/active/print',
             '/ip/hotspot/walled-garden/print',
             '/interface/print',
+            '/ip/address/print',
+            '/ip/dns/print',
             '/ip/pool/print',
         ];
         if (! in_array($path, $allowed, true)) {
@@ -652,6 +655,7 @@ class MikrotikService
     {
         $path = $words[0] ?? 'inconnue';
         $secrets[] = $router->password;
+        $started = microtime(true);
 
         try {
             $rows = $this->router->command(
@@ -665,12 +669,15 @@ class MikrotikService
             );
         } catch (RuntimeException $exception) {
             $message = $this->redact($exception->getMessage(), $secrets);
-            Log::warning('mikrotik.command_failed', $this->context($router, $path) + ['message' => $message]);
+            Log::warning('mikrotik.command_failed', array_merge($this->trace($router, $path, $started), [
+                'success' => false,
+                'message' => $message,
+            ]));
 
             throw new RuntimeException($message, 0, $exception);
         }
 
-        Log::info('mikrotik.command', $this->context($router, $path));
+        Log::info('mikrotik.command', $this->trace($router, $path, $started));
 
         return $rows;
     }
@@ -894,6 +901,18 @@ class MikrotikService
             'tenant_id' => $router->tenant_id,
             'host' => $router->host,
             'command' => $command,
+            'correlation_id' => app(Correlation::class)->id(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function trace(Mikrotik $router, string $command, float $started): array
+    {
+        return $this->context($router, $command) + [
+            'duration_ms' => (int) round((microtime(true) - $started) * 1000),
+            'success' => true,
         ];
     }
 

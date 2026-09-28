@@ -13,6 +13,9 @@ use App\Models\WifiZone;
 use App\Policies\TenantOwnedPolicy;
 use App\Services\Mikrotik\HotspotRouter;
 use App\Services\Mikrotik\RouterOsClient;
+use App\Services\Production\EndpointProbe;
+use App\Services\Production\SocketEndpointProbe;
+use App\Support\Correlation;
 use App\Support\TenantManager;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -25,7 +28,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantManager::class);
+        $this->app->singleton(Correlation::class);
         $this->app->bind(HotspotRouter::class, RouterOsClient::class);
+        $this->app->bind(EndpointProbe::class, SocketEndpointProbe::class);
     }
 
     public function boot(): void

@@ -18,6 +18,7 @@
             <a href="{{ route('admin.plans') }}">Plans</a>
             <a href="{{ route('admin.payments') }}">Paiements</a>
             <a href="{{ route('admin.logs') }}">Journal</a>
+            <a href="{{ route('admin.production-check') }}">Production</a>
         </nav>
         <form method="POST" action="{{ route('logout') }}">@csrf<button class="rounded-lg bg-white/10 px-3 py-2">Sortir</button></form>
     </header>
