@@ -97,12 +97,15 @@ class ShopTest extends TestCase
             $voucher->expires_at->getTimestamp()
         );
 
+        app(TenantManager::class)->forget();
+
         $this->get('/ticket/'.$voucher->public_token)
             ->assertOk()
             ->assertSee($voucher->username)
             ->assertSee('Actif')
             ->assertSee('24 HEURES')
             ->assertSee('Illimité')
+            ->assertSee('Non synchronisé')
             ->assertDontSee('secret-router', false);
     }
 
@@ -120,6 +123,7 @@ class ShopTest extends TestCase
         $this->assertSame('active', $voucher->status);
 
         $this->travel(22)->hours();
+        app(TenantManager::class)->forget();
         $this->get('/ticket/'.$voucher->public_token)
             ->assertOk()
             ->assertSee('Expiré');
@@ -179,6 +183,7 @@ class ShopTest extends TestCase
         $this->assertNull($voucher->mikrotik_id);
         $this->assertSame('failed', $voucher->sync_status);
 
+        app(TenantManager::class)->forget();
         $this->get('/ticket/'.$voucher->public_token)
             ->assertOk()
             ->assertSee('Non synchronisé')
@@ -206,6 +211,7 @@ class ShopTest extends TestCase
         [$user, $zone] = $this->shop();
         $voucher = $this->paidTicket($user, $zone, '+243810000777');
 
+        app(TenantManager::class)->forget();
         $this->get('/ticket/'.$voucher->public_token.'/pdf')
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');

@@ -44,6 +44,10 @@
     }
   };
 
-  global.LIMETE_SESSION = null;
-  global.LIMETE_SHOP = null;
+  if (typeof global.LIMETE_SESSION === "undefined") {
+    global.LIMETE_SESSION = null;
+  }
+  if (typeof global.LIMETE_SHOP === "undefined") {
+    global.LIMETE_SHOP = null;
+  }
 })(window);

@@ -143,12 +143,14 @@ class WifiShopController extends Controller
     {
         $voucher = Voucher::withoutGlobalScope('tenant')
             ->where('public_token', $token)
-            ->with('plan', 'wifiZone', 'customer')
             ->firstOrFail();
 
         app(TenantManager::class)->set($voucher->tenant_id);
+        $voucher->load('plan', 'wifiZone', 'customer');
         $voucher->refreshExpiry();
-        $this->remember($voucher->wifiZone, 'customer_tickets', $voucher->public_token);
+        if ($voucher->wifiZone) {
+            $this->remember($voucher->wifiZone, 'customer_tickets', $voucher->public_token);
+        }
 
         return $voucher->fresh(['plan', 'wifiZone', 'customer']);
     }
