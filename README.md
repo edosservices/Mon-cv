@@ -95,6 +95,8 @@ CARD_GATEWAY_SECRET=
 
 Ces clés restent dans `.env`, jamais dans Git ni dans le navigateur. Les connecteurs Airtel Money, Orange Money, M-Pesa et carte sont des adaptateurs : aucun appel HTTP opérateur n’est fait, faute de contrat d’API officiel. Un webhook sandbox `POST /payments/{provider}/webhook` accepte une notification signée en HMAC seulement si le secret webhook est défini. Le retour du client sur la page de commande ne confirme jamais un paiement. Le comptoir confirme encore le paiement manuel.
 
+UniPay se configure avec `UNIPAY_API_KEY`, `UNIPAY_BASE_URL`, `UNIPAY_WEBHOOK_SECRET` et `UNIPAY_MODE=test`. Le détail est dans [docs/unipay.md](docs/unipay.md). Sans clé, l’écran affiche « UniPay non configuré » et n’envoie rien. Le mode live ne s’active que si `UNIPAY_MODE` vaut exactement `live`.
+
 ## MikroTik
 
 Les mots de passe des routeurs sont chiffrés avec la clé de l’application. Ils ne sont pas renvoyés dans les formulaires ni dans l’API.

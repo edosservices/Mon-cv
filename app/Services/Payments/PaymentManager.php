@@ -15,6 +15,7 @@ class PaymentManager
             'orange_money' => new OrangeMoneyGateway,
             'mpesa' => new MpesaGateway,
             'card' => new CardGateway,
+            'unipay' => new UniPayGateway,
             default => throw new InvalidArgumentException('Moyen de paiement inconnu.'),
         };
     }
@@ -41,6 +42,7 @@ class PaymentManager
             'orange_money' => 'limete.payments.orange_money.api_key',
             'mpesa' => 'limete.payments.mpesa.api_key',
             'card' => 'limete.payments.card.secret',
+            'unipay' => 'services.unipay.key',
             default => null,
         };
 

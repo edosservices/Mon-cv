@@ -22,6 +22,7 @@ return [
         'orange_money' => 'Orange Money',
         'mpesa' => 'M-Pesa',
         'card' => 'Carte bancaire',
+        'unipay' => 'UniPay',
     ],
 
     /*

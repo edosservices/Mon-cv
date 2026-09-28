@@ -67,6 +67,13 @@ class SaleService
 
             $this->payments->gateway($provider)->createPayment($payment, [
                 'transaction_reference' => $reference,
+                'customer_phone' => $customer['phone'] ?? null,
+                'customer_name' => $customer['name'] ?? null,
+                'return_url' => route('shop.order', [$zone->slug, $sale->public_token]),
+                'tenant_id' => $zone->tenant_id,
+                'wifi_zone_id' => $zone->id,
+                'sale_id' => $sale->id,
+                'plan_reference' => $plan->name,
             ]);
             $this->audit->record('payment.created', $payment, null, [
                 'provider' => $provider,

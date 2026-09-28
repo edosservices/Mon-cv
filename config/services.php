@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    /*
+    | UniPay Congo. Les valeurs viennent de .env. Le mode live n'est jamais
+    | choisi par défaut : seule la valeur exacte "live" l'active.
+    */
+    'unipay' => [
+        'key' => env('UNIPAY_API_KEY'),
+        'base_url' => env('UNIPAY_BASE_URL'),
+        'webhook_secret' => env('UNIPAY_WEBHOOK_SECRET'),
+        'mode' => env('UNIPAY_MODE', 'test'),
+    ],
+
 ];

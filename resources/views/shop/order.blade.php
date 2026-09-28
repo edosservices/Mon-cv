@@ -42,9 +42,9 @@
             <p class="help">Le temps restant suit la date d’expiration. Il continue même si vous vous déconnectez.</p>
         </section>
     @endif
-@elseif($payment?->status === 'failed')
+@elseif(in_array($payment?->status, ['failed', 'cancelled'], true))
     <section class="panel">
-        <p class="status-pill is-bad">Paiement échoué</p>
+        <p class="status-pill is-bad">{{ $payment->status === 'cancelled' ? 'Paiement annulé' : 'Paiement échoué' }}</p>
         <h1>Le paiement n’a pas été confirmé</h1>
         <p class="help">Aucun ticket n’a été activé. Vous pouvez recommencer depuis la boutique.</p>
         <a class="btn btn-primary" href="{{ route('shop.show', $zone->slug) }}">Retour aux forfaits</a>

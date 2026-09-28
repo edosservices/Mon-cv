@@ -293,6 +293,11 @@ class ProductionCheck
 
                 continue;
             }
+            if ($provider === 'unipay') {
+                $rows = array_merge($rows, $this->unipayRows());
+
+                continue;
+            }
             if (! $this->payments->configured($provider)) {
                 $rows[] = [
                     'provider' => $provider,
@@ -312,6 +317,43 @@ class ProductionCheck
         }
 
         return $rows;
+    }
+
+    /**
+     * @return array<int, array{provider: string, label: string, status: string, detail: string}>
+     */
+    private function unipayRows(): array
+    {
+        $key = filled(config('services.unipay.key'));
+        $secret = filled(config('services.unipay.webhook_secret'));
+        $mode = strtolower(trim((string) config('services.unipay.mode'))) === 'live' ? 'LIVE' : 'TEST';
+
+        return [
+            [
+                'provider' => 'unipay',
+                'label' => 'UniPay API key',
+                'status' => $key ? 'CONFIGURED' : 'NOT CONFIGURED',
+                'detail' => $key
+                    ? 'La clé est lue depuis la configuration. Elle n’est pas affichée. Aucune transaction live n’a été exécutée.'
+                    : 'UniPay non configuré',
+            ],
+            [
+                'provider' => 'unipay_mode',
+                'label' => 'UniPay mode',
+                'status' => $mode,
+                'detail' => $mode === 'LIVE'
+                    ? 'UNIPAY_MODE=live est explicite. Ce contrôle n’a envoyé aucune transaction.'
+                    : 'Le mode reste test tant que UNIPAY_MODE n’est pas exactement live.',
+            ],
+            [
+                'provider' => 'unipay_webhook',
+                'label' => 'Webhook',
+                'status' => $secret ? 'CONFIGURED' : 'NOT CONFIGURED',
+                'detail' => $secret
+                    ? 'Le secret de signature est présent. Il n’est pas affiché. Aucun webhook UniPay réel n’a été reçu.'
+                    : 'UNIPAY_WEBHOOK_SECRET est vide. Une notification sans secret est refusée.',
+            ],
+        ];
     }
 
     /**

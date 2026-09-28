@@ -89,7 +89,7 @@ class WifiShopController extends Controller
             'plan_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
             'phone' => ['required', 'string', 'max:30', new CustomerPhone],
-            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card'],
+            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay'],
             'transaction_reference' => ['nullable', 'string', 'max:80'],
         ], [
             'phone.required' => 'Entrez votre numéro de téléphone.',

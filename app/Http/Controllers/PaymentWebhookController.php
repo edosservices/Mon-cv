@@ -23,7 +23,10 @@ class PaymentWebhookController extends Controller
         }
 
         try {
-            $notice = $gateway->verifyPayment($request->getContent(), $request->header('X-Payment-Signature'));
+            $signature = $provider === 'unipay'
+                ? ($request->header('X-UniPay-Signature') ?: $request->header('X-Payment-Signature'))
+                : $request->header('X-Payment-Signature');
+            $notice = $gateway->verifyPayment($request->getContent(), $signature);
         } catch (InvalidPaymentSignature) {
             return response()->json(['status' => 'rejected'], 401);
         }

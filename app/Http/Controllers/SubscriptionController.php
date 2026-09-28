@@ -23,7 +23,7 @@ class SubscriptionController extends Controller
     {
         $data = $request->validate([
             'saas_plan_id' => ['required', 'exists:saas_plans,id'],
-            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card'],
+            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay'],
             'transaction_reference' => ['nullable', 'string', 'max:80'],
         ]);
 

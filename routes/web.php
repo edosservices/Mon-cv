@@ -47,6 +47,7 @@ Route::get('/wifi/{slug}/forfait/{plan}/paiement', [WifiShopController::class, '
 Route::post('/wifi/{slug}', [WifiShopController::class, 'checkout'])->middleware('throttle:20,1')->name('shop.checkout');
 Route::get('/wifi/{slug}/commande/{token}', [WifiShopController::class, 'order'])->name('shop.order');
 Route::post('/wifi/{slug}/commande/{token}/actualiser', [WifiShopController::class, 'refreshPayment'])->middleware('throttle:30,1')->name('shop.payment.refresh');
+// UniPay : POST /payments/unipay/webhook
 Route::post('/payments/{provider}/webhook', PaymentWebhookController::class)->middleware('throttle:60,1')->name('payments.webhook');
 Route::get('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'tickets'])->name('shop.tickets');
 Route::post('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'lookup'])->middleware('throttle:10,1')->name('shop.lookup');
