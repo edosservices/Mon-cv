@@ -19,13 +19,13 @@ class DashboardMetrics
 {
     public function entrepreneur(): array
     {
-        $today = now()->startOfDay();
+        $report = app(BusinessReport::class);
 
         return [
-            'revenue_today' => (float) Sale::where('status', 'paid')->where('created_at', '>=', $today)->sum('total_amount'),
-            'revenue_week' => (float) Sale::where('status', 'paid')->where('created_at', '>=', now()->startOfWeek())->sum('total_amount'),
-            'revenue_month' => (float) Sale::where('status', 'paid')->where('created_at', '>=', now()->startOfMonth())->sum('total_amount'),
-            'tickets_today' => Sale::where('status', 'paid')->where('created_at', '>=', $today)->count(),
+            'revenue_today' => $report->netRevenue(now()->startOfDay(), now()->endOfDay(), null),
+            'revenue_week' => $report->netRevenue(now()->startOfWeek(), now()->endOfDay(), null),
+            'revenue_month' => $report->netRevenue(now()->startOfMonth(), now()->endOfDay(), null),
+            'tickets_today' => Sale::where('status', 'paid')->where('created_at', '>=', now()->startOfDay())->count(),
             'active_customers' => Voucher::where('status', VoucherStatus::Active->value)->count(),
             'mikrotiks_online' => Mikrotik::where('status', 'online')->count(),
             'mikrotiks_total' => Mikrotik::count(),
@@ -46,7 +46,7 @@ class DashboardMetrics
         $sales = Sale::where('status', 'paid')->whereBetween('created_at', [$from, $to]);
 
         return [
-            'revenue' => (float) (clone $sales)->sum('total_amount'),
+            'revenue' => app(BusinessReport::class)->netRevenue($from, $to, null),
             'tickets' => (clone $sales)->count(),
             'by_day' => (clone $sales)
                 ->selectRaw('date(created_at) as day, sum(total_amount) as total, count(*) as tickets')

@@ -167,3 +167,6 @@ body {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+.chart { width: 100%; max-width: 100%; overflow: hidden; }
+.chart svg { display: block; max-width: 100%; height: auto; }

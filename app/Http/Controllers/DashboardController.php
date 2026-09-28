@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Mikrotik;
-use App\Models\WifiZone;
-use App\Services\DashboardMetrics;
+use App\Services\BusinessReport;
+use App\Services\DashboardAlerts;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __invoke(DashboardMetrics $metrics)
+    public function __invoke(Request $request, BusinessReport $report, DashboardAlerts $alerts)
     {
+        $filters = $report->filters($request);
+        $data = $report->build($filters);
+        $alerts->sync($request->user(), $data);
+
         return view('dashboard', [
-            'metrics' => $metrics->entrepreneur(),
-            'shopZones' => WifiZone::where('status', 'active')->orderBy('name')->get(),
-            'routers' => Mikrotik::query()->orderBy('name')->get(),
+            'filters' => $filters,
+            'report' => $data,
+            'sales' => $report->sales($filters, 5),
+            'shopZones' => $data['zones']->where('status', 'active'),
+            'notices' => $request->user()->unreadNotifications()->latest()->limit(4)->get(),
         ]);
     }
 }

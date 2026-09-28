@@ -3,21 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Plan;
 use App\Models\Sale;
 use App\Models\Voucher;
+use App\Services\BusinessReport;
 use App\Services\SaleService;
 use Illuminate\Http\Request;
 
 class SaleController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, BusinessReport $report)
     {
-        $sales = Sale::with(['customer', 'wifiZone', 'items.plan'])
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            ->latest()
-            ->paginate(20);
+        if ($request->filled('status') && ! $request->filled('payment')) {
+            $request->merge(['payment' => $request->string('status')->toString() === 'paid' ? 'success' : $request->string('status')->toString()]);
+        }
 
-        return view('sales.index', ['sales' => $sales]);
+        $filters = $report->filters($request);
+
+        return view('sales.index', [
+            'sales' => $report->sales($filters),
+            'filters' => $filters,
+            'plans' => Plan::query()->orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     public function show(Sale $sale)

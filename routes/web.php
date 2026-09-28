@@ -6,6 +6,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\MikrotikController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
@@ -70,6 +71,13 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
 
     Route::middleware('subscription')->group(function () {
         Route::get('/dashboard', DashboardController::class)->name('dashboard');
+        Route::middleware('throttle:20,1')->group(function () {
+            Route::get('/exports/sales.csv', [ExportController::class, 'sales'])->middleware('permission:sales.view')->name('exports.sales');
+            Route::get('/exports/sales.pdf', [ExportController::class, 'salesPdf'])->middleware('permission:sales.view')->name('exports.sales.pdf');
+            Route::get('/exports/customers.csv', [ExportController::class, 'customers'])->middleware('permission:customers.manage')->name('exports.customers');
+            Route::get('/exports/tickets.csv', [ExportController::class, 'tickets'])->middleware('permission:vouchers.manage')->name('exports.tickets');
+            Route::get('/exports/payments.csv', [ExportController::class, 'payments'])->middleware('permission:sales.view')->name('exports.payments');
+        });
         Route::resource('wifi-zones', WifiZoneController::class)->except('show')->parameters(['wifi-zones' => 'wifiZone'])->middleware('permission:zones.manage');
         Route::resource('mikrotiks', MikrotikController::class)->except('show')->middleware('permission:mikrotiks.manage');
         Route::post('/mikrotiks/{mikrotik}/test', [MikrotikController::class, 'test'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.test');

@@ -28,7 +28,7 @@
                     <button class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Sortir</button>
                 </form>
             </header>
-            <main class="mx-auto w-full max-w-6xl px-4 py-5 pb-24 lg:pb-8">
+            <main class="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-5 pb-24 lg:pb-8">
                 @if(session('status'))
                     <p class="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</p>
                 @endif

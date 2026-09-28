@@ -16,54 +16,36 @@
     <label class="text-sm">Quantité<input class="mt-1 w-full rounded-lg border px-3 py-2" type="number" name="count" min="1" max="100" value="1"></label>
     <button class="self-end rounded-xl bg-electric px-4 py-2 text-white">Générer</button>
 </form>
-<div class="overflow-x-auto rounded-2xl bg-white shadow-sm">
-    <table class="w-full min-w-[880px] text-left text-sm">
-        <thead class="text-slate-500">
-            <tr>
-                <th class="p-3">Code</th>
-                <th>Forfait</th>
-                <th>Client</th>
-                <th>Paiement</th>
-                <th>Activation</th>
-                <th>Expiration</th>
-                <th>MikroTik</th>
-                <th>Statut</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach($vouchers as $voucher)
-            @php
-                $payment = $voucher->saleItem?->sale?->payment;
-                $badge = match ($voucher->status) {
-                    'active' => 'bg-emerald-50 text-emerald-800',
-                    'expired' => 'bg-red-50 text-red-800',
-                    'available' => 'bg-slate-100 text-slate-700',
-                    default => 'bg-slate-100 text-slate-700',
-                };
-            @endphp
-            <tr class="border-t align-top">
-                <td class="p-3 font-medium">{{ $voucher->username }}</td>
-                <td>{{ $voucher->plan->name ?? '' }}</td>
-                <td>{{ $voucher->customer->phone ?? $voucher->customer->name ?? '—' }}</td>
-                <td>{{ $payment ? (\App\Enums\PaymentStatus::tryFrom($payment->status)?->label() ?? $payment->status) : '—' }}</td>
-                <td>{{ $voucher->activated_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</td>
-                <td>{{ $voucher->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</td>
-                <td>
-                    @if($voucher->sync_status === 'synced')
-                        Créé sur le MikroTik
-                    @else
-                        <span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">Non synchronisé</span>
-                        @if($voucher->sync_error)<span class="mt-1 block text-amber-800">Erreur : {{ $voucher->sync_error }}</span>@endif
-                        <form method="POST" action="{{ route('vouchers.sync', $voucher) }}" class="mt-2">@csrf<button class="rounded-lg border px-3 py-2">Réessayer</button></form>
-                    @endif
-                </td>
-                <td><span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ $badge }}">{{ $voucher->statusLabel() }}</span></td>
-                <td class="pr-3 text-right"><a class="text-electric" href="{{ route('vouchers.show', $voucher) }}">Voir</a></td>
-            </tr>
-        @endforeach
-        </tbody>
-    </table>
+<div class="space-y-3">
+    @foreach($vouchers as $voucher)
+        @php
+            $payment = $voucher->saleItem?->sale?->payment;
+            $badge = match ($voucher->status) {
+                'active' => 'bg-emerald-50 text-emerald-800',
+                'expired' => 'bg-red-50 text-red-800',
+                'available' => 'bg-slate-100 text-slate-700',
+                default => 'bg-slate-100 text-slate-700',
+            };
+        @endphp
+        <article class="min-w-0 rounded-2xl bg-white p-4 text-sm shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+                <p class="font-semibold">{{ $voucher->username }}</p>
+                <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ $badge }}">{{ $voucher->statusLabel() }}</span>
+            </div>
+            <p class="mt-2 break-words">{{ $voucher->plan->name ?? '' }} · {{ $voucher->customer->phone ?? $voucher->customer->name ?? '—' }}</p>
+            <p>Paiement {{ $payment ? (\App\Enums\PaymentStatus::tryFrom($payment->status)?->label() ?? $payment->status) : '—' }}</p>
+            <p>Activation {{ $voucher->activated_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
+            <p>Expiration {{ $voucher->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
+            @if($voucher->sync_status === 'synced')
+                <p class="mt-2">Créé sur le MikroTik</p>
+            @else
+                <p class="mt-2"><span class="inline-flex rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">Non synchronisé</span></p>
+                @if($voucher->sync_error)<p class="mt-1 break-words text-amber-800">Erreur : {{ $voucher->sync_error }}</p>@endif
+                <form method="POST" action="{{ route('vouchers.sync', $voucher) }}" class="mt-2">@csrf<button class="rounded-lg border px-3 py-2">Réessayer</button></form>
+            @endif
+            <a class="mt-3 inline-flex text-electric" href="{{ route('vouchers.show', $voucher) }}">Voir</a>
+        </article>
+    @endforeach
 </div>
 <div class="mt-4">{{ $vouchers->links() }}</div>
 @endsection
