@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\HotspotSessionController;
 use App\Http\Controllers\MikrotikController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
@@ -47,6 +48,13 @@ Route::post('/wifi/{slug}/commande/{token}/actualiser', [WifiShopController::cla
 Route::post('/payments/{provider}/webhook', PaymentWebhookController::class)->middleware('throttle:60,1')->name('payments.webhook');
 Route::get('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'tickets'])->name('shop.tickets');
 Route::post('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'lookup'])->middleware('throttle:10,1')->name('shop.lookup');
+Route::get('/hotspot/session/{username}', [HotspotSessionController::class, 'show'])
+    ->where('username', '[A-Za-z0-9_-]{1,80}')
+    ->middleware('throttle:60,1')
+    ->name('hotspot.session');
+Route::get('/hotspot/session.js', [HotspotSessionController::class, 'script'])
+    ->middleware('throttle:60,1')
+    ->name('hotspot.session.script');
 Route::get('/ticket/{token}', [WifiShopController::class, 'ticket'])->name('tickets.public');
 Route::get('/ticket/{token}/pdf', [WifiShopController::class, 'pdf'])->name('tickets.pdf');
 

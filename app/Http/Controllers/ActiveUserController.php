@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Mikrotik;
+use App\Models\Voucher;
 use App\Models\WifiSession;
 use App\Services\AuditLogger;
 use App\Services\Mikrotik\MikrotikService;
@@ -28,7 +29,7 @@ class ActiveUserController extends Controller
             $groups[] = ['router' => $router, 'users' => $users];
         }
 
-        return view('active-users.index', ['groups' => $groups]);
+        return view('active-users.index', ['groups' => $this->withCommercialClock($groups)]);
     }
 
     public function disconnect(Request $request, MikrotikService $service, AuditLogger $audit)
@@ -49,6 +50,35 @@ class ActiveUserController extends Controller
             ->update(['ended_at' => now()]);
 
         return back()->with('status', 'Utilisateur déconnecté.');
+    }
+
+    private function withCommercialClock(array $groups): array
+    {
+        $names = [];
+        foreach ($groups as $group) {
+            foreach ($group['users'] as $user) {
+                if (! empty($user['user'])) {
+                    $names[] = $user['user'];
+                }
+            }
+        }
+
+        $vouchers = $names === []
+            ? collect()
+            : Voucher::with('plan:id,name')->whereIn('username', array_values(array_unique($names)))->get()->keyBy('username');
+        $vouchers->each->refreshExpiry();
+
+        foreach ($groups as &$group) {
+            foreach ($group['users'] as &$user) {
+                $voucher = $vouchers->get($user['user'] ?? '');
+                $user['plan_name'] = $voucher?->plan?->name;
+                $user['commercial_start'] = $voucher?->activated_at;
+                $user['commercial_expires'] = $voucher?->expires_at;
+            }
+        }
+        unset($group, $user);
+
+        return $groups;
     }
 
     private function syncSessions(Mikrotik $router, array $users): void

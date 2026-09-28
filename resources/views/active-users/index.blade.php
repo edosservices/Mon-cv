@@ -11,8 +11,10 @@
                 @foreach($group['users'] as $user)
                     <article class="min-w-0 rounded-xl bg-slate-50 p-3 text-sm">
                         <p class="font-semibold">{{ $user['user'] ?? '' }}</p>
-                        <p class="break-all">IP {{ $user['address'] ?? '—' }} · MAC {{ $user['mac-address'] ?? '—' }}</p>
-                        <p>{{ $user['uptime'] ?? '' }} / {{ $user['session-time-left'] ?? '' }}</p>
+                        <p class="break-all">IP {{ $user['address'] ?? '—' }}</p>
+                        <p>Connexion {{ $user['uptime'] ?? '—' }}</p>
+                        <p>Forfait {{ $user['plan_name'] ?: 'Selon le ticket' }}</p>
+                        <p>Expiration {{ $user['commercial_expires']?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
                         <form class="mt-2" method="POST" action="{{ route('active-users.disconnect') }}">
                             @csrf
                             <input type="hidden" name="mikrotik_id" value="{{ $group['router']->id }}">
