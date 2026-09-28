@@ -45,4 +45,23 @@ class Plan extends Model
 
         return $seconds.' secondes';
     }
+
+    public function validityLabel(): string
+    {
+        $seconds = (int) $this->duration_seconds;
+
+        if ($seconds > 0 && $seconds % 86400 === 0) {
+            $days = (int) ($seconds / 86400);
+
+            return $days === 1 ? '24 heures' : $days.' jours';
+        }
+
+        if ($seconds > 0 && $seconds % 3600 === 0) {
+            $hours = (int) ($seconds / 3600);
+
+            return $hours.' heure'.($hours > 1 ? 's' : '');
+        }
+
+        return $this->durationLabel();
+    }
 }

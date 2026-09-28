@@ -22,7 +22,7 @@ class ManualGateway implements PaymentGateway
             'transaction_reference' => $reference,
             'status' => PaymentStatus::Pending->value,
             'metadata' => array_merge($payment->metadata ?? [], [
-                'note' => 'En attente de confirmation du paiement.',
+                'note' => 'Paiement manuel en attente. Le ticket sera créé seulement après confirmation du comptoir.',
             ]),
         ])->save();
 

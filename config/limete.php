@@ -17,7 +17,7 @@ return [
     | Les autres restent inactifs tant que la clé .env est vide.
     */
     'payment_providers' => [
-        'manual' => 'Paiement manuel',
+        'manual' => 'Paiement manuel / comptoir',
         'airtel_money' => 'Airtel Money',
         'orange_money' => 'Orange Money',
         'mpesa' => 'M-Pesa',

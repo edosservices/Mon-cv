@@ -9,7 +9,7 @@
   <meta http-equiv="expires" content="-1">
   <title>Déconnexion — LIMETE WIFI +243</title>
   <link rel="icon" href="img/logo-LIMETEWIFI.png">
-  <link rel="stylesheet" href="css/style.css?v=1">
+  <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
   <div class="shell">
@@ -50,6 +50,11 @@
       </dl>
       $(endif)
 
+      <section class="buy" id="buy-box" hidden>
+        <p>Vous n'avez pas encore de ticket ?</p>
+        <a class="btn btn-primary" id="buy-link" href="#">Acheter un forfait</a>
+      </section>
+
       <div class="actions">
         <a class="btn btn-primary" href="$(link-login)">Se reconnecter avec mon ticket</a>
         <a class="btn btn-wa" href="https://wa.me/243860392283">
@@ -60,5 +65,7 @@
       <p class="fine">LIMETE WIFI +243</p>
     </main>
   </div>
+  <script src="js/plan-data.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
 </body>
 </html>

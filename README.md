@@ -112,7 +112,7 @@ Le dossier `hotspot/` se copie dans les fichiers HotSpot du routeur. Il n’emba
 3. `/mikrotiks` relie un routeur à cette zone.
 4. `/plans` définit les forfaits et leurs prix.
 5. `/vouchers` génère des tickets, imprimables et exportables en PDF, avec QR code.
-6. La page publique prend une commande. Après confirmation du paiement, le ticket est activé avec une date de début et une expiration calculée à partir de la durée du forfait.
+6. `/wifi/{slug}` est la boutique du client. Le paiement confirmé active le ticket : `activated_at` et `expires_at` sont la durée commerciale, qui continue pendant une déconnexion. Le ticket public est `/ticket/{token}`. `/wifi/{slug}/mes-tickets` retrouve un ticket avec le téléphone et le code, pas avec le téléphone seul.
 7. `/active-users` interroge le routeur et peut déconnecter une session.
 8. `/statistics` agrège les ventes. `/subscription` suit l’abonnement à la plateforme.
 9. `/admin` est réservé au super admin : entrepreneurs, prix, paiements, journal. Une suppression d’entrepreneur est un soft delete.

@@ -1,6 +1,22 @@
 @extends('layouts.app')
 @section('heading', 'Tableau de bord')
 @section('content')
+@if($shopZones->isNotEmpty())
+<section class="mb-4 rounded-2xl bg-navy p-4 text-white">
+    <p class="text-sm text-sky-100">Boutique publique</p>
+    <div class="mt-3 space-y-3">
+        @foreach($shopZones as $zone)
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="min-w-0 font-semibold">{{ $zone->name }}</p>
+                <div class="flex flex-wrap gap-2">
+                    <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-navy" href="{{ route('shop.show', $zone->slug) }}" target="_blank" rel="noopener">Voir ma boutique</a>
+                    <button type="button" class="js-copy rounded-xl border border-white/30 px-4 py-3 text-sm" data-url="{{ route('shop.show', $zone->slug) }}">Copier le lien</button>
+                </div>
+            </div>
+        @endforeach
+    </div>
+</section>
+@endif
 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
     @foreach([
         'MikroTik' => $metrics['mikrotiks_online'].' / '.$metrics['mikrotiks_total'].' connectés',

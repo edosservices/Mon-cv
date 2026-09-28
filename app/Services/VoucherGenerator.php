@@ -39,10 +39,18 @@ class VoucherGenerator
             return $voucher;
         }
 
+        if ($voucher->expires_at) {
+            $voucher->refreshExpiry();
+
+            return $voucher->refresh();
+        }
+
+        $start = $voucher->activated_at ?? now();
+
         $voucher->forceFill([
             'status' => VoucherStatus::Active->value,
-            'activated_at' => $voucher->activated_at ?? now(),
-            'expires_at' => now()->addSeconds($voucher->plan->duration_seconds),
+            'activated_at' => $start,
+            'expires_at' => $start->copy()->addSeconds($voucher->plan->duration_seconds),
         ])->save();
 
         return $voucher->refresh();

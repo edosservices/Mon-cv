@@ -31,6 +31,7 @@
                     @else
                         Non synchronisé
                         @if($voucher->sync_error)<span class="block text-amber-800">{{ $voucher->sync_error }}</span>@endif
+                        <form method="POST" action="{{ route('vouchers.sync', $voucher) }}" class="mt-2">@csrf<button class="rounded-lg border px-3 py-2">Réessayer</button></form>
                     @endif
                 </td>
                 <td>{{ $voucher->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</td>

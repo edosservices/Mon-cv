@@ -303,6 +303,28 @@ p {
   text-decoration: none;
 }
 
+.buy {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #f4f8fc;
+  text-align: center;
+}
+
+.buy[hidden] {
+  display: none;
+}
+
+.buy p {
+  margin: 0 0 4px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.buy .btn {
+  margin-top: 10px;
+}
+
 .fine {
   margin: 12px 0 0;
   text-align: center;

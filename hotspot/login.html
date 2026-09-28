@@ -9,7 +9,7 @@
   <meta http-equiv="expires" content="-1">
   <title>Connexion — LIMETE WIFI +243</title>
   <link rel="icon" href="img/logo-LIMETEWIFI.png">
-  <link rel="stylesheet" href="css/style.css?v=1">
+  <link rel="stylesheet" href="css/style.css?v=2">
   <!-- HTTP-CHAP : actif seulement si le routeur envoie un chap-id. -->
   $(if chap-id)
   <script src="md5.js"></script>
@@ -90,6 +90,11 @@
         <p>Entrez votre nom d'utilisateur et votre mot de passe tels qu'ils sont écrits sur votre ticket.</p>
       </aside>
 
+      <section class="buy" id="buy-box" hidden>
+        <p>Vous n'avez pas encore de ticket ?</p>
+        <a class="btn btn-primary" id="buy-link" href="#">Acheter un forfait</a>
+      </section>
+
       <a class="status-link" href="$(link-status)">Mon statut</a>
       <p class="fine">Déjà connecté ? Consultez votre forfait avec le même ticket.</p>
 
@@ -103,7 +108,7 @@
     </main>
   </div>
 
-  <script src="js/plan-data.js?v=1"></script>
-  <script src="js/app.js?v=1"></script>
+  <script src="js/plan-data.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
 </body>
 </html>

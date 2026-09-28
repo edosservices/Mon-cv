@@ -21,8 +21,11 @@
  *     expiresAt: "2026-09-29T10:00:00+01:00"
  *   };
  *
- * Tant que LIMETE_SESSION reste null, les dates restent vides
- * et seul le temps réellement envoyé par le routeur est affiché.
+ * Tant que LIMETE_SESSION reste null, les dates commerciales restent vides.
+ * Le temps de connexion du routeur n'est pas affiché comme validité du ticket.
+ *
+ * Le portail est copié sur le routeur. Pour le bouton d'achat :
+ *   window.LIMETE_SHOP = "https://exemple.test/wifi/limete";
  *
  * matchTicketCode : laisser false. Le passer à true seulement si
  * les identifiants contiennent un code clair (24h, 48h, 7j, 15j, 30j).
@@ -42,4 +45,5 @@
   };
 
   global.LIMETE_SESSION = null;
+  global.LIMETE_SHOP = null;
 })(window);

@@ -12,7 +12,7 @@
   $(endif)
   <title>Mon statut — LIMETE WIFI +243</title>
   <link rel="icon" href="img/logo-LIMETEWIFI.png">
-  <link rel="stylesheet" href="css/style.css?v=1">
+  <link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
   <!-- Valeurs HotSpot, lues par app.js. Le temps de connexion n'est pas la durée du ticket. -->
@@ -43,8 +43,8 @@
       <img class="logo logo-mobile" src="img/logo-LIMETEWIFI.png" alt="LIMETE WIFI +243" onerror="this.remove()">
 
       <section class="banner is-active" id="status-banner">
-        <p class="badge" id="state-badge">🟢 Actif</p>
-        <h2 id="state-title">VOUS ÊTES CONNECTÉ</h2>
+        <p class="badge" id="state-badge">🟢 Connecté</p>
+        <h2 id="state-title">CONNECTÉ</h2>
         <p id="state-text">Votre accès Internet est actif.</p>
       </section>
 
@@ -80,18 +80,18 @@
         </div>
         <div class="fact">
           <dt>⏳ Temps restant</dt>
-          <dd id="remain-value">$(if session-time-left)$(session-time-left)$(else)Selon votre ticket$(endif)</dd>
+          <dd id="remain-value">Selon votre ticket</dd>
         </div>
         <div class="fact fact-wide">
           <dt>📡 Adresse IP</dt>
           <dd>$(ip)</dd>
         </div>
       </dl>
-      <p class="fine" id="dates-note">Les dates s'affichent lorsqu'elles sont enregistrées avec le ticket.</p>
+      <p class="fine" id="dates-note">L'expiration du forfait continue même si vous vous déconnectez. Elle s'affiche lorsque le ticket la fournit.</p>
 
       <section class="progress-block" aria-labelledby="remain-title">
         <p class="progress-kicker" id="remain-title">⏳ TEMPS RESTANT</p>
-        <p class="remain-big" id="remain-big">$(if session-time-left)$(session-time-left)$(else)Selon votre ticket$(endif)</p>
+        <p class="remain-big" id="remain-big">Selon votre ticket</p>
         <div class="track" id="track" hidden role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="fill" id="fill"></div>
         </div>
@@ -99,17 +99,21 @@
       </section>
 
       <div class="actions">
-        <a class="btn btn-ghost" href="$(link-logout)">🚪 Se déconnecter</a>
+        <a class="btn btn-ghost" href="$(link-logout)">SE DÉCONNECTER</a>
         <a class="btn btn-wa" id="wa-link" href="https://wa.me/243860392283">
-          💬 Assistance WhatsApp
+          Assistance WhatsApp
           <small>+243 860 392 283</small>
         </a>
       </div>
+      <section class="buy" id="buy-box" hidden>
+        <p>Vous n'avez pas encore de ticket ?</p>
+        <a class="btn btn-primary" id="buy-link" href="#">Acheter un forfait</a>
+      </section>
       <p class="fine">LIMETE WIFI +243</p>
     </main>
   </div>
 
-  <script src="js/plan-data.js?v=1"></script>
-  <script src="js/app.js?v=1"></script>
+  <script src="js/plan-data.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
 </body>
 </html>

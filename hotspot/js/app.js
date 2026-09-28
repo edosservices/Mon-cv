@@ -98,9 +98,8 @@
   }
 
   /*
-   * Décide ce qui peut être affiché sans inventer de date.
-   * Les dates ne viennent que de LIMETE_SESSION (source persistante future).
-   * Le temps restant vient de cette source, sinon de session-time-left.
+   * Le temps restant commercial vient uniquement de LIMETE_SESSION.expiresAt.
+   * $(session-time-left) est le quota de la session routeur, pas la validité du ticket.
    */
   function resolveStatus(input, session, config, nowMs) {
     var now = nowMs || Date.now();
@@ -145,29 +144,6 @@
           view.percent = Math.max(0, Math.min(100, Math.round((remainPlan / session.planSeconds) * 100)));
         }
         return view;
-      }
-    }
-
-    var leftSecs = parseDuration(input.timeLeftSecs);
-    var leftStr = parseDuration(input.timeLeft);
-    var remain = null;
-    var routerHasLimit = false;
-
-    if (leftSecs !== null && leftSecs > 0) {
-      remain = leftSecs;
-      routerHasLimit = true;
-    } else if (leftStr !== null) {
-      remain = leftStr;
-      routerHasLimit = true;
-    }
-
-    if (routerHasLimit && remain !== null) {
-      view.remainSeconds = remain;
-      view.remainKnown = true;
-      view.state = remain > 0 ? "active" : "expired";
-      var planSeconds = (session && session.planSeconds) || (plan && plan.seconds) || 0;
-      if (planSeconds > 0) {
-        view.percent = Math.max(0, Math.min(100, Math.round((remain / planSeconds) * 100)));
       }
     }
 
@@ -262,8 +238,8 @@
     if (!banner) return;
     var expired = view.state === "expired";
     banner.className = "banner " + (expired ? "is-expired" : "is-active");
-    setText("state-badge", expired ? "🔴 Expiré" : "🟢 Actif");
-    setText("state-title", expired ? "FORFAIT EXPIRÉ" : "VOUS ÊTES CONNECTÉ");
+    setText("state-badge", expired ? "🔴 Expiré" : "🟢 Connecté");
+    setText("state-title", expired ? "FORFAIT EXPIRÉ" : "CONNECTÉ");
     setText("state-text", expired
       ? "Le temps de votre ticket est terminé. Contactez l'assistance si vous pensez qu'il vous reste du temps."
       : "Votre accès Internet est actif.");
@@ -347,12 +323,23 @@
     link.href = "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(parts.join(" "));
   }
 
+  function initShop() {
+    var url = global.LIMETE_SHOP;
+    var box = document.getElementById("buy-box");
+    var link = document.getElementById("buy-link");
+    if (!box || !link || typeof url !== "string") return;
+    if (url.indexOf("https://") !== 0 && url.indexOf("http://") !== 0) return;
+    link.href = url;
+    box.hidden = false;
+  }
+
   function boot() {
     initPasswordToggle();
     initLoginForm();
     initError();
     initStatus();
     initWhatsApp();
+    initShop();
   }
 
   global.LimetePortal = {

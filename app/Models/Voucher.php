@@ -56,4 +56,37 @@ class Voucher extends Model
             $this->forceFill(['status' => VoucherStatus::Expired->value])->save();
         }
     }
+
+    public function statusLabel(): string
+    {
+        return VoucherStatus::tryFrom((string) $this->status)?->label() ?? (string) $this->status;
+    }
+
+    public function remainingLabel(): string
+    {
+        if (! $this->expires_at) {
+            return 'Démarre à l’activation';
+        }
+
+        $seconds = $this->expires_at->getTimestamp() - now()->getTimestamp();
+
+        if ($seconds <= 0 || $this->status === VoucherStatus::Expired->value) {
+            return 'Expiré';
+        }
+
+        $days = intdiv($seconds, 86400);
+        $hours = intdiv($seconds % 86400, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        if ($days > 0) {
+            return $days.'j '.$hours.'h '.$minutes.'min';
+        }
+
+        return $hours.'h '.$minutes.'min';
+    }
+
+    public function isSynced(): bool
+    {
+        return $this->sync_status === 'synced' && filled($this->mikrotik_id);
+    }
 }

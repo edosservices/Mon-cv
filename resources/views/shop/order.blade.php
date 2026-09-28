@@ -1,24 +1,26 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Commande</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="min-h-screen bg-slate-50">
-<main class="mx-auto max-w-lg px-4 py-8">
-    <h1 class="text-2xl font-semibold">{{ $zone->name }}</h1>
-    @if($sale->status === 'paid')
-        <p class="mt-2 text-sm">Paiement confirmé. Voici votre ticket.</p>
-        @php $voucher = $sale->items->first()->voucher; @endphp
-        @if($voucher)
-            <div class="mt-4">@include('vouchers.ticket', ['voucher' => $voucher, 'qr' => null, 'public' => true])</div>
-            <a class="mt-4 block text-center text-electric" href="{{ route('tickets.public', $voucher->public_token) }}">Ouvrir le ticket</a>
-        @endif
+@extends('layouts.shop')
+@section('title', 'Commande — '.$zone->name)
+@section('content')
+@php
+    $item = $sale->items->first();
+    $plan = $item?->plan ?? $voucher?->plan;
+@endphp
+<section class="panel">
+    @if($sale->status === 'paid' && $voucher)
+        <p class="status-pill"><span class="dot"></span> Paiement confirmé</p>
+        <h1>Votre ticket est prêt</h1>
+        <p class="lede">{{ $plan->name ?? 'Forfait' }} · {{ \App\Support\Money::shop($sale->total_amount, $sale->currency) }}</p>
+        <a class="btn btn-primary" href="{{ route('tickets.public', $voucher->public_token) }}">Voir mon ticket</a>
     @else
-        <p class="mt-4 rounded-2xl bg-white p-5 shadow-sm">Paiement en attente. Référence {{ $sale->payment->transaction_reference ?? '' }}. Le ticket apparaîtra ici dès confirmation.</p>
+        <p class="status-pill is-wait">Paiement en attente</p>
+        <h1>Commande enregistrée</h1>
+        <p class="lede">{{ $plan->name ?? 'Forfait' }} · {{ \App\Support\Money::shop($sale->total_amount, $sale->currency) }}</p>
+        @if($sale->payment?->transaction_reference)
+            <p class="ref">Référence <strong>{{ $sale->payment->transaction_reference }}</strong></p>
+        @endif
+        <p class="help">{{ $sale->payment->metadata['note'] ?? 'Le ticket apparaîtra après confirmation du paiement.' }}</p>
+        <p class="help">Conservez cette page. Aucun compte WiFi n’est créé tant que le paiement n’est pas confirmé.</p>
     @endif
-</main>
-</body>
-</html>
+</section>
+<a class="shop-link center" href="{{ route('shop.tickets', $zone->slug) }}">Mes tickets</a>
+@endsection

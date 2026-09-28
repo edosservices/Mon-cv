@@ -34,9 +34,13 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::get('/wifi/{slug}', [WifiShopController::class, 'show'])->name('shop.show');
+Route::get('/wifi/{slug}/forfait/{plan}', [WifiShopController::class, 'plan'])->whereNumber('plan')->name('shop.plan');
 Route::post('/wifi/{slug}', [WifiShopController::class, 'checkout'])->middleware('throttle:20,1')->name('shop.checkout');
 Route::get('/wifi/{slug}/commande/{token}', [WifiShopController::class, 'order'])->name('shop.order');
+Route::get('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'tickets'])->name('shop.tickets');
+Route::post('/wifi/{slug}/mes-tickets', [WifiShopController::class, 'lookup'])->middleware('throttle:10,1')->name('shop.lookup');
 Route::get('/ticket/{token}', [WifiShopController::class, 'ticket'])->name('tickets.public');
+Route::get('/ticket/{token}/pdf', [WifiShopController::class, 'pdf'])->name('tickets.pdf');
 
 Route::middleware(['auth', 'tenant', 'role:super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [PlatformController::class, 'dashboard'])->name('dashboard');
