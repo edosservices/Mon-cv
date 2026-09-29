@@ -1,6 +1,39 @@
 @extends('layouts.app')
-@section('heading', 'Générer des tickets')
+@section('heading', 'Créer un ticket')
 @section('content')
+@include('vouchers.assist-steps', ['step' => 1])
+
+<section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
+    <h2 class="text-lg font-semibold">Choisir la durée</h2>
+    <p class="mt-1 text-sm text-slate-600">Seules les durées de vos forfaits sont proposées.</p>
+    @forelse($zones as $zone)
+        @php $choices = $durations[$zone->id] ?? []; @endphp
+        <div class="mt-4">
+            <p class="text-sm font-semibold">{{ $zone->name }}</p>
+            @if($choices === [])
+                <p class="mt-2 text-sm text-slate-500">Aucune durée de forfait n’est disponible pour cette zone.</p>
+            @else
+                <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    @foreach($choices as $choice)
+                        <form method="POST" action="{{ route('vouchers.assist.preview') }}">
+                            @csrf
+                            <input type="hidden" name="wifi_zone_id" value="{{ $zone->id }}">
+                            <input type="hidden" name="plan_id" value="{{ $choice['plan_id'] }}">
+                            <button class="min-h-14 w-full rounded-xl border px-3 py-3 text-left" type="submit">
+                                <strong class="block">{{ $choice['label'] }}</strong>
+                                <span class="text-sm text-slate-500">{{ $choice['plan_name'] }}</span>
+                            </button>
+                        </form>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    @empty
+        <p class="mt-3 text-sm text-slate-500">Créez une WiFi Zone et un forfait avant un ticket.</p>
+    @endforelse
+</section>
+
+<h2 class="mb-3 text-lg font-semibold">Générer des tickets</h2>
 @php
     $zoneId = old('wifi_zone_id', $prefill['wifi_zone_id']);
     $planId = old('plan_id', $prefill['plan_id']);

@@ -9,6 +9,7 @@ use App\Models\WifiZone;
 use App\Services\AuditLogger;
 use App\Services\Mikrotik\MikrotikService;
 use App\Services\PlanLimiter;
+use App\Services\TicketAssist;
 use App\Services\TicketBatch;
 use App\Services\TicketSheet;
 use App\Services\VoucherGenerator;
@@ -16,7 +17,9 @@ use App\Support\QrCodes;
 use App\Support\TicketTemplates;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 
 class VoucherController extends Controller
 {
@@ -39,9 +42,13 @@ class VoucherController extends Controller
 
     public function createBatch(PlanLimiter $limits)
     {
+        $zones = WifiZone::orderBy('name')->get();
+        $assist = app(TicketAssist::class);
+
         return view('vouchers.generate', [
             'plans' => Plan::with('wifiZone')->orderBy('name')->get(),
-            'zones' => WifiZone::orderBy('name')->get(),
+            'zones' => $zones,
+            'durations' => $zones->mapWithKeys(fn (WifiZone $zone) => [$zone->id => $assist->durations($zone)]),
             'templates' => TicketTemplates::options(),
             'limit' => $limits->voucherBatchLimit(),
             'prefill' => [
@@ -55,6 +62,101 @@ class VoucherController extends Controller
                 ),
                 'per_page' => in_array(request()->integer('per_page'), [4, 6, 8], true) ? request()->integer('per_page') : 6,
             ],
+        ]);
+    }
+
+    public function assistPreview(Request $request, TicketAssist $assist)
+    {
+        $zone = WifiZone::findOrFail($request->integer('wifi_zone_id'));
+        $plan = Plan::findOrFail($request->integer('plan_id'));
+        if ($plan->wifi_zone_id && (int) $plan->wifi_zone_id !== (int) $zone->id) {
+            abort(404);
+        }
+
+        if (! $request->filled('mbps')) {
+            try {
+                $assist->parameters($plan, 5, 0);
+            } catch (RuntimeException $exception) {
+                return back()->with('warning', $assist->readable($exception));
+            }
+
+            return view('vouchers.assist-config', [
+                'zone' => $zone,
+                'plan' => $plan,
+                'step' => 2,
+            ]);
+        }
+
+        $data = $this->assistInput($request);
+
+        try {
+            $preview = $assist->inspect(
+                $zone,
+                $plan,
+                $data['mbps'],
+                $data['data_gb'],
+                $data['username'],
+                $data['password'],
+                $request->boolean('regenerate'),
+                $data['alternate_name'],
+            );
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        unset($preview['router']);
+
+        return view('vouchers.assist-preview', [
+            'zone' => $zone,
+            'plan' => $plan,
+            'preview' => $preview,
+            'draft' => $request->filled('draft') ? $request->string('draft')->toString() : (string) str()->uuid(),
+            'step' => ($preview['identity']['collision'] ?? false) ? 4 : 5,
+        ]);
+    }
+
+    public function assistStore(Request $request, TicketAssist $assist)
+    {
+        $data = $this->assistInput($request);
+        $request->validate(['confirm' => ['accepted'], 'draft' => ['required', 'string', 'max:80']]);
+        $zone = WifiZone::findOrFail($data['wifi_zone_id']);
+        $plan = Plan::findOrFail($data['plan_id']);
+        if ($plan->wifi_zone_id && (int) $plan->wifi_zone_id !== (int) $zone->id) {
+            abort(404);
+        }
+
+        try {
+            $parameters = $assist->parameters($plan, $data['mbps'], $data['data_gb']);
+            if (filled($data['alternate_name'])) {
+                $parameters['profile'] = $data['alternate_name'];
+            }
+            $voucher = $assist->confirm(
+                $zone,
+                $plan,
+                $parameters,
+                ['username' => (string) $data['username'], 'password' => (string) $data['password']],
+                $data['profile_choice'] ?: 'create',
+                $data['draft'],
+                $data['alternate_name'],
+            );
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        return redirect()->route('vouchers.assist.show', $voucher);
+    }
+
+    public function assistShow(Voucher $voucher)
+    {
+        $voucher->load('plan', 'wifiZone');
+        $voucher->refreshExpiry();
+
+        return view('vouchers.assist-done', [
+            'voucher' => $voucher,
+            'zone' => $voucher->wifiZone,
+            'handover' => Cache::get('ticket-assist.card.'.$voucher->id, []),
+            'qr' => QrCodes::svg(route('tickets.public', $voucher->public_token)),
+            'step' => 6,
         ]);
     }
 
@@ -251,6 +353,43 @@ class VoucherController extends Controller
     /**
      * @return array{wifi_zone_id: int, plan_id: int, count: int, template: string, per_page: int}
      */
+    /**
+     * @return array{wifi_zone_id: int, plan_id: int, mbps: int, data_gb: int, username: ?string, password: ?string, profile_choice: ?string, alternate_name: ?string, draft: ?string}
+     */
+    private function assistInput(Request $request): array
+    {
+        $data = $request->validate([
+            'wifi_zone_id' => ['required', 'integer'],
+            'plan_id' => ['required', 'integer'],
+            'mbps' => ['required', 'integer', 'min:1', 'max:1000'],
+            'data_gb' => ['required', 'integer', 'in:0,2,5,10,20'],
+            'username' => ['nullable', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$/'],
+            'password' => ['nullable', 'string', 'regex:/^\d{3,8}$/'],
+            'profile_choice' => ['nullable', 'in:reuse,create,rename,cancel'],
+            'alternate_name' => ['nullable', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
+            'draft' => ['nullable', 'string', 'max:80'],
+        ], [
+            'username.regex' => 'Paramètres incompatibles.',
+            'password.regex' => 'Paramètres incompatibles.',
+            'alternate_name.regex' => 'Paramètres incompatibles.',
+            'mbps.min' => 'Paramètres incompatibles.',
+            'mbps.max' => 'Paramètres incompatibles.',
+            'data_gb.in' => 'Paramètres incompatibles.',
+        ]);
+
+        return [
+            'wifi_zone_id' => (int) $data['wifi_zone_id'],
+            'plan_id' => (int) $data['plan_id'],
+            'mbps' => (int) $data['mbps'],
+            'data_gb' => (int) $data['data_gb'],
+            'username' => $data['username'] ?? null,
+            'password' => $data['password'] ?? null,
+            'profile_choice' => $data['profile_choice'] ?? null,
+            'alternate_name' => $data['alternate_name'] ?? null,
+            'draft' => $data['draft'] ?? null,
+        ];
+    }
+
     private function validatedBatch(Request $request): array
     {
         $request->merge([

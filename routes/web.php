@@ -156,6 +156,9 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::resource('plans', PlanController::class)->except('show')->middleware('permission:plans.manage');
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');
         Route::get('/vouchers/generate', [VoucherController::class, 'createBatch'])->middleware('permission:vouchers.manage')->name('vouchers.generate');
+        Route::post('/vouchers/assist/preview', [VoucherController::class, 'assistPreview'])->middleware('permission:vouchers.manage')->name('vouchers.assist.preview');
+        Route::post('/vouchers/assist', [VoucherController::class, 'assistStore'])->middleware('permission:vouchers.manage')->name('vouchers.assist.store');
+        Route::get('/vouchers/assist/{voucher}', [VoucherController::class, 'assistShow'])->middleware('permission:vouchers.manage')->name('vouchers.assist.show');
         Route::get('/vouchers/generated', [VoucherController::class, 'generated'])->middleware('permission:vouchers.manage')->name('vouchers.generated');
         Route::post('/vouchers/print', [VoucherController::class, 'printSheet'])->middleware('permission:vouchers.manage')->name('vouchers.print');
         Route::post('/vouchers/pdf-sheet', [VoucherController::class, 'pdfSheet'])->middleware('permission:vouchers.manage')->name('vouchers.sheet-pdf');
