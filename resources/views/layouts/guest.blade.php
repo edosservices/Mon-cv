@@ -6,11 +6,14 @@
     <title>@yield('title', 'LIMETE WIFI MANAGER')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-foam text-ink">
-    <main class="mx-auto w-full max-w-lg px-4 py-10">
-        <a href="{{ route('home') }}" class="mb-6 block text-sm font-semibold text-electric">LIMETE WIFI MANAGER</a>
+<body class="lm-guest min-h-screen">
+    <main class="lm-guest-wrap">
+        <a class="lm-guest-brand" href="{{ route('home') }}">
+            <span class="lm-logo" aria-hidden="true">L</span>
+            <span>LIMETE WIFI MANAGER</span>
+        </a>
         @if($errors->any())
-            <div class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div class="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
                 @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
             </div>
         @endif

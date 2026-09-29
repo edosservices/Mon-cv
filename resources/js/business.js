@@ -102,6 +102,67 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    document.querySelectorAll('[data-business-preview]').forEach((preview) => {
+        const read = (name) => document.querySelector(`[name="${name}"]`)?.value || '';
+        const paint = () => {
+            const name = read('name');
+            const set = (selector, value) => {
+                const node = preview.querySelector(selector);
+                if (node) {
+                    node.textContent = value;
+                }
+            };
+            set('[data-preview-name]', name);
+            set('[data-preview-slogan]', read('slogan'));
+            set('[data-preview-phone]', read('phone'));
+            set('[data-preview-city]', `${read('city')} ${read('country')}`.trim());
+            set('[data-preview-mark]', (name || 'L').slice(0, 1));
+            preview.style.setProperty('--preview', read('primary_color') || '#1463f3');
+            preview.style.setProperty('--preview-2', read('secondary_color') || '#071428');
+        };
+        ['name', 'slogan', 'phone', 'city', 'country', 'primary_color', 'secondary_color'].forEach((field) => {
+            document.querySelector(`[name="${field}"]`)?.addEventListener('input', paint);
+        });
+    });
+
+    const saleTotal = document.querySelector('[data-sale-total-value]');
+    const planSelect = document.querySelector('#plan_id');
+    const quantity = document.querySelector('#quantity');
+    const paintSale = () => {
+        if (!saleTotal || !planSelect) {
+            return;
+        }
+        const label = planSelect.options[planSelect.selectedIndex]?.textContent || 'Selon le forfait';
+        const count = quantity?.value || '1';
+        saleTotal.textContent = `${count} × ${label}`;
+    };
+    planSelect?.addEventListener('change', paintSale);
+    quantity?.addEventListener('input', paintSale);
+    paintSale();
+
+    const chart = document.getElementById('report-chart');
+    if (chart) {
+        const rows = JSON.parse(chart.getAttribute('data-chart') || '[]');
+        const context = chart.getContext('2d');
+        const width = chart.parentElement?.clientWidth || 320;
+        chart.width = width;
+        chart.height = 160;
+        context.clearRect(0, 0, chart.width, chart.height);
+        const max = Math.max(1, ...rows.map((row) => Number(row.value) || 0));
+        const gap = 12;
+        const barWidth = rows.length ? (chart.width - gap * (rows.length + 1)) / rows.length : 0;
+        rows.forEach((row, index) => {
+            const value = Number(row.value) || 0;
+            const height = (value / max) * 110;
+            const x = gap + index * (barWidth + gap);
+            const y = 130 - height;
+            context.fillStyle = '#1463f3';
+            context.beginPath();
+            context.roundRect(x, y, Math.max(barWidth, 4), height, 8);
+            context.fill();
+        });
+    }
+
     const modal = document.getElementById('confirmDelete');
     if (modal) {
         modal.addEventListener('show.bs.modal', (event) => {

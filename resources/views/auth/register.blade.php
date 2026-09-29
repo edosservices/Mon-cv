@@ -1,7 +1,7 @@
 @extends('layouts.guest')
 @section('title', 'Inscription')
 @section('content')
-<form method="POST" action="{{ route('register') }}" class="space-y-3 rounded-2xl bg-white p-6 shadow-sm">
+<form method="POST" action="{{ route('register') }}" class="lm-card space-y-3 p-6">
     @csrf
     <h1 class="text-xl font-semibold">Créer mon entreprise</h1>
     @foreach([

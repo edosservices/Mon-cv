@@ -43,7 +43,9 @@
                 <p class="font-semibold">{{ $voucher->username }}</p>
                 <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ $badge }}">{{ $voucher->statusLabel() }}</span>
             </div>
-            <p class="mt-2 break-words">{{ $voucher->plan->name ?? '' }} · {{ $voucher->customer->phone ?? $voucher->customer->name ?? '—' }}</p>
+            <div class="mt-3 flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0">
+            <p class="mt-2 break-words">{{ $voucher->plan->name ?? '' }} · {{ $voucher->wifiZone->name ?? 'Zone' }} · {{ $voucher->customer->phone ?? $voucher->customer->name ?? '—' }}</p>
             <p>Paiement {{ $payment ? (\App\Enums\PaymentStatus::tryFrom($payment->status)?->label() ?? $payment->status) : '—' }}</p>
             <p>Activation {{ $voucher->activated_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
             <p>Expiration {{ $voucher->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
@@ -54,6 +56,9 @@
                 @if($voucher->sync_error)<p class="mt-1 break-words text-amber-800">Erreur : {{ $voucher->sync_error }}</p>@endif
                 <form method="POST" action="{{ route('vouchers.sync', $voucher) }}" class="mt-2">@csrf<button class="rounded-lg border px-3 py-2">Réessayer</button></form>
             @endif
+                </div>
+                <div class="lm-qr" role="img" aria-label="QR du ticket {{ $voucher->username }}">{!! \App\Support\QrCodes::svg(route('tickets.public', $voucher->public_token)) !!}</div>
+            </div>
             <div class="no-print mt-3 flex flex-wrap items-center gap-2">
                 <label class="inline-flex items-center gap-2"><input class="ticket-check" form="ticket-bulk" type="checkbox" name="ids[]" value="{{ $voucher->id }}"> Sélectionner</label>
                 <a class="text-electric" href="{{ route('vouchers.show', $voucher) }}">Voir</a>
