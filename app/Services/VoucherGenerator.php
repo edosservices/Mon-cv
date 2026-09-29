@@ -71,6 +71,59 @@ class VoucherGenerator
             ->firstOrFail();
     }
 
+    /**
+     * @param  list<array{username: string, password: string}>  $identities
+     * @param  array<string, mixed>|null  $snapshot
+     * @return list<Voucher>
+     */
+    public function issueMany(WifiZone $zone, Plan $plan, array $identities, ?array $snapshot = null): array
+    {
+        if ($identities === []) {
+            throw new RuntimeException('Paramètres incompatibles.');
+        }
+
+        $usernames = array_column($identities, 'username');
+        $taken = Voucher::withoutGlobalScope('tenant')->withTrashed()
+            ->where('tenant_id', $zone->tenant_id)
+            ->whereIn('username', $usernames)
+            ->exists();
+        if ($taken || count($usernames) !== count(array_unique($usernames))) {
+            throw new RuntimeException('Cet utilisateur existe déjà.');
+        }
+
+        $prepared = [];
+        foreach ($identities as $identity) {
+            $username = trim((string) ($identity['username'] ?? ''));
+            $password = trim((string) ($identity['password'] ?? ''));
+            if ($username === '' || $password === '' || $username === $password) {
+                throw new RuntimeException('Cet utilisateur existe déjà.');
+            }
+            $prepared[] = [
+                'username' => $username,
+                'password' => $password,
+                'public_token' => $this->makeToken(),
+            ];
+        }
+
+        $rows = $this->rows($zone, $plan, $prepared, false);
+        if ($snapshot !== null) {
+            $encoded = json_encode($snapshot);
+            foreach ($rows as $index => $row) {
+                $rows[$index]['price_amount'] = $snapshot['price_amount'];
+                $rows[$index]['currency'] = $snapshot['price_currency'] ?: ($plan->currency ?: config('limete.currency'));
+                $rows[$index]['profile_snapshot'] = $encoded;
+            }
+        }
+        Voucher::insert($rows);
+
+        return Voucher::withoutGlobalScope('tenant')
+            ->where('tenant_id', $zone->tenant_id)
+            ->whereIn('public_token', array_column($prepared, 'public_token'))
+            ->orderBy('id')
+            ->get()
+            ->all();
+    }
+
     public function activate(Voucher $voucher): Voucher
     {
         if ($voucher->status === VoucherStatus::Disabled->value) {

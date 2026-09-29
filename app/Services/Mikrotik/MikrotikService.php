@@ -243,7 +243,7 @@ class MikrotikService
         return $profiles;
     }
 
-    public function createHotspotUser(Mikrotik $router, Voucher $voucher, bool $remember = true, ?string $profile = null): Voucher
+    public function createHotspotUser(Mikrotik $router, Voucher $voucher, bool $remember = true, ?string $profile = null, ?string $server = null): Voucher
     {
         $this->assertPair($router, $voucher);
         $voucher->loadMissing('plan');
@@ -270,6 +270,12 @@ class MikrotikService
                 '=password='.$voucher->password,
                 '=profile='.$profile,
             ];
+            if (filled($server) && $server !== 'all') {
+                if (! preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/', $server)) {
+                    throw new RuntimeException('Paramètres incompatibles.');
+                }
+                $words[] = '=server='.$server;
+            }
             if (! $explicit) {
                 $words[] = '=limit-uptime='.RouterOsProtocol::secondsToRouterTime((int) $voucher->plan->duration_seconds);
             }
@@ -401,7 +407,7 @@ class MikrotikService
         ];
     }
 
-    public function provisionVoucher(Voucher $voucher, ?string $profile = null): Voucher
+    public function provisionVoucher(Voucher $voucher, ?string $profile = null, ?string $server = null): Voucher
     {
         if ($voucher->sync_status === 'synced' && $voucher->mikrotik_id) {
             return $voucher;
@@ -421,7 +427,7 @@ class MikrotikService
 
         foreach ($targets as $router) {
             try {
-                $this->createHotspotUser($router, $voucher, ! $remembered, $profile);
+                $this->createHotspotUser($router, $voucher, ! $remembered, $profile, $server);
                 $remembered = true;
             } catch (Throwable $exception) {
                 $error = $this->redact($exception->getMessage(), [$router->password, $voucher->password]);

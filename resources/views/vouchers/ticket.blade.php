@@ -48,7 +48,7 @@
         <dl class="pass-meta">
             <div>
                 <dt>Internet</dt>
-                <dd>{{ $voucher->plan->unlimited_data ? 'Illimité' : 'Selon le forfait' }}</dd>
+                <dd>{{ $voucher->profile_snapshot['data_label'] ?? ($voucher->plan->unlimited_data ? 'Illimité' : 'Selon le forfait') }}</dd>
             </div>
             <div>
                 <dt>Statut</dt>
