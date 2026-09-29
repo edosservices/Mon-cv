@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     button?.addEventListener('click', () => setOpen(!side.classList.contains('is-open')));
     backdrop?.addEventListener('click', () => setOpen(false));
 
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+        document.querySelectorAll('.lm-quick-fold').forEach((fold) => fold.removeAttribute('open'));
+    }
+
     document.querySelectorAll('.js-copy').forEach((copyButton) => {
         copyButton.addEventListener('click', () => {
             const url = copyButton.getAttribute('data-url') || '';
