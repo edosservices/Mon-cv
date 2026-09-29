@@ -70,8 +70,6 @@
                 <circle cx="210" cy="210" r="5" />
                 <circle cx="140" cy="292" r="5" class="lm-green" />
             </g>
-            <text x="118" y="140">WIFI</text>
-            <text x="104" y="328">LIMETE</text>
             <circle class="lp-packet" r="3.2" cx="70" cy="48" />
             <circle class="lp-packet-b" r="2.6" cx="70" cy="210" />
         </svg>
