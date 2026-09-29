@@ -49,12 +49,10 @@ class WifiShopController extends Controller
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['required', 'string', 'max:30', new CustomerPhone],
-        ], [
-            'phone.required' => 'Entrez votre numéro de téléphone.',
+            'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
         ]);
 
-        $data['phone'] = $this->normalizePhone($data['phone']);
+        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
         session([$this->draftKey($zone, $plan) => $data]);
 
         return redirect()->route('shop.pay', [$zone->slug, $plan->id]);
@@ -67,10 +65,10 @@ class WifiShopController extends Controller
         abort_unless($plan, 404);
 
         $draft = session($this->draftKey($zone, $plan));
-        if (! is_array($draft) || empty($draft['phone'])) {
+        if (! is_array($draft)) {
             return redirect()
                 ->route('shop.plan', [$zone->slug, $plan->id])
-                ->with('warning', 'Entrez votre numéro de téléphone pour continuer.');
+                ->with('warning', 'Indiquez un numéro ou continuez sans compte.');
         }
 
         return view('shop.pay', [
@@ -88,18 +86,17 @@ class WifiShopController extends Controller
         $data = $request->validate([
             'plan_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['required', 'string', 'max:30', new CustomerPhone],
+            'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
             'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay'],
             'transaction_reference' => ['nullable', 'string', 'max:80'],
         ], [
-            'phone.required' => 'Entrez votre numéro de téléphone.',
             'provider.required' => 'Choisissez un moyen de paiement.',
             'provider.in' => 'Ce moyen de paiement n’est pas disponible.',
         ]);
 
         $plan = $this->plans($zone)->firstWhere('id', (int) $data['plan_id']);
         abort_unless($plan, 404);
-        $data['phone'] = $this->normalizePhone($data['phone']);
+        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
 
         try {
             $sale = $sales->placeOrder($zone, $plan, $data, $data['provider'], $data['transaction_reference'] ?? null);
@@ -341,17 +338,7 @@ class WifiShopController extends Controller
 
     private function normalizePhone(string $phone): string
     {
-        $digits = preg_replace('/\D+/', '', $phone) ?? '';
-
-        if (str_starts_with($digits, '243')) {
-            return '+'.$digits;
-        }
-
-        if (str_starts_with($digits, '0')) {
-            $digits = substr($digits, 1);
-        }
-
-        return '+243'.$digits;
+        return \App\Support\PhoneNumbers::normalize($phone) ?? $phone;
     }
 
     private function digits(?string $value): string

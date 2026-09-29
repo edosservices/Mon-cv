@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Http\Middleware\EnsureApiFeature;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureRole;
@@ -36,7 +37,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [ResolveCustomDomain::class]);
         $middleware->throttleApi();
-        $middleware->redirectGuestsTo('/login');
+        $middleware->redirectGuestsTo(function (Request $request) {
+            return $request->is('client', 'client/*') ? route('client.login') : route('login');
+        });
+        $middleware->redirectUsersTo(function (Request $request) {
+            return $request->user()?->roleSlug() === UserRole::Client->value
+                ? route('client.dashboard')
+                : '/dashboard';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

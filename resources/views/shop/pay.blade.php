@@ -22,7 +22,7 @@
     </dl>
     <p class="plan-offer">{{ $plan->internetLabel() }}</p>
     <p class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
-    <p class="help">Client : {{ $customer['phone'] }}</p>
+    <p class="help">Client : {{ $customer['phone'] ?: 'Achat sans compte' }}</p>
 </section>
 
 <form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
