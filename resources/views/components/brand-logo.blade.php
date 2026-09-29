@@ -1,6 +1,6 @@
 @props(['width' => 36, 'height' => 36, 'alt' => 'LIMETE WIFI'])
 <img
-    src="{{ asset('brand/logo-limete-wifi.svg') }}"
+    src="{{ asset('brand/logo-limete-wifi-manager.png') }}"
     alt="{{ $alt }}"
     width="{{ (int) $width }}"
     height="{{ (int) $height }}"

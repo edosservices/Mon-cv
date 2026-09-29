@@ -146,7 +146,17 @@ ready(() => {
         });
     });
 
-    document.querySelectorAll('.lm-toast, [role="status"].alert, [role="alert"]').forEach((node) => {
+    document.querySelectorAll('.lm-top, .biz-top, .shop-top, .client-top').forEach((bar) => {
+        const onScroll = () => bar.classList.toggle('is-scrolled', window.scrollY > 8);
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+    });
+
+    document.querySelectorAll('[role="status"]').forEach((node) => {
         node.classList.add('lm-toast');
+        if (reduce) {
+            return;
+        }
+        window.setTimeout(() => node.classList.add('is-out'), 4600);
     });
 });

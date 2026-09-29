@@ -2,6 +2,7 @@
 @import './limete.css';
 @import './limete-motion.css';
 @import './limete-background.css';
+@import './limete-finish.css';
 
 .lp {
     color: var(--lm-ink);
@@ -154,4 +155,24 @@
 @media (prefers-reduced-motion: reduce) {
     .reveal { animation: none; opacity: 1; transform: none; }
     html { scroll-behavior: auto; }
+}
+@media (max-width: 768px) {
+    .lp-header .lp-nav,
+    .lp-header .lp-actions {
+        display: flex;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-8px);
+        pointer-events: none;
+        transition: max-height .28s ease, opacity .28s ease, transform .28s ease;
+    }
+    .lp-header.open .lp-nav,
+    .lp-header.open .lp-actions {
+        display: flex;
+        max-height: 360px;
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+    }
 }

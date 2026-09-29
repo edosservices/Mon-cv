@@ -53,6 +53,28 @@
             <line x1="58" y1="64" x2="72" y2="78" />
         </svg>
         <div class="lp-wifi" data-parallax aria-hidden="true"><span></span><span></span><span></span></div>
+        <svg class="lp-scene" viewBox="0 0 280 360" aria-hidden="true">
+            <g class="lp-scene-links" fill="none" stroke-width="1.4">
+                <path d="M70 48 H210" />
+                <path d="M70 48 V210" />
+                <path d="M210 48 V210" />
+                <path d="M70 210 H140" />
+                <path d="M140 210 H210" />
+                <path d="M140 210 V292" />
+            </g>
+            <g class="lp-scene-nodes">
+                <circle cx="70" cy="48" r="5" />
+                <circle cx="210" cy="48" r="5" />
+                <circle cx="70" cy="210" r="5" />
+                <circle cx="140" cy="210" r="5" class="lm-green" />
+                <circle cx="210" cy="210" r="5" />
+                <circle cx="140" cy="292" r="5" class="lm-green" />
+            </g>
+            <text x="118" y="140">WIFI</text>
+            <text x="104" y="328">LIMETE</text>
+            <circle class="lp-packet" r="3.2" cx="70" cy="48" />
+            <circle class="lp-packet-b" r="2.6" cx="70" cy="210" />
+        </svg>
         <div class="lp-dots" aria-hidden="true">
             @for($i = 0; $i < 18; $i++)
                 <i style="left: {{ ($i * 53) % 96 }}%; top: {{ ($i * 37) % 90 }}%; animation-delay: {{ $i * .2 }}s"></i>

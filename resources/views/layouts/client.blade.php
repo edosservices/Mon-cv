@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Espace client')</title>
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
     @vite(['resources/css/client.css', 'resources/js/client.js'])
 </head>
 <body class="client">
