@@ -106,12 +106,14 @@ body { overflow-x: hidden; }
 }
 .lm-account-card:hover { background: rgba(255, 255, 255, 0.1); }
 .lm-account-logo, .lm-account-mark {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    object-fit: cover;
+    width: 52px;
+    height: 34px;
+    border-radius: 8px;
+    object-fit: contain;
+    object-position: center;
     flex: none;
-    background: #000;
+    background: #fff;
+    padding: 2px;
 }
 .lm-account-mark {
     display: grid;
@@ -245,26 +247,114 @@ body { overflow-x: hidden; }
     background: var(--preview, var(--lm-blue)); font-weight: 800;
 }
 .lm-foot { color: var(--lm-muted); font-size: 0.8rem; padding: 8px 0 0; }
+.lm-nav-logo {
+    display: block;
+    height: 36px;
+    width: auto;
+    max-width: 148px;
+    object-fit: contain;
+    object-position: left center;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--lm-line);
+    padding: 2px;
+    flex: none;
+}
+.lm-res {
+    display: block;
+    margin-top: 2px;
+    white-space: normal;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--lm-muted);
+}
+.lm-fold {
+    border-radius: 16px;
+    background: white;
+    border: 1px solid var(--lm-line);
+    box-shadow: var(--lm-shadow);
+}
+.lm-fold > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 76px;
+    padding: 14px 16px;
+    cursor: pointer;
+    list-style: none;
+}
+.lm-fold > summary::-webkit-details-marker { display: none; }
+.lm-fold > summary strong, .lm-fold > summary small { display: block; }
+.lm-fold > summary strong { font-size: 0.95rem; }
+.lm-fold > summary small { color: var(--lm-muted); font-size: 0.75rem; margin-top: 2px; }
+.lm-fold-go {
+    flex: none;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--lm-deep);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.lm-fold-body, .lm-fold .lm-live-tools, .lm-fold .lm-table-wrap, .lm-fold .lm-pager, .lm-fold [data-live-empty] {
+    margin-left: 16px;
+    margin-right: 16px;
+}
+.lm-fold-body, .lm-fold .lm-pager { margin-bottom: 14px; }
 .lm-backdrop { display: none; }
-.lm-tabbar {
+.lm-dock {
     position: fixed;
-    inset: auto 0 0 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 30;
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--lm-line);
+    box-shadow: 0 -10px 28px rgba(7, 20, 40, 0.06);
+    backdrop-filter: blur(12px);
+}
+.lm-sign {
+    margin: 0;
+    padding: 6px 12px 0;
+    text-align: right;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--lm-muted);
+}
+.lm-tabbar {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    background: white;
-    border-top: 1px solid var(--lm-line);
+    background: transparent;
 }
 .lm-tabbar a {
     min-width: 0;
-    padding: 10px 4px 12px;
+    min-height: 56px;
+    padding: 6px 2px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
     text-align: center;
     text-decoration: none;
-    color: var(--lm-ink);
-    font-size: 0.72rem;
-    font-weight: 800;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--lm-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+.lm-tabbar a[aria-current="page"] { color: var(--lm-blue); }
+.lm-tabbar svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .lm-guest-wrap { width: min(100%, 440px); margin: 0 auto; padding: 28px 16px 48px; }
@@ -288,7 +378,19 @@ body { overflow-x: hidden; }
     .lm-frame { grid-template-columns: 248px 1fr; }
     .lm-side { position: sticky; top: 0; height: 100vh; overflow: auto; }
     .lm-menu, .lm-tabbar { display: none; }
-    .lm-content { padding-bottom: 32px; }
+    .lm-dock {
+        left: auto;
+        right: 18px;
+        bottom: 14px;
+        width: max-content;
+        max-width: calc(100% - 36px);
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        backdrop-filter: none;
+    }
+    .lm-sign { padding: 0; }
+    .lm-content { padding-bottom: 48px; }
     .lm-blocks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
