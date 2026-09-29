@@ -8,6 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="lm-admin min-h-screen text-ink">
+    <x-animated-background />
     <header class="lm-top">
         <a class="lm-brand" href="{{ route('admin.dashboard') }}" style="color: inherit;">
             <x-brand-logo />

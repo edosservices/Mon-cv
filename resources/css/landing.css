@@ -1,6 +1,7 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import './limete.css';
 @import './limete-motion.css';
+@import './limete-background.css';
 
 .lp {
     color: var(--lm-ink);

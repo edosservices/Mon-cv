@@ -7,6 +7,7 @@
     @vite(['resources/css/business.css', 'resources/js/business.js'])
 </head>
 <body class="biz" style="--biz: {{ auth()->user()->tenant?->brandColor() ?? '#0b5ed7' }}; --biz-2: {{ auth()->user()->tenant?->secondaryColor() ?? '#071e3d' }}; --biz-btn: {{ auth()->user()->tenant?->buttonColor() ?? '#0b5ed7' }}">
+    <x-animated-background />
     <header class="biz-top no-print">
         <div class="biz-brand">
             <x-brand-logo width="28" height="28" alt="" />

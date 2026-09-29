@@ -7,6 +7,7 @@
     @vite(['resources/css/client.css', 'resources/js/client.js'])
 </head>
 <body class="client">
+    <x-animated-background />
     <div class="client-wrap">
         <header class="client-top">
             <a class="lm-brand" href="{{ auth()->check() && auth()->user()->isClient() ? route('client.dashboard') : route('home') }}" style="color: inherit;">

@@ -17,6 +17,7 @@
     @endauth
 </head>
 <body class="lm-app min-h-screen text-ink">
+    <x-animated-background />
     <div class="lm-backdrop" data-lm-backdrop></div>
     <div class="lm-frame">
         <aside class="lm-side no-print" id="lm-side">
