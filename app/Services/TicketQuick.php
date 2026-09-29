@@ -88,6 +88,27 @@ class TicketQuick
     }
 
     /**
+     * Aperçu puis enregistrement, pour un choix de profil et une quantité.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function commit(WifiZone $zone, array $input): array
+    {
+        $built = $this->preview($zone, $input);
+        if (! empty($built['needs_plan'])) {
+            return $built;
+        }
+
+        return [
+            'needs_plan' => false,
+            'vouchers' => $this->confirm($zone, $input),
+            'snapshot' => $built['snapshot'],
+            'offline' => $built['offline'],
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $input
      * @return list<Voucher>
      */
@@ -324,12 +345,13 @@ class TicketQuick
             throw new RuntimeException('Paramètres incompatibles.');
         }
 
-        $bytes = $this->dataBytes((int) $input['data_value'], (string) $input['data_unit']);
+        $unlimited = (bool) ($input['data_unlimited'] ?? false);
+        $bytes = $unlimited ? 0 : $this->dataBytes((int) $input['data_value'], (string) $input['data_unit']);
         $mode = ($input['mode'] ?? 'generate') === 'add' ? 'add' : 'generate';
         $snapshot = $profile['snapshot'];
         $snapshot['server'] = $server;
-        $snapshot['data_bytes'] = $bytes;
-        $snapshot['data_label'] = ((int) $input['data_value']).' '.$input['data_unit'];
+        $snapshot['data_bytes'] = $unlimited ? null : $bytes;
+        $snapshot['data_label'] = $unlimited ? null : ((int) $input['data_value']).' '.$input['data_unit'];
         $snapshot['mode'] = $mode;
 
         $identities = [];

@@ -57,8 +57,7 @@
         </aside>
         <div class="lm-main min-w-0">
             <header class="lm-top no-print">
-                <div class="flex min-w-0 items-center gap-2">
-                    <button class="lm-menu lg:hidden" type="button" data-lm-menu aria-expanded="false" aria-controls="lm-side">Menu</button>
+                <div class="lm-top-brand">
                     @if(auth()->user()->tenant?->logoUrl())
                         <img class="lm-nav-logo" src="{{ auth()->user()->tenant->logoUrl() }}" alt="{{ auth()->user()->tenant->name }}">
                     @else
@@ -70,13 +69,26 @@
                     </div>
                 </div>
                 <div class="lm-actions">
-                    <a href="{{ route('notifications.index') }}" aria-label="Notifications">Notifications</a>
+                    <button class="lm-menu lm-icon-btn" type="button" data-lm-menu aria-expanded="false" aria-controls="lm-side">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                        <span class="lm-icon-label">Menu</span>
+                    </button>
+                    <a class="lm-icon-btn" href="{{ route('notifications.index') }}">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 7 2 7 2 7H4s2 0 2-7Zm4 9a2 2 0 0 0 4 0"/></svg>
+                        <span class="lm-icon-label">Notifications</span>
+                    </a>
                     @if(auth()->user()->tenant && auth()->user()->hasPermission('settings.manage'))
-                        <a href="{{ route('business.edit') }}">Profil</a>
+                        <a class="lm-icon-btn" href="{{ route('business.edit') }}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-7 8a7 7 0 0 1 14 0"/></svg>
+                            <span class="lm-icon-label">Profil</span>
+                        </a>
                     @endif
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button>Déconnexion</button>
+                        <button class="lm-icon-btn" type="submit">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 7V5a2 2 0 0 1 2-2h7v18h-7a2 2 0 0 1-2-2v-2M4 12h11m0 0-3-3m3 3-3 3"/></svg>
+                            <span class="lm-icon-label">Déconnexion</span>
+                        </button>
                     </form>
                 </div>
             </header>
