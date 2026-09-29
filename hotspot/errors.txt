@@ -1,0 +1,16 @@
+# Messages du HotSpot, en français, pour le client.
+# Les lignes vides et les lignes # sont ignorées.
+# Ne pas supprimer les variables MikroTik ci-dessous.
+
+internal-error = Le service a rencontré un problème. Contactez l'assistance WhatsApp.
+config-error = Le service est momentanément indisponible. Contactez l'assistance.
+not-logged-in = Session expirée. Reconnectez-vous avec le même ticket.
+ippool-empty = Le réseau n'a pas d'adresse libre pour le moment. Réessayez ou contactez l'assistance.
+shutting-down = Le réseau redémarre. Réessayez dans un instant.
+user-session-limit = Ce ticket est déjà utilisé sur le nombre maximum d'appareils.
+license-session-limit = Le réseau est complet pour le moment. Réessayez plus tard.
+wrong-mac-username = Ce ticket ne peut pas être utilisé sur cet appareil.
+chap-missing = Activez JavaScript dans le navigateur, puis réessayez.
+radius-timeout = Le service met trop de temps à répondre. Réessayez.
+auth-in-progress = Une connexion est déjà en cours. Patientez un instant.
+radius-reply = $(error-orig)

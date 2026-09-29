@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Plan extends Model
+{
+    use BelongsToTenant, SoftDeletes;
+
+    protected $fillable = [
+        'tenant_id', 'wifi_zone_id', 'name', 'duration_seconds', 'price',
+        'currency', 'mikrotik_profile', 'description', 'badge', 'unlimited_data', 'status',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:2',
+            'unlimited_data' => 'boolean',
+        ];
+    }
+
+    public function wifiZone(): BelongsTo
+    {
+        return $this->belongsTo(WifiZone::class);
+    }
+
+    public function mikrotikLinks(): HasMany
+    {
+        return $this->hasMany(PlanMikrotikProfile::class);
+    }
+
+    public function durationLabel(): string
+    {
+        $seconds = $this->duration_seconds;
+        if ($seconds % 86400 === 0) {
+            $days = (int) ($seconds / 86400);
+
+            return $days.' jour'.($days > 1 ? 's' : '');
+        }
+        if ($seconds % 3600 === 0) {
+            $hours = (int) ($seconds / 3600);
+
+            return $hours.' heure'.($hours > 1 ? 's' : '');
+        }
+
+        return $seconds.' secondes';
+    }
+
+    public function validityLabel(): string
+    {
+        $seconds = (int) $this->duration_seconds;
+
+        if ($seconds > 0 && $seconds % 86400 === 0) {
+            $days = (int) ($seconds / 86400);
+
+            return $days === 1 ? '24 heures' : $days.' jours';
+        }
+
+        if ($seconds > 0 && $seconds % 3600 === 0) {
+            $hours = (int) ($seconds / 3600);
+
+            return $hours.' heure'.($hours > 1 ? 's' : '');
+        }
+
+        return $this->durationLabel();
+    }
+
+    public function badgeLabel(): ?string
+    {
+        return match ($this->badge) {
+            'populaire' => 'Populaire',
+            'meilleure_offre' => 'Meilleure offre',
+            default => null,
+        };
+    }
+
+    public function internetLabel(): string
+    {
+        return $this->unlimited_data ? 'Internet illimité' : ($this->description ?: 'Selon le forfait');
+    }
+}
