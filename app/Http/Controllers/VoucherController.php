@@ -7,7 +7,9 @@ use App\Models\Plan;
 use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Services\AuditLogger;
+use App\Services\Mikrotik\MikrotikPreparation;
 use App\Services\Mikrotik\MikrotikService;
+use App\Services\Mikrotik\RouterOsProtocol;
 use App\Services\PlanLimiter;
 use App\Services\TicketAssist;
 use App\Services\TicketBatch;
@@ -20,6 +22,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class VoucherController extends Controller
@@ -103,6 +106,13 @@ class VoucherController extends Controller
             return back()->with('warning', $assist->readable($exception))->withInput();
         }
 
+        if (! empty($preview['needs_plan'])) {
+            return view('vouchers.quick-link', [
+                'zone' => $zone,
+                'preview' => $preview,
+            ]);
+        }
+
         return view('vouchers.quick-preview', [
             'zone' => $zone,
             'preview' => $preview,
@@ -138,6 +148,48 @@ class VoucherController extends Controller
         ]);
 
         return redirect()->route('vouchers.generated')->with('status', count($created).' tickets créés.');
+    }
+
+    public function quickPlan(Request $request, TicketQuick $quick, TicketAssist $assist, MikrotikPreparation $preparation)
+    {
+        $commercial = $this->commercialInput($request, $preparation);
+        $zone = WifiZone::findOrFail($commercial['wifi_zone_id']);
+
+        try {
+            $plan = $quick->storeLinkedPlan($zone, $commercial['profile'], $commercial);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        return redirect()
+            ->route('vouchers.generate', ['wifi_zone_id' => $zone->id])
+            ->with('status', 'Forfait LIMETE enregistré pour '.$plan->mikrotik_profile.'.');
+    }
+
+    public function quickLink(Request $request, TicketQuick $quick, TicketAssist $assist)
+    {
+        $data = $request->validate([
+            'wifi_zone_id' => ['required', 'integer'],
+            'profile' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
+            'plan_id' => ['required', 'integer'],
+        ], [
+            'profile.regex' => 'Paramètres incompatibles.',
+        ]);
+        $zone = WifiZone::findOrFail($data['wifi_zone_id']);
+        $plan = Plan::query()->findOrFail($data['plan_id']);
+        if ((int) $plan->tenant_id !== (int) $zone->tenant_id) {
+            abort(404);
+        }
+
+        try {
+            $quick->attachPlan($zone, $data['profile'], $plan);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        return redirect()
+            ->route('vouchers.generate', ['wifi_zone_id' => $zone->id])
+            ->with('status', 'Forfait LIMETE associé à '.$data['profile'].'.');
     }
 
     public function quickUsername(Request $request, TicketQuick $quick)
@@ -497,6 +549,54 @@ class VoucherController extends Controller
             'password' => $data['password'] ?? '',
             'draft' => $data['draft'],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function commercialInput(Request $request, MikrotikPreparation $preparation): array
+    {
+        $data = $request->validate([
+            'wifi_zone_id' => ['required', 'integer'],
+            'profile' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
+            'validity' => ['required', 'string', 'max:32'],
+            'time_limit' => ['nullable', 'string', 'max:32'],
+            'price_amount' => ['required', 'numeric', 'min:0'],
+            'price_currency' => ['required', 'string', 'min:2', 'max:8', 'regex:/^[A-Za-z]{2,8}$/'],
+            'selling_price_amount' => ['nullable', 'numeric', 'min:0'],
+            'selling_price_currency' => ['nullable', 'string', 'min:2', 'max:8', 'regex:/^[A-Za-z]{2,8}$/'],
+        ], [
+            'profile.regex' => 'Paramètres incompatibles.',
+        ]);
+
+        try {
+            $data['validity'] = $preparation->normalizedTime($data['validity']);
+            $data['time_limit'] = $preparation->normalizedTime($data['time_limit'] ?? null);
+        } catch (RuntimeException) {
+            throw ValidationException::withMessages(['validity' => 'Paramètres incompatibles.']);
+        }
+        if ($data['validity'] === null) {
+            throw ValidationException::withMessages(['validity' => 'Paramètres incompatibles.']);
+        }
+
+        $validitySeconds = RouterOsProtocol::routerTimeToSeconds($data['validity']);
+        $limitSeconds = filled($data['time_limit'] ?? null) ? RouterOsProtocol::routerTimeToSeconds($data['time_limit']) : null;
+        if ($validitySeconds === null || ($limitSeconds !== null && $limitSeconds > $validitySeconds)) {
+            throw ValidationException::withMessages([
+                'time_limit' => 'Time Limit doit être inférieur à Validity.',
+            ]);
+        }
+
+        $data['price_currency'] = strtoupper($data['price_currency']);
+        $data['selling_price_currency'] = filled($data['selling_price_currency'] ?? null)
+            ? strtoupper($data['selling_price_currency'])
+            : $data['price_currency'];
+        $selling = $data['selling_price_amount'] ?? null;
+        if ($selling === null || $selling === '') {
+            $data['selling_price_amount'] = $data['price_amount'];
+        }
+
+        return $data;
     }
 
     private function assistInput(Request $request): array

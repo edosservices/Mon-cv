@@ -278,10 +278,21 @@ class TicketQuickTest extends TestCase
             'profile' => '1Jours',
         ]))->assertSessionHas('warning', 'Profil introuvable.');
 
-        $this->actingAs($user)->post('/vouchers/quick/preview', $this->payload($zone, [
+        $open = $this->actingAs($user)->post('/vouchers/quick/preview', $this->payload($zone, [
             'draft' => 'draft-quick-unpriced-1',
             'profile' => '15J',
-        ]))->assertSessionHas('warning', 'Ce profil n’a pas de forfait LIMETE.');
+        ]));
+        $open->assertOk()
+            ->assertSee('Ce profil MikroTik existe, mais aucun forfait LIMETE ne lui est encore associé.')
+            ->assertSee('Créer le forfait LIMETE')
+            ->assertSee('5M/5M')
+            ->assertDontSee('Ce profil n’a pas de forfait LIMETE.');
+
+        $this->actingAs($user)->post('/vouchers/quick', $this->payload($zone, [
+            'draft' => 'draft-quick-unpriced-2',
+            'profile' => '15J',
+            'confirm' => '1',
+        ]))->assertSessionHas('warning', 'Ce profil MikroTik existe, mais aucun forfait LIMETE ne lui est encore associé.');
 
         $this->bindRouter([
             '1Jours' => $this->profileRow('1d'),
@@ -630,6 +641,345 @@ class TicketQuickTest extends TestCase
         $this->actingAs($staff)->get('/vouchers/generate')->assertOk();
         $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
         $this->assertCount(1, $this->calls($fake, '/ip/hotspot/user/add'));
+    }
+
+    public function test_a_linked_profile_keeps_commercial_values_locked(): void
+    {
+        [$user, $zone] = $this->shop();
+        [$fake] = $this->bindRouter([
+            '1Jours' => $this->profileRow('1d'),
+        ]);
+
+        $this->actingAs($user)->post('/vouchers/quick/preview', $this->payload($zone, [
+            'draft' => 'draft-quick-linked-01',
+            'price_amount' => 1,
+            'price_currency' => 'USD',
+            'rate_limit' => '1M/1M',
+        ]))
+            ->assertOk()
+            ->assertSee('Automatique depuis le profil')
+            ->assertSee('1 000 FC')
+            ->assertSee('10M/10M')
+            ->assertDontSee('Ce profil n’a pas de forfait LIMETE.')
+            ->assertDontSee('aucun forfait LIMETE');
+
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/add'));
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/add'));
+    }
+
+    public function test_a_router_profile_without_a_plan_stays_selectable(): void
+    {
+        [$user, $zone] = $this->shop();
+        $this->bindRouter([
+            '15J' => $this->profileRow('15d', '5M/5M'),
+        ]);
+
+        $page = $this->actingAs($user)->get('/vouchers/generate?wifi_zone_id='.$zone->id);
+        $page->assertOk()
+            ->assertSee('15J')
+            ->assertSee('Ce profil MikroTik existe, mais aucun forfait LIMETE ne lui est encore associé.')
+            ->assertSee('Créer le forfait LIMETE')
+            ->assertSee('Associer à un forfait existant')
+            ->assertDontSee('Ce profil n’a pas de forfait LIMETE.');
+
+        $catalog = app(TicketQuick::class)->catalog($zone);
+        $profile = collect($catalog['profiles'])->firstWhere('name', '15J');
+        $this->assertNotNull($profile);
+        $this->assertTrue($profile['on_router']);
+        $this->assertFalse($profile['ready']);
+    }
+
+    public function test_creating_a_plan_copies_the_router_profile_and_ignores_a_forged_rate(): void
+    {
+        [$user, $zone] = $this->shop();
+        [$fake] = $this->bindRouter([
+            '15J' => $this->profileRow('15d', '5M/5M'),
+        ]);
+
+        $this->actingAs($user)->post('/vouchers/quick/plan', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'validity' => '1d',
+            'time_limit' => '24h',
+            'price_amount' => 5,
+            'price_currency' => 'USD',
+            'selling_price_amount' => 7,
+            'selling_price_currency' => 'CDF',
+            'rate_limit' => '1M/1M',
+            'shared_users' => 9,
+        ])->assertRedirect(route('vouchers.generate', ['wifi_zone_id' => $zone->id]));
+
+        app(TenantManager::class)->set($user->tenant_id);
+        $plan = Plan::query()->where('mikrotik_profile', '15J')->first();
+        $this->assertNotNull($plan);
+        $this->assertSame('15J', $plan->name);
+        $this->assertSame(86400, (int) $plan->duration_seconds);
+        $this->assertSame('USD', $plan->currency);
+        $this->assertSame('CDF', $plan->selling_currency);
+        $this->assertEquals(5, (float) $plan->price);
+        $this->assertEquals(7, (float) $plan->selling_price);
+        $this->assertSame('5M/5M', $plan->hotspot['rate_limit']);
+        $this->assertSame(1, (int) $plan->hotspot['shared_users']);
+        $this->assertSame('Enable', $plan->hotspot['lock_user']);
+        $this->assertSame('pool1', $plan->hotspot['address_pool']);
+        $this->assertSame('parent1', $plan->hotspot['parent_queue']);
+        $this->assertSame('remove', $plan->hotspot['expired_mode']);
+        $this->assertSame('24h', $plan->hotspot['time_limit']);
+        $this->assertSame('1d', $plan->hotspot['validity']);
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/add'));
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/set'));
+    }
+
+    public function test_an_existing_plan_can_be_associated_without_changing_the_router(): void
+    {
+        [$user, $zone] = $this->shop();
+        [$fake] = $this->bindRouter([
+            '15J' => $this->profileRow('15d', '5M/5M'),
+        ]);
+        app(TenantManager::class)->set($user->tenant_id);
+        $compatible = Plan::create([
+            'wifi_zone_id' => $zone->id,
+            'name' => 'Soir',
+            'duration_seconds' => 86400,
+            'price' => 1500,
+            'currency' => 'CDF',
+            'unlimited_data' => true,
+            'status' => 'active',
+            'mikrotik_profile' => null,
+            'hotspot' => ['rate_limit' => '5M/5M', 'shared_users' => 1],
+        ]);
+        $other = Plan::create([
+            'wifi_zone_id' => $zone->id,
+            'name' => 'Matin',
+            'duration_seconds' => 86400,
+            'price' => 900,
+            'currency' => 'CDF',
+            'unlimited_data' => true,
+            'status' => 'active',
+            'mikrotik_profile' => 'Autre',
+        ]);
+        $conflict = Plan::create([
+            'wifi_zone_id' => $zone->id,
+            'name' => 'Conflit',
+            'duration_seconds' => 86400,
+            'price' => 800,
+            'currency' => 'CDF',
+            'unlimited_data' => true,
+            'status' => 'active',
+            'hotspot' => ['rate_limit' => '1M/1M'],
+        ]);
+
+        $page = $this->actingAs($user)->post('/vouchers/quick/preview', $this->payload($zone, [
+            'draft' => 'draft-quick-assoc-01',
+            'profile' => '15J',
+        ]));
+        $page->assertOk()->assertSee('Soir')->assertDontSee('Matin')->assertDontSee('Conflit');
+
+        $this->actingAs($user)->post('/vouchers/quick/link', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'plan_id' => $conflict->id,
+        ])->assertSessionHas('warning', 'Paramètres incompatibles.');
+        $this->assertNull($conflict->fresh()->mikrotik_profile);
+
+        $this->actingAs($user)->post('/vouchers/quick/link', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'plan_id' => $compatible->id,
+        ])->assertRedirect();
+
+        $linked = $compatible->fresh();
+        $this->assertSame('15J', $linked->mikrotik_profile);
+        $this->assertSame('5M/5M', $linked->hotspot['rate_limit']);
+        $this->assertSame(1, (int) $linked->hotspot['shared_users']);
+        $this->assertSame('Autre', $other->fresh()->mikrotik_profile);
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/add'));
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/set'));
+    }
+
+    public function test_another_tenant_plan_cannot_be_linked(): void
+    {
+        [$user, $zone] = $this->shop();
+        $this->bindRouter([
+            '15J' => $this->profileRow('15d', '5M/5M'),
+        ]);
+        $other = Platform::entrepreneur('Autre enseigne', 'autre-'.str()->lower(str()->random(6)).'@example.com');
+        $otherZone = Platform::zone($other, 'Zone autre');
+        app(TenantManager::class)->set($other->tenant_id);
+        $foreign = Plan::create([
+            'wifi_zone_id' => $otherZone->id,
+            'name' => 'Etranger',
+            'duration_seconds' => 86400,
+            'price' => 4000,
+            'currency' => 'USD',
+            'unlimited_data' => true,
+            'status' => 'active',
+            'mikrotik_profile' => null,
+        ]);
+
+        $this->actingAs($user)->post('/vouchers/quick/link', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'plan_id' => $foreign->id,
+        ])->assertNotFound();
+
+        app(TenantManager::class)->set($other->tenant_id);
+        $this->assertNull($foreign->fresh()->mikrotik_profile);
+        $this->assertNotSame($user->tenant_id, $foreign->tenant_id);
+    }
+
+    public function test_a_ticket_keeps_the_snapshot_after_the_plan_changes(): void
+    {
+        [$user, $zone, $plan] = $this->shop();
+        [$fake] = $this->bindRouter([
+            '1Jours' => $this->profileRow('1d'),
+        ]);
+        $draft = 'draft-quick-snapshot1';
+        $this->actingAs($user)->post('/vouchers/quick/preview', $this->payload($zone, [
+            'draft' => $draft,
+        ]))->assertOk();
+        $this->actingAs($user)->post('/vouchers/quick', $this->payload($zone, [
+            'draft' => $draft,
+            'confirm' => '1',
+        ]))->assertRedirect();
+
+        $voucher = Voucher::withoutGlobalScope('tenant')->first();
+        $this->assertSame('1Jours', $voucher->profile_snapshot['profile']);
+        $this->assertSame('1d', $voucher->profile_snapshot['validity']);
+        $this->assertEquals(1000, (float) $voucher->profile_snapshot['price_amount']);
+        $this->assertSame('CDF', $voucher->profile_snapshot['price_currency']);
+        $this->assertSame('CDF', $voucher->profile_snapshot['selling_price_currency']);
+        $this->assertSame('10M/10M', $voucher->profile_snapshot['rate_limit']);
+        $this->assertSame(1, (int) $voucher->profile_snapshot['shared_users']);
+        $this->assertSame('Enable', $voucher->profile_snapshot['lock_user']);
+        $this->assertSame('pool1', $voucher->profile_snapshot['address_pool']);
+        $this->assertSame('parent1', $voucher->profile_snapshot['parent_queue']);
+        $this->assertSame('remove', $voucher->profile_snapshot['expired_mode']);
+
+        app(TenantManager::class)->set($user->tenant_id);
+        $plan->update(['price' => 1500, 'currency' => 'USD', 'selling_price' => 9, 'selling_currency' => 'EUR']);
+        $voucher->refresh();
+        $this->assertEquals(1000, (float) $voucher->profile_snapshot['price_amount']);
+        $this->assertSame('CDF', $voucher->profile_snapshot['price_currency']);
+        $this->assertEquals(1000, (float) $voucher->price_amount);
+        $this->assertSame('CDF', $voucher->currency);
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/add'));
+    }
+
+    public function test_selling_currency_stays_separate_from_the_price(): void
+    {
+        [$user, $zone] = $this->shop();
+        $this->bindRouter([
+            '15J' => $this->profileRow('15d', '5M/5M'),
+        ]);
+        $this->actingAs($user)->post('/vouchers/quick/plan', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'validity' => '1d',
+            'time_limit' => '24h',
+            'price_amount' => 5,
+            'price_currency' => 'usd',
+            'selling_price_amount' => 7,
+            'selling_price_currency' => 'cdf',
+        ])->assertRedirect();
+
+        app(TenantManager::class)->set($user->tenant_id);
+        $plan = Plan::query()->where('mikrotik_profile', '15J')->firstOrFail();
+        $profile = collect(app(TicketQuick::class)->catalog($zone)['profiles'])->firstWhere('name', '15J');
+        $this->assertSame('USD', $profile['snapshot']['price_currency']);
+        $this->assertSame('CDF', $profile['snapshot']['selling_price_currency']);
+        $this->assertEquals(5, (float) $profile['snapshot']['price_amount']);
+        $this->assertEquals(7, (float) $profile['snapshot']['selling_price_amount']);
+        $this->assertSame('5 USD', Money::shop($profile['snapshot']['price_amount'], $profile['snapshot']['price_currency']));
+        $this->assertSame('7 FC', Money::shop($profile['snapshot']['selling_price_amount'], $profile['snapshot']['selling_price_currency']));
+        $this->assertNotSame($plan->currency, $plan->selling_currency);
+    }
+
+    public function test_time_limit_may_match_validity_and_rejects_a_longer_limit(): void
+    {
+        [$user, $zone] = $this->shop();
+        $this->bindRouter([
+            '15J' => $this->profileRow('15d', '5M/5M'),
+        ]);
+
+        $this->actingAs($user)->post('/vouchers/quick/plan', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'validity' => '1d',
+            'time_limit' => '2d',
+            'price_amount' => 1000,
+            'price_currency' => 'CDF',
+        ])->assertSessionHasErrors([
+            'time_limit' => 'Time Limit doit être inférieur à Validity.',
+        ]);
+
+        $this->actingAs($user)->post('/vouchers/quick/plan', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'validity' => '1d',
+            'time_limit' => '24h',
+            'price_amount' => 1000,
+            'price_currency' => 'CDF',
+        ])->assertRedirect();
+
+        app(TenantManager::class)->set($user->tenant_id);
+        $plan = Plan::query()->where('mikrotik_profile', '15J')->firstOrFail();
+        $this->assertSame(86400, (int) $plan->duration_seconds);
+        $this->assertSame('24h', $plan->hotspot['time_limit']);
+        $this->assertSame('1d', $plan->hotspot['validity']);
+    }
+
+    public function test_an_existing_router_profile_is_reused_exactly(): void
+    {
+        [$user, $zone] = $this->shop();
+        [$fake, $state] = $this->bindRouter([
+            '1Jours' => $this->profileRow('1d'),
+        ]);
+        $draft = 'draft-quick-reuse-01';
+        $this->actingAs($user)->post('/vouchers/quick/preview', $this->payload($zone, [
+            'draft' => $draft,
+        ]))->assertOk();
+        $this->actingAs($user)->post('/vouchers/quick', $this->payload($zone, [
+            'draft' => $draft,
+            'confirm' => '1',
+        ]))->assertRedirect();
+
+        $added = implode(' ', $this->calls($fake, '/ip/hotspot/user/add')[0]['words']);
+        $this->assertStringContainsString('=profile=1Jours', $added);
+        $this->assertStringNotContainsString('1Jours-2', $added);
+        $this->assertStringNotContainsString('1Jours-copy', $added);
+        $this->assertStringNotContainsString('1Jours-new', $added);
+        $this->assertSame(['1Jours'], array_keys($state->profiles));
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/add'));
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/set'));
+    }
+
+    public function test_linking_never_overwrites_a_real_router_profile(): void
+    {
+        [$user, $zone] = $this->shop();
+        [$fake, $state] = $this->bindRouter([
+            '1Jours' => $this->profileRow('1d'),
+        ]);
+        app(TenantManager::class)->set($user->tenant_id);
+        Plan::query()->where('mikrotik_profile', '1Jours')->update(['mikrotik_profile' => null]);
+
+        $this->actingAs($user)->post('/vouchers/quick/plan', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '1Jours',
+            'validity' => '1d',
+            'time_limit' => '24h',
+            'price_amount' => 1000,
+            'price_currency' => 'CDF',
+            'rate_limit' => '99M/99M',
+            'sync' => '1',
+        ])->assertRedirect();
+
+        $this->assertSame(['1Jours'], array_keys($state->profiles));
+        $this->assertSame('10M/10M', $state->profiles['1Jours']['rate-limit']);
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/add'));
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/profile/set'));
+        app(TenantManager::class)->set($user->tenant_id);
+        $this->assertSame('10M/10M', Plan::query()->where('mikrotik_profile', '1Jours')->first()->hotspot['rate_limit']);
     }
 
     /**

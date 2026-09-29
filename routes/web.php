@@ -167,6 +167,8 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');
         Route::get('/vouchers/generate', [VoucherController::class, 'createBatch'])->middleware('permission:vouchers.manage')->name('vouchers.generate');
         Route::post('/vouchers/quick/preview', [VoucherController::class, 'quickPreview'])->middleware('permission:vouchers.manage')->name('vouchers.quick.preview');
+        Route::post('/vouchers/quick/plan', [VoucherController::class, 'quickPlan'])->middleware('permission:plans.manage')->name('vouchers.quick.plan');
+        Route::post('/vouchers/quick/link', [VoucherController::class, 'quickLink'])->middleware('permission:plans.manage')->name('vouchers.quick.link');
         Route::post('/vouchers/quick', [VoucherController::class, 'quickStore'])->middleware('permission:vouchers.manage')->name('vouchers.quick.store');
         Route::get('/vouchers/quick/username', [VoucherController::class, 'quickUsername'])->middleware('permission:vouchers.manage')->name('vouchers.quick.username');
         Route::post('/vouchers/assist/preview', [VoucherController::class, 'assistPreview'])->middleware('permission:vouchers.manage')->name('vouchers.assist.preview');

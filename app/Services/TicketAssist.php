@@ -287,6 +287,8 @@ class TicketAssist
             'Création annulée.',
             'Impossible de proposer un identifiant libre.',
             'Ce profil n’a pas de forfait LIMETE.',
+            'Ce profil MikroTik existe, mais aucun forfait LIMETE ne lui est encore associé.',
+            'Ce profil a déjà un forfait LIMETE.',
             'Aperçu expiré.',
         ] as $known) {
             if (str_contains($message, $known)) {
