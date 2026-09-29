@@ -24,14 +24,16 @@
                     <div class="card-body">
                         @php
                             $routers = $zone->mikrotiks;
-                            $routerState = $routers->isEmpty()
-                                ? 'pending'
-                                : ($routers->contains(fn ($router) => $router->status === 'online')
-                                    ? 'active'
-                                    : ($routers->contains(fn ($router) => in_array($router->status, ['sync', 'syncing'], true)) ? 'sync' : 'offline'));
+                            $routerState = match (true) {
+                                $routers->isEmpty() => 'pending',
+                                $routers->contains(fn ($router) => $router->status === 'online') => 'active',
+                                $routers->contains(fn ($router) => $router->status === 'error') => 'sync',
+                                $routers->contains(fn ($router) => $router->status === 'offline') => 'offline',
+                                default => 'pending',
+                            };
                             $routerLabel = match ($routerState) {
                                 'active' => 'Routeur en ligne',
-                                'sync' => 'Synchronisation',
+                                'sync' => 'Erreur de connexion',
                                 'offline' => 'Hors ligne',
                                 default => 'Routeur en attente',
                             };
