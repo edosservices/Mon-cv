@@ -139,14 +139,19 @@ html.lm-ready .lp-device.lm-motion.is-in { transform: none; }
 .lp-flow-net {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
+    gap: 18px;
     position: relative;
-    background-image: linear-gradient(rgba(20, 99, 243, .45), rgba(20, 99, 243, .45));
-    background-size: calc(100% - 72px) 2px;
-    background-position: center 42%;
-    background-repeat: no-repeat;
 }
-.lp-node { background: white; border-radius: 16px; padding: 14px; border: 1px solid var(--lm-line); text-align: center; font-weight: 800; }
+.lp-node { position: relative; background: white; border-radius: 16px; padding: 14px; border: 1px solid var(--lm-line); text-align: center; font-weight: 800; }
+.lp-node:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 100%;
+    top: 42%;
+    width: 18px;
+    height: 2px;
+    background: rgba(20, 99, 243, .45);
+}
 .lp-node::after {
     content: "";
     display: block;
@@ -154,7 +159,7 @@ html.lm-ready .lp-device.lm-motion.is-in { transform: none; }
     background: #1463f3;
     animation: lp-hop 1.6s linear infinite;
 }
-@keyframes lp-hop { 50% { transform: translateX(18px); opacity: .4; } }
+@keyframes lp-hop { 50% { transform: translateX(8px); opacity: .45; } }
 
 .lp-price { position: relative; }
 .lp-price::after {
@@ -216,7 +221,7 @@ html.lm-ready .lm-motion.is-in { opacity: 1; transform: none; transition: opacit
 }
 @media (max-width: 900px) {
     .lp-stats, .lp-flow-net { grid-template-columns: 1fr 1fr; }
-    .lp-flow-net { background-image: none; }
+    .lp-node:not(:last-child)::before { display: none; }
     .lp-dots i:nth-child(n+10) { display: none; }
 }
 @media (max-width: 420px) {
