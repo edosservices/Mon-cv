@@ -23,6 +23,7 @@
             'summary' => $profile['summary'],
             'ready' => $profile['ready'],
             'fields' => $fields,
+            'plans' => $profile['plans'] ?? [],
         ];
     }
 @endphp
@@ -129,6 +130,46 @@
 
             <button class="min-h-14 rounded-xl bg-electric px-4 py-3 font-semibold text-white" type="submit" @disabled($limit < 1)>Aperçu</button>
         </form>
+        <div class="mt-4 grid gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4" data-plan-panel hidden>
+            <p class="text-sm font-semibold text-amber-950" data-plan-notice>{{ \App\Services\TicketQuick::MISSING_PLAN }}</p>
+            <div class="grid gap-3" data-plan-technical></div>
+            <form class="grid gap-3" method="POST" action="{{ route('vouchers.quick.plan') }}" data-plan-create>
+                @csrf
+                <input type="hidden" name="wifi_zone_id" value="{{ $quickZone->id }}">
+                <input type="hidden" name="profile" value="">
+                <p class="text-sm text-slate-700">Complétez uniquement le forfait commercial. Les paramètres techniques restent ceux du profil MikroTik.</p>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="text-sm font-semibold">Validity
+                        <input class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" name="validity" value="{{ old('validity') }}" placeholder="1d" maxlength="32" required>
+                    </label>
+                    <label class="text-sm font-semibold">Time Limit
+                        <input class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" name="time_limit" value="{{ old('time_limit') }}" placeholder="24h" maxlength="32">
+                    </label>
+                    <label class="text-sm font-semibold">Price
+                        <input class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" type="number" name="price_amount" min="0" step="0.01" value="{{ old('price_amount') }}" required>
+                    </label>
+                    <label class="text-sm font-semibold">Currency
+                        <input class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" name="price_currency" value="{{ old('price_currency', 'CDF') }}" maxlength="8" required>
+                    </label>
+                    <label class="text-sm font-semibold">Selling Price
+                        <input class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" type="number" name="selling_price_amount" min="0" step="0.01" value="{{ old('selling_price_amount') }}">
+                    </label>
+                    <label class="text-sm font-semibold">Selling Currency
+                        <input class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" name="selling_price_currency" value="{{ old('selling_price_currency') }}" maxlength="8">
+                    </label>
+                </div>
+                <button class="min-h-14 rounded-xl bg-electric px-4 py-3 font-semibold text-white" type="submit">Créer le forfait LIMETE</button>
+            </form>
+            <form class="grid gap-3" method="POST" action="{{ route('vouchers.quick.link') }}" data-plan-link>
+                @csrf
+                <input type="hidden" name="wifi_zone_id" value="{{ $quickZone->id }}">
+                <input type="hidden" name="profile" value="">
+                <label class="text-sm font-semibold">Forfait compatible
+                    <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" name="plan_id" data-plan-select required></select>
+                </label>
+                <button class="min-h-14 rounded-xl border bg-white px-4 py-3 font-semibold" type="submit">Associer à un forfait existant</button>
+            </form>
+        </div>
         <script type="application/json" id="quick-profiles">@json($cards)</script>
         <script type="application/json" id="quick-servers">@json($quick['servers'])</script>
     @endif
@@ -228,11 +269,38 @@
             row.append(label, value, note);
             fields.appendChild(row);
         });
-        if (!profile.ready) {
-            const warn = document.createElement('p');
-            warn.className = 'text-sm text-amber-800';
-            warn.textContent = 'Ce profil n’a pas de forfait LIMETE.';
-            fields.appendChild(warn);
+        const panel = document.querySelector('[data-plan-panel]');
+        if (panel) {
+            panel.hidden = profile.ready;
+            panel.querySelectorAll('input[name=profile]').forEach((input) => { input.value = profile.ready ? '' : profile.name; });
+            const technical = panel.querySelector('[data-plan-technical]');
+            technical.innerHTML = '';
+            if (!profile.ready) {
+                profile.fields.forEach((field) => {
+                    const row = document.createElement('p');
+                    row.className = 'rounded-xl border bg-white px-3 py-3 text-sm';
+                    const label = document.createElement('span');
+                    label.className = 'block text-slate-500';
+                    label.textContent = field.label;
+                    const value = document.createElement('strong');
+                    value.className = 'mt-1 block text-base';
+                    value.textContent = field.value;
+                    const note = document.createElement('span');
+                    note.className = 'mt-1 block text-xs text-slate-500';
+                    note.textContent = 'Automatique depuis le profil';
+                    row.append(label, value, note);
+                    technical.appendChild(row);
+                });
+            }
+            const select = panel.querySelector('[data-plan-select]');
+            select.innerHTML = '';
+            (profile.plans || []).forEach((plan) => {
+                const option = document.createElement('option');
+                option.value = String(plan.id);
+                option.textContent = plan.summary ? plan.name + ' · ' + plan.summary : plan.name;
+                select.appendChild(option);
+            });
+            panel.querySelector('[data-plan-link]').hidden = !(profile.plans || []).length;
         }
     }
 
@@ -256,12 +324,16 @@
         });
     });
 
-    form.addEventListener('submit', () => {
+    form.addEventListener('submit', (event) => {
         const typedProfile = profiles.find((item) => item.name.toLowerCase() === profileInput.value.trim().toLowerCase());
         if (typedProfile) showProfile(typedProfile.name);
         const typedServer = servers.find((name) => name.toLowerCase() === serverInput.value.trim().toLowerCase());
         const serverHidden = form.querySelector('input[name=server]');
         if (typedServer && serverHidden) serverHidden.value = typedServer;
+        if (typedProfile && !typedProfile.ready) {
+            event.preventDefault();
+            document.querySelector('[data-plan-panel]')?.scrollIntoView({ block: 'nearest' });
+        }
     });
 
     const useLast = document.querySelector('[data-use-profile]');
