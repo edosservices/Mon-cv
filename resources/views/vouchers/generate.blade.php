@@ -3,6 +3,7 @@
 @section('content')
 @include('vouchers.assist-steps', ['step' => 1])
 @if($quickZone)
+    @include('vouchers.express')
     @include('vouchers.quick')
 @endif
 

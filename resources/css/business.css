@@ -27,7 +27,7 @@
 
 .biz-brand, .biz-tools { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .biz-brand img, .biz-mark {
-    width: 40px; height: 40px; border-radius: 12px; object-fit: cover; flex: none;
+    width: 40px; height: 40px; border-radius: 12px; object-fit: contain; flex: none; background: #fff;
 }
 .biz-brand .lm-brand-logo {
     width: auto;
@@ -80,7 +80,7 @@
 .preview-card .duration { font-size: 13px; letter-spacing: .08em; }
 .preview-card .price { font-size: 28px; font-weight: 800; }
 
-.logo-preview { width: 120px; height: 72px; object-fit: contain; border-radius: 16px; background: #000; border: 1px solid #d5e0ee; }
+.logo-preview { width: min(100%, 220px); height: 72px; object-fit: contain; border-radius: 16px; background: #fff; border: 1px solid #d5e0ee; }
 .lm-logo-drop {
     padding: 14px;
     border-radius: 16px;

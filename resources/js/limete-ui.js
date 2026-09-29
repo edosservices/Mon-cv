@@ -241,4 +241,211 @@ ready(() => {
         }
         window.setTimeout(() => node.classList.add('is-out'), 4600);
     });
+
+    const units = { w: 604800, d: 86400, h: 3600, m: 60, s: 1 };
+    const routerSeconds = (value) => {
+        if (!/^(\d+[wdhms])+$/.test(value || '')) {
+            return null;
+        }
+        let total = 0;
+        String(value).match(/\d+[wdhms]/g).forEach((part) => {
+            total += Number(part.slice(0, -1)) * units[part.slice(-1)];
+        });
+        return total;
+    };
+    const describeTime = (value) => {
+        const seconds = routerSeconds(value);
+        if (seconds === null) {
+            return '';
+        }
+        const hours = Math.round((seconds / 3600) * 10) / 10;
+        const days = Math.round((seconds / 86400) * 10) / 10;
+        const dayText = days >= 1 ? ' · ' + days + (days > 1 ? ' jours' : ' jour') : '';
+        return value + ' = ' + hours + ' h = ' + seconds + ' secondes' + dayText;
+    };
+    const halfRate = (token) => {
+        const match = String(token).trim().match(/^(\d+(?:\.\d+)?)([kKmMgG])?$/);
+        if (!match) {
+            return '';
+        }
+        let value = Number(match[1]) / 2;
+        const raw = (match[2] || '').toLowerCase();
+        const order = ['', 'k', 'm', 'g'];
+        let index = order.indexOf(raw);
+        if (index < 0) {
+            return '';
+        }
+        if (value < 1 && index > 0) {
+            value *= 1000;
+            index -= 1;
+        }
+        const shown = Number.isInteger(value) ? String(value) : String(Math.round(value * 10) / 10);
+        const unit = index === 0 ? '' : (order[index] === 'k' ? 'k' : order[index].toUpperCase());
+        return shown + unit;
+    };
+
+    document.querySelectorAll('[data-time-calc]').forEach((root) => {
+        const form = root.closest('form') || root;
+        const validity = form.querySelector('[data-time-validity]');
+        const limit = form.querySelector('[data-time-limit]');
+        const readout = root.querySelector('[data-time-readout]');
+        const paint = () => {
+            if (readout && limit) {
+                readout.textContent = describeTime(limit.value.trim());
+            }
+        };
+        root.querySelectorAll('[data-time-pick]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const code = button.getAttribute('data-time-pick') || '';
+                if (validity) {
+                    validity.value = code;
+                }
+                if (limit) {
+                    limit.value = code;
+                    limit.dataset.touched = '1';
+                }
+                paint();
+                limit?.dispatchEvent(new Event('input'));
+            });
+        });
+        limit?.addEventListener('input', () => {
+            limit.dataset.touched = '1';
+            paint();
+        });
+        paint();
+    });
+
+    document.querySelectorAll('[data-rate-calc]').forEach((root) => {
+        const down = root.querySelector('[data-rate-down]');
+        const up = root.querySelector('[data-rate-up]');
+        const rate = root.querySelector('[data-rate-value]');
+        const write = () => {
+            const download = down.value.trim();
+            const upload = up.value.trim();
+            if (download !== '' && upload !== '') {
+                rate.value = upload + '/' + download;
+            }
+        };
+        const existing = (rate.value || '').split('/');
+        if (existing.length === 2) {
+            up.value = existing[0];
+            down.value = existing[1];
+        }
+        down.addEventListener('input', () => {
+            if (up.dataset.touched !== '1') {
+                up.value = halfRate(down.value.trim());
+            }
+            write();
+        });
+        up.addEventListener('input', () => {
+            up.dataset.touched = '1';
+            write();
+        });
+    });
+
+    document.querySelectorAll('[data-user-compose]').forEach((root) => {
+        const form = root.querySelector('form');
+        if (!form) {
+            return;
+        }
+        const name = form.querySelector('[data-user-name]');
+        const profile = form.querySelector('[data-user-profile]');
+        const limit = form.querySelector('[data-time-limit]');
+        const data = form.querySelector('[data-user-data]');
+        const comment = form.querySelector('[data-user-comment]');
+        const rate = form.querySelector('[data-user-rate]');
+        const paint = () => {
+            const option = profile?.selectedOptions?.[0];
+            if (rate) {
+                const value = option?.getAttribute('data-rate') || '';
+                rate.textContent = value ? 'Rate limit du profil : ' + value : '';
+            }
+            if (!comment || comment.dataset.touched === '1') {
+                return;
+            }
+            const parts = [
+                name?.value.trim(),
+                profile?.value.trim(),
+                limit?.value.trim(),
+                data?.value.trim() ? data.value.trim() + ' MB' : '',
+            ].filter(Boolean);
+            comment.value = parts.join(' · ');
+        };
+        profile?.addEventListener('change', () => {
+            const option = profile.selectedOptions[0];
+            const time = option?.getAttribute('data-time') || '';
+            if (limit && limit.dataset.touched !== '1' && time) {
+                limit.value = time;
+                const readout = form.querySelector('[data-time-readout]');
+                if (readout) {
+                    readout.textContent = describeTime(time);
+                }
+            }
+            paint();
+        });
+        [name, limit, data].forEach((field) => field?.addEventListener('input', paint));
+        comment?.addEventListener('input', () => {
+            comment.dataset.touched = comment.value.trim() === '' ? '' : '1';
+            if (comment.value.trim() === '') {
+                paint();
+            }
+        });
+        if (limit && limit.value.trim() !== '') {
+            limit.dataset.touched = '1';
+        }
+        if (comment && comment.value.trim() !== '') {
+            comment.dataset.touched = '1';
+        }
+        profile?.dispatchEvent(new Event('change'));
+    });
+
+    document.querySelectorAll('[data-profile-fill]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const form = document.querySelector('[data-profile-compose]');
+            if (!form) {
+                return;
+            }
+            const name = form.querySelector('[data-profile-name]');
+            const rate = form.querySelector('[data-rate-value]');
+            const validity = form.querySelector('[data-time-validity]');
+            const limit = form.querySelector('[data-time-limit]');
+            const shared = form.querySelector('[name="shared_users"]');
+            const pool = form.querySelector('[name="address_pool"]');
+            if (name) {
+                name.value = button.getAttribute('data-profile-fill') || '';
+            }
+            const rateValue = button.getAttribute('data-profile-rate') || '';
+            if (rate && rateValue) {
+                rate.value = rateValue;
+                const parts = rateValue.split('/');
+                const up = form.querySelector('[data-rate-up]');
+                const down = form.querySelector('[data-rate-down]');
+                if (parts.length === 2 && up && down) {
+                    up.value = parts[0];
+                    down.value = parts[1];
+                }
+            }
+            const time = button.getAttribute('data-profile-time') || '';
+            if (time) {
+                if (validity) {
+                    validity.value = time;
+                }
+                if (limit) {
+                    limit.value = time;
+                }
+                limit?.dispatchEvent(new Event('input'));
+            }
+            const sharedValue = button.getAttribute('data-profile-shared') || '';
+            if (shared && sharedValue) {
+                shared.value = sharedValue;
+            }
+            const poolValue = button.getAttribute('data-profile-pool') || '';
+            if (pool && poolValue) {
+                const option = [...pool.options].find((item) => item.value === poolValue);
+                if (option) {
+                    pool.value = poolValue;
+                }
+            }
+        });
+    });
 });

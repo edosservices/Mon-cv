@@ -982,6 +982,72 @@ class TicketQuickTest extends TestCase
         $this->assertSame('10M/10M', Plan::query()->where('mikrotik_profile', '1Jours')->first()->hotspot['rate_limit']);
     }
 
+    public function test_one_click_generation_writes_the_profile_users_on_the_router(): void
+    {
+        [$user, $zone] = $this->shop();
+        [$fake] = $this->bindRouter([
+            '1Jours' => $this->profileRow('1d'),
+        ]);
+
+        $page = $this->actingAs($user)->get('/vouchers/generate');
+        $page->assertOk()
+            ->assertSee('Tickets en un clic')
+            ->assertSee('Nombre de tickets')
+            ->assertSee('Créer un utilisateur HotSpot')
+            ->assertSee('Data Limit MB')
+            ->assertSee('Time Limit');
+
+        $this->actingAs($user)->post('/vouchers/quick/express', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '1Jours',
+            'qty' => 2,
+        ])->assertRedirect('/vouchers/generated');
+
+        app(TenantManager::class)->set($user->tenant_id);
+        $this->assertCount(2, Voucher::query()->get());
+        $added = $this->calls($fake, '/ip/hotspot/user/add');
+        $this->assertCount(2, $added);
+        $words = implode(' ', $added[0]['words']);
+        $this->assertStringContainsString('=profile=1Jours', $words);
+        $this->assertStringNotContainsString('limit-uptime', $words);
+        $this->assertSame([], $this->calls($fake, '/ip/hotspot/user/set'));
+    }
+
+    public function test_a_custom_user_keeps_time_data_and_comment_on_the_router(): void
+    {
+        [$user, $zone] = $this->shop();
+        [$fake] = $this->bindRouter([
+            '1Jours' => $this->profileRow('1d'),
+        ]);
+
+        $this->actingAs($user)->post('/vouchers/quick/user', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '1Jours',
+            'server' => 'all',
+            'username' => 'client4',
+            'password' => '1234',
+            'time_limit' => '4d',
+            'data_mb' => 500,
+        ])->assertRedirect();
+
+        app(TenantManager::class)->set($user->tenant_id);
+        $voucher = Voucher::query()->where('username', 'client4')->firstOrFail();
+        $this->assertSame('1234', $voucher->password);
+        $added = implode(' ', $this->calls($fake, '/ip/hotspot/user/add')[0]['words']);
+        $this->assertStringContainsString('=profile=1Jours', $added);
+        $this->assertStringNotContainsString('limit-uptime', $added);
+        $updated = implode(' ', array_map(
+            fn (array $call) => implode(' ', $call['words']),
+            $this->calls($fake, '/ip/hotspot/user/set'),
+        ));
+        $this->assertStringContainsString('=limit-uptime=4d', $updated);
+        $this->assertStringContainsString('client4', $updated);
+        $this->assertStringContainsString('4d', $updated);
+        $this->assertStringContainsString('500 MB', $updated);
+        $this->assertStringContainsString('limit-bytes-total', $updated);
+        $this->assertStringNotContainsString('1234', $updated);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      * @return array{0: User, 1: \App\Models\WifiZone, 2: Plan}

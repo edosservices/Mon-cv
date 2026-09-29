@@ -226,7 +226,31 @@
                             $incomplete = ! $router->wifi_zone_id || ! filled($router->host) || ! filled($router->username);
                         @endphp
                         <tr>
-                            <td class="font-semibold">{{ $router->name }}</td>
+                            <td class="font-semibold">
+                                {{ $router->name }}
+                                @php
+                                    $resource = is_array($card['resource'] ?? null) ? $card['resource'] : [];
+                                    $stored = is_array($router->details) ? $router->details : [];
+                                    $cpu = $resource['cpu-load'] ?? ($stored['cpu'] ?? null);
+                                    if (is_numeric($cpu)) {
+                                        $cpu = rtrim(rtrim(number_format((float) $cpu, 2, '.', ''), '0'), '.').'%';
+                                    }
+                                    $memBytes = $resource['free-memory'] ?? null;
+                                    $hddBytes = $resource['free-hdd-space'] ?? null;
+                                    $asMib = function ($bytes) {
+                                        if (! is_numeric($bytes)) {
+                                            return null;
+                                        }
+
+                                        return rtrim(rtrim(number_format(((float) $bytes) / 1048576, 2, '.', ''), '0'), '.').' MiB';
+                                    };
+                                    $memory = $asMib($memBytes) ?: ($stored['memory'] ?? null);
+                                    $disk = $asMib($hddBytes) ?: ($stored['disk'] ?? null);
+                                @endphp
+                                <span class="lm-res">CPU Load : {{ filled($cpu) ? $cpu : '—' }}</span>
+                                <span class="lm-res">Free Memory : {{ filled($memory) ? $memory : '—' }}</span>
+                                <span class="lm-res">Free HDD : {{ filled($disk) ? $disk : '—' }}</span>
+                            </td>
                             <td>
                                 @if($router->status === 'online') 🟢 Connecté
                                 @elseif($router->status === 'error') 🟠 Erreur
@@ -260,15 +284,28 @@
     @endif
 </section>
 
-<section id="connectes" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm" data-live-table>
-    <h2 class="font-semibold">Connectés</h2>
+<section id="connectes" class="mt-6 min-w-0">
+    <details class="lm-fold" @if($report['sessions'] !== []) data-live-table @endif>
+        <summary>
+            <span>
+                <strong>Connectés</strong>
+                <small>
+                    {{ count($report['sessions']) }} en ligne
+                    @if($report['sessions'] === [])
+                        ·
+                        @if(collect($report['routers'])->contains(fn ($card) => in_array($card['router']->status, ['offline', 'error'], true)))
+                            MikroTik hors ligne
+                        @else
+                            Aucun utilisateur connecté.
+                        @endif
+                    @endif
+                </small>
+            </span>
+            <span class="lm-fold-go">Voir la liste</span>
+        </summary>
     @if($report['sessions'] === [])
-        <p class="mt-3 text-sm text-slate-500">
-            @if(collect($report['routers'])->contains(fn ($card) => in_array($card['router']->status, ['offline', 'error'], true)))
-                MikroTik hors ligne
-            @else
-                Aucun utilisateur connecté.
-            @endif
+        <p class="lm-fold-body text-sm text-slate-500">
+            <a href="{{ route('active-users.index') }}">Ouvrir les sessions</a>
         </p>
     @else
         <div class="lm-live-tools">
@@ -335,6 +372,7 @@
             <button type="button" data-live-next>Suivant</button>
         </div>
     @endif
+    </details>
 </section>
 
 <section id="paiements" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">

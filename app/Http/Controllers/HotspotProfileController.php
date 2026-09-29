@@ -80,7 +80,39 @@ class HotspotProfileController extends Controller
             'queues' => $this->names($mikrotik, $router, '/queue/simple/print'),
             'offline' => $offline,
             'notice' => $offline ? 'Routeur hors ligne.' : null,
+            'routerProfiles' => $this->routerProfiles($mikrotik, $router),
         ];
+    }
+
+    /**
+     * @return list<array{name: string, rate: string, shared: string, timeout: string, pool: string}>
+     */
+    private function routerProfiles(MikrotikService $mikrotik, ?Mikrotik $router): array
+    {
+        if (! $router) {
+            return [];
+        }
+
+        try {
+            $rows = [];
+            foreach ($mikrotik->getHotspotProfiles($router) as $profile) {
+                $name = trim((string) ($profile['name'] ?? ''));
+                if ($name === '' || str_starts_with($name, '*')) {
+                    continue;
+                }
+                $rows[] = [
+                    'name' => $name,
+                    'rate' => (string) ($profile['rate-limit'] ?? ''),
+                    'shared' => (string) ($profile['shared-users'] ?? ''),
+                    'timeout' => (string) ($profile['session-timeout'] ?? ''),
+                    'pool' => (string) ($profile['address-pool'] ?? ''),
+                ];
+            }
+
+            return $rows;
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /**
