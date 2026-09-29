@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import './limete.css';
+@import './limete-background.css';
+@import './limete-finish.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -94,7 +97,7 @@ body {
         text-decoration: none;
         cursor: pointer;
     }
-    .btn-primary { background: var(--shop, #0b5ed7); color: white; }
+    .btn-primary { background: var(--shop-btn, var(--shop, #0b5ed7)); color: white; }
     .btn-ghost { background: #f3f7fb; color: #10233f; }
     .btn-wa { background: #128c4a; color: white; }
     .btn:disabled { opacity: .7; cursor: progress; }
@@ -135,8 +138,15 @@ body {
     .ticket-row.is-active { outline: 2px solid color-mix(in srgb, var(--shop, #0b5ed7) 55%, white); }
     .empty { text-align: center; }
     .ready { margin: 18px 0 10px; text-align: center; font-size: 1.35rem; font-weight: 800; }
-    .celebrate { margin: 0; font-size: 2rem; line-height: 1; }
+    .celebrate { margin: 0; font-size: 2rem; line-height: 1; color: #0f8a4b; }
     .celebrate-panel { text-align: center; }
+    .pay-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 14px 0 0; padding: 0; list-style: none; }
+    .pay-steps li { min-width: 0; text-align: center; font-size: 0.62rem; line-height: 1.15; font-weight: 800; color: #5c6e86; overflow-wrap: anywhere; }
+    .pay-steps li::before { content: ""; display: block; height: 4px; margin-bottom: 6px; border-radius: 99px; background: #d5e0ee; }
+    .pay-steps li.is-current, .pay-steps li.is-done { color: var(--shop, #1463f3); }
+    .pay-steps li.is-current::before, .pay-steps li.is-done::before { background: var(--shop, #1463f3); }
+    .pay-wait { text-align: center; }
+    .pay-wait .spinner { margin-inline: auto; }
     .spinner { width: 28px; height: 28px; margin-bottom: 12px; border: 3px solid #d5e0ee; border-top-color: var(--shop, #0b5ed7); border-radius: 50%; animation: spin .8s linear infinite; }
     .shop-foot { margin-top: 28px; text-align: center; font-size: 0.85rem; }
     .shop-foot a { color: var(--shop, #0b5ed7); font-weight: 800; text-decoration: none; }
@@ -156,7 +166,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .plan-card, .spinner { animation: none; }
+    .plan-card, .spinner, .pay-wait .spinner { animation: none; }
 }
 
 @keyframes rise {
@@ -166,6 +176,13 @@ body {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+    .shop-top { align-items: stretch; flex-direction: column; }
+    .shop-tools { justify-content: flex-start; }
+    .shop-search { width: 100%; }
+    .shop-brand strong, .shop-brand small { white-space: normal; text-overflow: unset; overflow: visible; }
 }
 
 .chart { width: 100%; max-width: 100%; overflow: hidden; }

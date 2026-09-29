@@ -14,8 +14,14 @@
     $query = request()->except('page');
 @endphp
 
-<header class="mb-4 min-w-0">
-    <p class="text-lg font-semibold">Bonjour, {{ auth()->user()->name }}</p>
+<header class="lm-hero min-w-0">
+    <p class="lm-pill">{{ auth()->user()->tenant?->name ?? 'Business' }}</p>
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <h2>Bonjour, {{ auth()->user()->name }} 👋</h2>
+        @if(auth()->user()->hasPermission('vouchers.manage'))
+            <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
+        @endif
+    </div>
     <form method="GET" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label class="text-sm font-semibold">WiFi Zone
             <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3" name="zone" onchange="this.form.submit()">
@@ -45,6 +51,31 @@
     </form>
 </header>
 
+<p class="mb-2 text-sm font-semibold text-slate-500">Actions rapides</p>
+<nav class="lm-blocks mb-4" aria-label="Actions rapides">
+    @if(auth()->user()->hasPermission('sales.confirm'))
+        <a class="lm-block" href="{{ route('sales.quick') }}"><strong>+ Vendre un ticket</strong><span>Encaisser un forfait tout de suite.</span><em>Vendre</em></a>
+    @endif
+    @if(auth()->user()->hasPermission('vouchers.manage'))
+        <a class="lm-block" href="{{ route('vouchers.generate') }}"><strong>+ Générer des tickets</strong><span>Préparer un lot prêt à imprimer.</span><em>Générer</em></a>
+    @endif
+    @if(auth()->user()->hasPermission('plans.manage'))
+        <a class="lm-block" href="{{ route('plans.create') }}"><strong>+ Créer un forfait</strong><span>Durée, prix et accès.</span><em>Nouveau forfait</em></a>
+    @endif
+    @if(auth()->user()->hasPermission('zones.manage'))
+        <a class="lm-block" href="{{ route('wifi-zones.create') }}"><strong>+ Ajouter une WiFi Zone</strong><span>Un lieu, une boutique.</span><em>Nouvelle zone</em></a>
+    @endif
+    @if(auth()->user()->hasPermission('settings.manage'))
+        <a class="lm-block" href="{{ route('business.edit') }}"><strong>Mon Business</strong><span>Logo, couleurs et contact.</span><em>Ouvrir</em></a>
+        @if(auth()->user()->hasPermission('mikrotiks.manage'))
+            <a class="lm-block" href="{{ route('mikrotiks.assistant') }}"><strong>Connecter mon MikroTik</strong><span>Associer le routeur de la zone.</span><em>Connecter</em></a>
+        @endif
+    @endif
+    @if(auth()->user()->hasPermission('sales.view'))
+        <a class="lm-block" href="{{ route('reports.index') }}"><strong>Mes Rapports</strong><span>Ventes, zones et forfaits.</span><em>Voir</em></a>
+    @endif
+</nav>
+
 @if($notices->isNotEmpty())
 <section class="mb-4 space-y-2" aria-label="Notifications">
     @foreach($notices as $notice)
@@ -73,9 +104,9 @@
 </section>
 @endif
 
-<section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Indicateurs">
+<section class="lm-grid sm:grid-cols-2 xl:grid-cols-3" aria-label="Indicateurs">
     @foreach($report['kpis'] as $kpi)
-        <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+        <article class="lm-kpi lm-reveal" title="{{ $kpi['label'] }}">
             <p class="flex items-center justify-between gap-2 text-sm text-slate-500">
                 <span>{{ $kpi['label'] }}</span>
                 <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 text-electric" aria-hidden="true">
@@ -89,7 +120,7 @@
                     @endswitch
                 </span>
             </p>
-            <p class="mt-2 break-words text-2xl font-semibold">
+            <p class="mt-2 break-words text-2xl font-semibold" @if(! $kpi['money'] && is_numeric($kpi['value'])) data-count="{{ (int) $kpi['value'] }}" @endif>
                 {{ $kpi['money'] ? \App\Support\Money::format($kpi['value']) : $kpi['value'] }}
             </p>
             @if($kpi['change'] !== null)
@@ -99,6 +130,22 @@
             @endif
         </article>
     @endforeach
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Chiffre d’affaires du mois</p>
+        <p class="lm-kpi-value">{{ \App\Support\Money::format($pulse['month']) }}</p>
+    </article>
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Tickets vendus</p>
+        <p class="lm-kpi-value" data-count="{{ (int) $pulse['sold'] }}">{{ $pulse['sold'] }}</p>
+    </article>
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Tickets disponibles</p>
+        <p class="lm-kpi-value" data-count="{{ (int) $pulse['available'] }}">{{ $pulse['available'] }}</p>
+    </article>
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Sessions actives</p>
+        <p class="lm-kpi-value" data-count="{{ (int) $pulse['sessions'] }}">{{ $pulse['sessions'] }}</p>
+    </article>
 </section>
 
 <section id="revenus" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
@@ -161,12 +208,25 @@
             @php $router = $card['router']; @endphp
             <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
                 <p class="font-semibold">{{ $router->name }}</p>
+                @php
+                    $pendingTickets = $report['unsynced']->where('wifi_zone_id', $router->wifi_zone_id)->count();
+                    $incomplete = ! $router->wifi_zone_id || ! filled($router->host) || ! filled($router->username);
+                @endphp
                 <p class="mt-1 text-sm">
                     @if($router->status === 'online') 🟢 Connecté
                     @elseif($router->status === 'error') 🟠 Erreur
                     @elseif($router->status === 'offline') 🔴 Hors ligne
-                    @else ⚪ Non vérifié @endif
+                    @else 🟠 En attente @endif
                 </p>
+                @if($incomplete)
+                    <p class="mt-1 text-sm">⚠ Configuration incomplète</p>
+                @endif
+                @if($pendingTickets > 0)
+                    <p class="mt-1 text-sm">🟠 En attente · Tickets en attente : {{ $pendingTickets }}</p>
+                @endif
+                @if(($router->details['connection_mode'] ?? null) === 'simulation')
+                    <p class="mt-1 text-sm">SIMULATION — aucun routeur réel n’est connecté.</p>
+                @endif
                 @if(in_array($router->status, ['offline', 'error'], true))
                     <p class="mt-2 text-sm font-semibold">MikroTik hors ligne</p>
                 @endif
@@ -175,6 +235,8 @@
                     <div class="flex justify-between gap-3"><dt>Adresse</dt><dd class="truncate">{{ $router->host }}</dd></div>
                     <div class="flex justify-between gap-3"><dt>Utilisateurs actifs</dt><dd>{{ count($card['users']) }}</dd></div>
                     <div class="flex justify-between gap-3"><dt>Dernière vérification</dt><dd>{{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt>Dernière synchronisation</dt><dd>{{ $router->last_synced_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt>Tickets en attente</dt><dd>{{ $pendingTickets }}</dd></div>
                     @if(!empty($card['resource']['version']))<div class="flex justify-between gap-3"><dt>RouterOS</dt><dd>{{ $card['resource']['version'] }}</dd></div>@endif
                     @if(!empty($card['resource']['cpu-load']))<div class="flex justify-between gap-3"><dt>CPU</dt><dd>{{ $card['resource']['cpu-load'] }}</dd></div>@endif
                 </dl>

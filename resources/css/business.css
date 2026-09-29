@@ -1,0 +1,85 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import './limete.css';
+@import './limete-background.css';
+@import './limete-finish.css';
+
+.biz {
+    min-height: 100vh;
+    background: var(--lm-bg);
+    color: var(--lm-ink);
+    font-family: var(--lm-font);
+}
+
+.biz-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: white;
+    color: var(--lm-ink);
+    border-bottom: 1px solid var(--lm-line);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.biz-brand, .biz-tools { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.biz-brand img, .biz-mark {
+    width: 40px; height: 40px; border-radius: 12px; object-fit: cover; flex: none;
+}
+.biz-mark { display: grid; place-items: center; background: var(--biz-btn, #0b5ed7); font-weight: 800; }
+.biz-brand strong, .biz-brand small { display: block; }
+.biz-brand small { opacity: .8; }
+.biz-tools a { color: var(--lm-ink); text-decoration: none; font-size: 14px; font-weight: 700; }
+.biz-tools form { margin: 0; }
+
+.biz-shell { display: grid; gap: 16px; padding: 16px; min-width: 0; }
+.biz-nav { display: flex; gap: 8px; overflow-x: auto; }
+.biz-nav a {
+    flex: none;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: white;
+    color: var(--lm-ink);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 750;
+    border: 1px solid var(--lm-line);
+}
+.biz-nav a[aria-current="page"] { background: var(--lm-deep); color: white; border-color: transparent; }
+.biz-main { min-width: 0; }
+
+.biz-btn, .btn.biz-btn {
+    background: var(--biz-btn, #0b5ed7);
+    border-color: var(--biz-btn, #0b5ed7);
+    color: white;
+}
+.biz-btn:hover, .btn.biz-btn:hover { color: white; filter: brightness(1.05); }
+
+.biz-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.biz-steps li { padding: 4px 10px; border-radius: 999px; background: #eef2f7; font-size: 14px; }
+.biz-steps li.is-done { background: #e5f6ec; color: #0f6b3c; }
+.biz-steps li.is-current { background: var(--biz-btn, #0b5ed7); color: white; }
+
+.zone-card, .plan-card, .biz .card { border: 1px solid var(--lm-line) !important; border-radius: 20px; box-shadow: var(--lm-shadow); }
+.biz .form-control, .biz .form-select { min-height: 48px; border-radius: 14px; }
+.biz .btn { border-radius: 14px; font-weight: 750; min-height: 40px; }
+.plan-card .lm-price { color: var(--lm-deep); }
+.preview-card { border-radius: 18px; background: var(--biz-2, #071e3d); color: white; }
+.preview-card p { margin: 0; }
+.preview-card .duration { font-size: 13px; letter-spacing: .08em; }
+.preview-card .price { font-size: 28px; font-weight: 800; }
+
+.logo-preview { width: 88px; height: 88px; object-fit: contain; border-radius: 16px; background: white; border: 1px solid #d5e0ee; }
+
+@media (min-width: 992px) {
+    .biz-shell { grid-template-columns: 230px minmax(0, 1fr); align-items: start; max-width: 1180px; margin: 0 auto; }
+    .biz-nav { flex-direction: column; overflow: visible; position: sticky; top: 84px; }
+}
+
+@media print {
+    .no-print, .biz-top, .biz-nav { display: none !important; }
+    .biz, .biz-main { background: white; padding: 0; }
+}

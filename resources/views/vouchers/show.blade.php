@@ -5,6 +5,13 @@
     @include('vouchers.ticket', ['public' => false])
     <div class="space-y-3">
         <a class="inline-block rounded-lg bg-electric px-4 py-2 text-sm text-white" href="{{ route('vouchers.pdf', $voucher) }}">Télécharger le PDF</a>
+        <form method="POST" action="{{ route('vouchers.print') }}" class="inline">@csrf
+            <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
+            <input type="hidden" name="template" value="moderne">
+            <input type="hidden" name="per_page" value="4">
+            <button class="rounded-lg border px-4 py-2 text-sm">Imprimer</button>
+        </form>
+        <a class="inline-block rounded-lg border px-4 py-2 text-sm" href="{{ route('vouchers.generate', ['wifi_zone_id' => $voucher->wifi_zone_id, 'plan_id' => $voucher->plan_id, 'template' => 'moderne', 'per_page' => 4]) }}">Dupliquer la configuration</a>
         <article class="rounded-2xl bg-white p-4 text-sm shadow-sm">
             @if($voucher->sync_status === 'synced')
                 <p>Créé sur le MikroTik.</p>

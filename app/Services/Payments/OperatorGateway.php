@@ -63,7 +63,7 @@ abstract class OperatorGateway implements PaymentGateway
         }
 
         $status = (string) $data['status'];
-        if (! in_array($status, ['success', 'failed', 'cancelled', 'refunded'], true)) {
+        if (! in_array($status, ['processing', 'success', 'failed', 'cancelled', 'refunded'], true)) {
             throw new InvalidPaymentSignature('Statut de webhook inconnu.');
         }
 

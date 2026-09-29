@@ -30,6 +30,37 @@ class Plan extends Model
         return $this->belongsTo(WifiZone::class);
     }
 
+    public function vouchers(): HasMany
+    {
+        return $this->hasMany(Voucher::class);
+    }
+
+    /**
+     * @return array{value: int, unit: string}
+     */
+    public function durationParts(): array
+    {
+        $seconds = (int) $this->duration_seconds;
+
+        if ($seconds === 86400) {
+            return ['value' => 24, 'unit' => 'hours'];
+        }
+
+        if ($seconds > 0 && $seconds % 86400 === 0) {
+            return ['value' => (int) ($seconds / 86400), 'unit' => 'days'];
+        }
+
+        if ($seconds > 0 && $seconds % 3600 === 0) {
+            return ['value' => (int) ($seconds / 3600), 'unit' => 'hours'];
+        }
+
+        if ($seconds > 0 && $seconds % 60 === 0) {
+            return ['value' => (int) ($seconds / 60), 'unit' => 'minutes'];
+        }
+
+        return ['value' => $seconds > 0 ? max(1, $seconds) : 24, 'unit' => $seconds > 0 ? 'minutes' : 'hours'];
+    }
+
     public function mikrotikLinks(): HasMany
     {
         return $this->hasMany(PlanMikrotikProfile::class);

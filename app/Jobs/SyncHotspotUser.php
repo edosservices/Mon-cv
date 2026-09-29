@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Mikrotik;
 use App\Models\Voucher;
 use App\Services\Mikrotik\MikrotikService;
 use App\Support\TenantManager;
@@ -22,6 +23,12 @@ class SyncHotspotUser implements ShouldQueue
         }
 
         app(TenantManager::class)->set($voucher->tenant_id);
+        $voucher->loadMissing('wifiZone.mikrotiks');
+        $routers = $mikrotik->authorizedRouters($voucher);
+        if ($routers->isNotEmpty() && $routers->every(fn (Mikrotik $router) => ! $router->auto_sync)) {
+            return;
+        }
+
         $mikrotik->provisionVoucher($voucher);
     }
 }

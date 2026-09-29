@@ -1,6 +1,7 @@
 @php
     $brand = $zone->brandColor();
     $brand2 = $zone->secondaryColor();
+    $brandBtn = $zone->buttonColor();
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -13,14 +14,15 @@
     <meta name="apple-mobile-web-app-title" content="{{ $zone->displayLabel() }}">
     <title>@yield('title', $zone->displayLabel())</title>
     <link rel="manifest" href="{{ route('shop.manifest', $zone->slug) }}">
-    <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="shop" style="--shop: {{ $brand }}; --shop-2: {{ $brand2 }}">
+<body class="shop" style="--shop: {{ $brand }}; --shop-2: {{ $brand2 }}; --shop-btn: {{ $brandBtn }}">
+    <x-animated-background />
     <a class="skip" href="#contenu">Aller au contenu</a>
     <div class="shop-wrap">
-        <header class="shop-top">
+        <header class="shop-top no-print">
             <a class="shop-brand" href="{{ route('shop.show', $zone->slug) }}">
                 @if($zone->logoUrl())
                     <img class="shop-logo" src="{{ $zone->logoUrl() }}" alt="">
@@ -32,11 +34,15 @@
                     @if($zone->location)<small>{{ $zone->location }}</small>@endif
                 </span>
             </a>
-            <a class="shop-link" href="{{ route('shop.tickets', $zone->slug) }}">Mes tickets</a>
+            <div class="shop-tools">
+                <input class="shop-search" type="search" data-filter-list=".plan-list" aria-label="Rechercher un forfait" placeholder="Rechercher">
+                <a class="shop-link" href="{{ route('client.login') }}">Connexion</a>
+                <a class="shop-link" href="{{ route('shop.tickets', $zone->slug) }}">Mes tickets</a>
+            </div>
         </header>
 
         @isset($step)
-            <ol class="progress" aria-label="Étapes d’achat">
+            <ol class="progress no-print" aria-label="Étapes d’achat">
                 @foreach(['Forfait', 'Informations', 'Paiement', 'Confirmation', 'Ticket'] as $index => $label)
                     <li class="{{ $step === $index ? 'is-current' : ($step > $index ? 'is-done' : '') }}" @if($step === $index) aria-current="step" @endif>{{ $label }}</li>
                 @endforeach
@@ -60,7 +66,7 @@
         @yield('content')
         </main>
 
-        <footer class="shop-foot">
+        <footer class="shop-foot no-print">
             @if($zone->whatsappDigits())
                 <a href="https://wa.me/{{ $zone->whatsappDigits() }}">WhatsApp {{ $zone->whatsapp }}</a>
             @endif
@@ -70,6 +76,7 @@
             @if($zone->email)
                 <p>{{ $zone->email }}</p>
             @endif
+            <p class="shop-platform"><x-brand-logo width="24" height="24" alt="" /> LIMETE WIFI</p>
             <p>{{ $zone->name }}</p>
         </footer>
     </div>
@@ -80,6 +87,21 @@
                 if (!button || button.disabled) return;
                 button.disabled = true;
                 button.textContent = 'Patientez…';
+            });
+        });
+        document.querySelectorAll('[data-share]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-share') || '';
+                var done = function () { button.textContent = 'Lien copié'; };
+                if (navigator.share) {
+                    navigator.share({ title: 'Ticket WiFi', url: url }).catch(function () {});
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(url).then(done).catch(function () { window.prompt('Partagez ce lien', url); });
+                    return;
+                }
+                window.prompt('Partagez ce lien', url);
             });
         });
         document.querySelectorAll('[data-copy]').forEach(function (button) {

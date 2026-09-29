@@ -5,15 +5,18 @@ use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\Admin\ProductionCheckController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClientPortalController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\HotspotSessionController;
+use App\Http\Controllers\MikrotikAssistantController;
 use App\Http\Controllers\MikrotikController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StaffController;
@@ -38,6 +41,28 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
+Route::prefix('client')->name('client.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [ClientPortalController::class, 'loginForm'])->name('login');
+        Route::post('/login', [ClientPortalController::class, 'login'])->middleware('throttle:client-login');
+        Route::get('/register', [ClientPortalController::class, 'registerForm'])->name('register');
+        Route::post('/register', [ClientPortalController::class, 'register'])->middleware('throttle:client-register');
+        Route::get('/forgot', [ClientPortalController::class, 'forgotForm'])->name('forgot');
+        Route::post('/forgot', [ClientPortalController::class, 'forgot'])->middleware('throttle:client-recover');
+        Route::get('/reset', [ClientPortalController::class, 'resetForm'])->name('reset');
+        Route::post('/reset', [ClientPortalController::class, 'reset'])->middleware('throttle:client-recover');
+    });
+
+    Route::get('/acheter', [ClientPortalController::class, 'buy'])->name('buy');
+
+    Route::middleware(['auth', 'role:client'])->group(function () {
+        Route::get('/dashboard', [ClientPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/tickets', [ClientPortalController::class, 'tickets'])->name('tickets');
+        Route::get('/profile', [ClientPortalController::class, 'profile'])->name('profile');
+        Route::put('/profile', [ClientPortalController::class, 'updateProfile'])->name('profile.update');
+    });
+});
+
 Route::get('/wifi/{slug}', [WifiShopController::class, 'show'])->name('shop.show');
 Route::get('/wifi/{slug}/marque', [WifiShopController::class, 'brand'])->name('shop.brand');
 Route::get('/wifi/{slug}/manifest.webmanifest', [WifiShopController::class, 'manifest'])->name('shop.manifest');
@@ -60,6 +85,7 @@ Route::get('/hotspot/session.js', [HotspotSessionController::class, 'script'])
     ->name('hotspot.session.script');
 Route::get('/ticket/{token}', [WifiShopController::class, 'ticket'])->name('tickets.public');
 Route::get('/ticket/{token}/pdf', [WifiShopController::class, 'pdf'])->name('tickets.pdf');
+Route::post('/ticket/{token}/synchroniser', [WifiShopController::class, 'retrySync'])->middleware('throttle:10,1')->name('tickets.sync');
 
 Route::middleware(['auth', 'tenant', 'role:super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [PlatformController::class, 'dashboard'])->name('dashboard');
@@ -71,6 +97,7 @@ Route::middleware(['auth', 'tenant', 'role:super_admin'])->prefix('admin')->name
     Route::get('/payments', [PlatformController::class, 'payments'])->name('payments');
     Route::post('/payments/providers/{provider}', [PlatformController::class, 'updateProvider'])->name('payments.providers');
     Route::get('/logs', [PlatformController::class, 'logs'])->name('logs');
+    Route::get('/mikrotiks', [PlatformController::class, 'mikrotiks'])->name('mikrotiks');
     Route::get('/production-check', [ProductionCheckController::class, 'show'])->name('production-check');
     Route::post('/production-check/mikrotiks/{mikrotik}/test', [ProductionCheckController::class, 'test'])->name('production-check.test');
     Route::post('/production-check/mikrotiks/{mikrotik}/test-user', [ProductionCheckController::class, 'createTestUser'])->name('production-check.test-user');
@@ -93,7 +120,22 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
             Route::get('/exports/tickets.csv', [ExportController::class, 'tickets'])->middleware('permission:vouchers.manage')->name('exports.tickets');
             Route::get('/exports/payments.csv', [ExportController::class, 'payments'])->middleware('permission:sales.view')->name('exports.payments');
         });
+        Route::patch('/wifi-zones/{wifiZone}/status', [WifiZoneController::class, 'status'])->middleware('permission:zones.manage')->name('wifi-zones.status');
         Route::resource('wifi-zones', WifiZoneController::class)->except('show')->parameters(['wifi-zones' => 'wifiZone'])->middleware('permission:zones.manage');
+        Route::middleware('permission:mikrotiks.manage')->group(function () {
+            Route::get('/mikrotiks/assistant', [MikrotikAssistantController::class, 'index'])->name('mikrotiks.assistant');
+            Route::post('/mikrotiks/assistant/start', [MikrotikAssistantController::class, 'start'])->name('mikrotiks.assistant.start');
+            Route::post('/mikrotiks/assistant/step', [MikrotikAssistantController::class, 'step'])->name('mikrotiks.assistant.step');
+            Route::post('/mikrotiks/assistant/test', [MikrotikAssistantController::class, 'test'])->name('mikrotiks.assistant.test');
+            Route::post('/mikrotiks/assistant/continue', [MikrotikAssistantController::class, 'advance'])->name('mikrotiks.assistant.continue');
+            Route::post('/mikrotiks/assistant/save', [MikrotikAssistantController::class, 'save'])->name('mikrotiks.assistant.save');
+            Route::get('/mikrotiks/assistant/{mikrotik}', [MikrotikAssistantController::class, 'show'])->name('mikrotiks.assistant.show');
+            Route::post('/mikrotiks/assistant/{mikrotik}/read', [MikrotikAssistantController::class, 'read'])->name('mikrotiks.assistant.read');
+            Route::post('/mikrotiks/assistant/{mikrotik}/profile-preview', [MikrotikAssistantController::class, 'previewProfile'])->name('mikrotiks.assistant.profile-preview');
+            Route::post('/mikrotiks/assistant/{mikrotik}/profile', [MikrotikAssistantController::class, 'createProfile'])->name('mikrotiks.assistant.profile');
+            Route::post('/mikrotiks/assistant/{mikrotik}/retry', [MikrotikAssistantController::class, 'retry'])->name('mikrotiks.assistant.retry');
+            Route::post('/mikrotiks/assistant/{mikrotik}/auto-sync', [MikrotikAssistantController::class, 'autoSync'])->name('mikrotiks.assistant.auto');
+        });
         Route::post('/mikrotiks/probe', [MikrotikController::class, 'probe'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.probe');
         Route::post('/mikrotiks/{mikrotik}/test', [MikrotikController::class, 'test'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.test');
         Route::post('/mikrotiks/{mikrotik}/sync', [MikrotikController::class, 'sync'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.sync');
@@ -109,8 +151,14 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::post('/mikrotiks/{mikrotik}/prepare/dns', [MikrotikController::class, 'prepareDns'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.prepare.dns');
         Route::post('/mikrotiks/{mikrotik}/snapshots/{snapshot}/restore', [MikrotikController::class, 'restoreSnapshot'])->middleware('permission:mikrotiks.manage')->name('mikrotiks.snapshots.restore');
         Route::resource('mikrotiks', MikrotikController::class)->middleware('permission:mikrotiks.manage');
+        Route::post('/plans/{plan}/duplicate', [PlanController::class, 'duplicate'])->middleware('permission:plans.manage')->name('plans.duplicate');
+        Route::patch('/plans/{plan}/status', [PlanController::class, 'status'])->middleware('permission:plans.manage')->name('plans.status');
         Route::resource('plans', PlanController::class)->except('show')->middleware('permission:plans.manage');
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');
+        Route::get('/vouchers/generate', [VoucherController::class, 'createBatch'])->middleware('permission:vouchers.manage')->name('vouchers.generate');
+        Route::get('/vouchers/generated', [VoucherController::class, 'generated'])->middleware('permission:vouchers.manage')->name('vouchers.generated');
+        Route::post('/vouchers/print', [VoucherController::class, 'printSheet'])->middleware('permission:vouchers.manage')->name('vouchers.print');
+        Route::post('/vouchers/pdf-sheet', [VoucherController::class, 'pdfSheet'])->middleware('permission:vouchers.manage')->name('vouchers.sheet-pdf');
         Route::post('/vouchers', [VoucherController::class, 'store'])->middleware('permission:vouchers.manage')->name('vouchers.store');
         Route::post('/vouchers/{voucher}/sync', [VoucherController::class, 'sync'])->middleware('permission:vouchers.manage')->name('vouchers.sync');
         Route::post('/vouchers/{voucher}/retry-sync', [VoucherController::class, 'sync'])->middleware('permission:vouchers.manage')->name('vouchers.retry');
@@ -122,6 +170,10 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:customers.manage')->name('customers.index');
         Route::get('/customers/{customer}', [CustomerController::class, 'show'])->middleware('permission:customers.manage')->name('customers.show');
         Route::get('/payments', [PaymentController::class, 'index'])->middleware('permission:sales.view')->name('payments.index');
+        Route::get('/reports', [ReportsController::class, 'index'])->middleware('permission:sales.view')->name('reports.index');
+        Route::get('/sales/quick', [SaleController::class, 'quick'])->middleware('permission:sales.confirm')->name('sales.quick');
+        Route::post('/sales/quick', [SaleController::class, 'storeQuick'])->middleware('permission:sales.confirm')->name('sales.quick.store');
+        Route::get('/sales/quick/done', [SaleController::class, 'quickDone'])->middleware('permission:sales.confirm')->name('sales.quick.done');
         Route::get('/sales', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sales.index');
         Route::get('/sales/{sale}', [SaleController::class, 'show'])->middleware('permission:sales.view')->name('sales.show');
         Route::post('/sales/{sale}/confirm', [SaleController::class, 'confirm'])->middleware('permission:sales.confirm')->name('sales.confirm');
@@ -129,6 +181,8 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::post('/active-users/disconnect', [ActiveUserController::class, 'disconnect'])->middleware('permission:sessions.disconnect')->name('active-users.disconnect');
         Route::get('/sessions', [WifiSessionController::class, 'index'])->middleware('permission:sessions.view')->name('sessions.index');
         Route::get('/statistics', StatisticsController::class)->middleware('permission:statistics.view')->name('statistics');
+        Route::get('/business', [SettingController::class, 'edit'])->middleware('permission:settings.manage')->name('business.edit');
+        Route::put('/business', [SettingController::class, 'update'])->middleware('permission:settings.manage')->name('business.update');
         Route::get('/settings', [SettingController::class, 'edit'])->middleware('permission:settings.manage')->name('settings.edit');
         Route::put('/settings', [SettingController::class, 'update'])->middleware('permission:settings.manage')->name('settings.update');
         Route::get('/staff', [StaffController::class, 'index'])->middleware('permission:staff.manage')->name('staff.index');
