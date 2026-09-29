@@ -59,14 +59,27 @@
                     <input class="mt-1 w-full rounded-xl border px-3 py-3 text-base" id="quick-server" type="search" placeholder="Rechercher..." autocomplete="off" role="combobox" aria-expanded="false" aria-controls="quick-server-list" data-combo-input>
                 </label>
                 <input type="hidden" name="server" value="all" data-combo-value>
-                <ul class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-xl border bg-white shadow-lg" id="quick-server-list" role="listbox" hidden data-combo-list></ul>
+                <ul class="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-xl border bg-white shadow-lg" id="quick-server-list" role="listbox" hidden data-combo-list>
+                    @foreach($quick['servers'] as $server)
+                        <li class="cursor-pointer px-3 py-3" role="option">{{ $server }}</li>
+                    @endforeach
+                </ul>
             </div>
 
             <div class="relative" data-combo>
                 <label class="text-sm font-semibold" for="quick-profile">Profil
                     <input class="mt-1 w-full rounded-xl border px-3 py-3 text-base" id="quick-profile" type="search" placeholder="Rechercher un profil..." autocomplete="off" role="combobox" aria-expanded="false" aria-controls="quick-profile-list" data-combo-input>
                 </label>
-                <ul class="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-xl border bg-white shadow-lg" id="quick-profile-list" role="listbox" hidden data-combo-list></ul>
+                <ul class="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-xl border bg-white shadow-lg" id="quick-profile-list" role="listbox" hidden data-combo-list>
+                    @foreach($cards as $card)
+                        <li class="cursor-pointer px-3 py-3" role="option">
+                            <strong class="block">{{ $card['name'] }}</strong>
+                            @if($card['summary'] !== '')
+                                <small class="text-slate-500">{{ $card['summary'] }}</small>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
             </div>
 
             <div class="grid gap-3" data-quick-fields hidden></div>

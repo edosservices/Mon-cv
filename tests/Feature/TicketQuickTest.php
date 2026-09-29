@@ -283,6 +283,9 @@ class TicketQuickTest extends TestCase
             'profile' => '15J',
         ]))->assertSessionHas('warning', 'Ce profil n’a pas de forfait LIMETE.');
 
+        $this->bindRouter([
+            '1Jours' => $this->profileRow('1d'),
+        ]);
         $this->actingAs($user)->post('/vouchers/quick/preview', $this->payload($zone, [
             'draft' => 'draft-quick-server-1',
             'server' => 'hotspot9',

@@ -91,6 +91,12 @@ class TicketQuick
         $lock->block(8);
 
         try {
+            $cached = Cache::get($this->draftKey($zone, $draft));
+            $built = $this->assemble($zone, $input, false);
+            if (! is_array($cached) || ($cached['hash'] ?? '') !== $built['hash'] || ! is_array($cached['identities'] ?? null)) {
+                throw new RuntimeException('Aperçu expiré.');
+            }
+
             $existing = Cache::get($key);
             if (is_array($existing) && $existing !== []) {
                 $vouchers = Voucher::query()->whereIn('id', $existing)->orderBy('id')->get()->all();
@@ -99,11 +105,6 @@ class TicketQuick
                 }
             }
 
-            $cached = Cache::get($this->draftKey($zone, $draft));
-            $built = $this->assemble($zone, $input, false);
-            if (! is_array($cached) || ($cached['hash'] ?? '') !== $built['hash'] || ! is_array($cached['identities'] ?? null)) {
-                throw new RuntimeException('Aperçu expiré.');
-            }
             foreach ($cached['identities'] as $identity) {
                 if ($this->nameTaken($zone, (string) $identity['username']) || $this->passwordTaken($zone, (string) $identity['password'])) {
                     throw new RuntimeException('Cet utilisateur existe déjà.');
