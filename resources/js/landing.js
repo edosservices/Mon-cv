@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.lp-faq-item button').forEach((button) => {
         button.addEventListener('click', () => {
-            const item = button.parentElement;
+            const item = button.closest('.lp-faq-item');
             const open = item.classList.contains('open');
             document.querySelectorAll('.lp-faq-item').forEach((node) => {
                 node.classList.remove('open');
