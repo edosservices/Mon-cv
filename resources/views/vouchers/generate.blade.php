@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('heading', 'Créer un ticket')
+@section('heading', 'Générer')
 @section('content')
 @include('vouchers.assist-steps', ['step' => 1])
 @if($quickZone)

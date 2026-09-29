@@ -1,6 +1,6 @@
 @extends('layouts.business')
 @section('title', 'Connecter mon MikroTik')
-@section('heading', 'Connecter mon MikroTik')
+@section('heading', 'HotSpot')
 @section('content')
 @php
     $draft = $draft ?? null;

@@ -26,7 +26,7 @@
                     <x-brand-logo />
                     <span>
                         <strong>LIMETE WIFI MANAGER</strong>
-                        <small>Gestion hotspot</small>
+                        <small>WiFi</small>
                     </span>
                 </a>
                 <button class="lm-collapse" type="button" data-lm-collapse aria-pressed="false">Réduire</button>
