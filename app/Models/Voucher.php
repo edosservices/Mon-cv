@@ -16,7 +16,7 @@ class Voucher extends Model
     protected $fillable = [
         'tenant_id', 'wifi_zone_id', 'plan_id', 'mikrotik_id', 'customer_id',
         'public_token', 'username', 'password', 'status', 'activated_at',
-        'expires_at', 'price_amount', 'currency', 'sync_status', 'sync_error',
+        'expires_at', 'price_amount', 'currency', 'profile_snapshot', 'sync_status', 'sync_error',
     ];
 
     protected $hidden = ['password'];
@@ -25,6 +25,7 @@ class Voucher extends Model
     {
         return [
             'password' => 'encrypted',
+            'profile_snapshot' => 'array',
             'activated_at' => 'datetime',
             'expires_at' => 'datetime',
             'price_amount' => 'decimal:2',

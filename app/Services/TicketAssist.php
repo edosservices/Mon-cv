@@ -286,6 +286,8 @@ class TicketAssist
             'Permission refusée.',
             'Création annulée.',
             'Impossible de proposer un identifiant libre.',
+            'Ce profil n’a pas de forfait LIMETE.',
+            'Aperçu expiré.',
         ] as $known) {
             if (str_contains($message, $known)) {
                 return $known;
