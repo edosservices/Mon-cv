@@ -21,19 +21,39 @@
     <div class="lm-backdrop" data-lm-backdrop></div>
     <div class="lm-frame">
         <aside class="lm-side no-print" id="lm-side">
-            <div class="px-4 py-5">
+            <div class="lm-side-head">
                 <a class="lm-brand" href="{{ route('dashboard') }}">
-                    <x-brand-logo />
-                    <span>
-                        <strong>LIMETE WIFI MANAGER</strong>
-                        <small>WiFi</small>
-                    </span>
+                    <img class="lm-brand-wordmark" src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI MANAGER">
                 </a>
                 <button class="lm-collapse" type="button" data-lm-collapse aria-pressed="false">Réduire</button>
             </div>
-            <nav class="space-y-1 px-3 pb-8 text-sm" aria-label="Navigation">
+            <nav class="lm-side-nav" aria-label="Navigation">
                 @include('layouts.nav')
             </nav>
+            @php
+                $account = auth()->user();
+                $business = $account->tenant;
+                $place = trim(implode(' · ', array_filter([$business?->city, $business?->country])));
+            @endphp
+            <div class="lm-account">
+                <a class="lm-account-card" href="{{ $account->hasPermission('settings.manage') ? route('business.edit') : route('dashboard') }}">
+                    @if($business?->logoUrl())
+                        <img class="lm-account-logo" src="{{ $business->logoUrl() }}" alt="">
+                    @else
+                        <span class="lm-account-mark">{{ mb_substr($business?->name ?: $account->name, 0, 1) }}</span>
+                    @endif
+                    <span class="lm-account-copy">
+                        <strong>{{ $account->name }}</strong>
+                        <small>{{ $business?->name ?: 'Compte' }}</small>
+                        @if($place !== '')
+                            <small class="lm-account-place">{{ $place }}</small>
+                        @endif
+                    </span>
+                </a>
+                @if($account->hasPermission('settings.manage'))
+                    <a class="lm-account-import" href="{{ route('business.edit') }}#logo">Importer le logo</a>
+                @endif
+            </div>
         </aside>
         <div class="lm-main min-w-0">
             <header class="lm-top no-print">

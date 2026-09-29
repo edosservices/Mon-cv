@@ -10,20 +10,24 @@
     <div class="card-body">
         <label class="form-label" for="zone-name">Nom</label>
         <input class="form-control" id="zone-name" name="name" value="{{ old('name', $zone->name) }}" required maxlength="160">
-        <label class="form-label mt-3" for="location">Adresse / localisation</label>
-        <input class="form-control" id="location" name="location" value="{{ old('location', $zone->location) }}" maxlength="255">
-        <div class="row g-2 mt-1">
-            <div class="col-sm-6">
-                <label class="form-label" for="zone-latitude">Latitude</label>
-                <input class="form-control" id="zone-latitude" name="latitude" inputmode="decimal" value="{{ old('latitude', $zone->latitude) }}">
+        <div class="lm-geo-card mt-3">
+            <label class="form-label" for="location">Adresse / localisation</label>
+            <input class="form-control" id="location" name="location" value="{{ old('location', $zone->location) }}" maxlength="255">
+            <p class="text-secondary small mt-3 mb-2">La position n’est lue qu’après votre clic.</p>
+            <div class="row g-2">
+                <div class="col-sm-6">
+                    <label class="form-label" for="zone-latitude">Latitude</label>
+                    <input class="form-control" id="zone-latitude" name="latitude" inputmode="decimal" value="{{ old('latitude', $zone->latitude) }}">
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label" for="zone-longitude">Longitude</label>
+                    <input class="form-control" id="zone-longitude" name="longitude" inputmode="decimal" value="{{ old('longitude', $zone->longitude) }}">
+                </div>
             </div>
-            <div class="col-sm-6">
-                <label class="form-label" for="zone-longitude">Longitude</label>
-                <input class="form-control" id="zone-longitude" name="longitude" inputmode="decimal" value="{{ old('longitude', $zone->longitude) }}">
-            </div>
+            <button type="button" class="btn btn-outline-primary mt-3" data-geo data-lat="latitude" data-lng="longitude">Utiliser ma position</button>
+            <p class="form-text" data-geo-note></p>
+            @include('partials.geo-map', ['lat' => old('latitude', $zone->latitude), 'lng' => old('longitude', $zone->longitude)])
         </div>
-        <button type="button" class="btn btn-outline-secondary mt-3" data-geo data-lat="latitude" data-lng="longitude">Utiliser ma position</button>
-        <p class="form-text" data-geo-note></p>
         @unless($zone->exists)
             <input type="hidden" name="status" value="active">
         @endunless

@@ -43,10 +43,16 @@ body { overflow-x: hidden; }
 
 .lm-frame { min-height: 100vh; display: grid; }
 .lm-side {
-    background: var(--lm-deep);
+    background:
+        linear-gradient(180deg, rgba(20, 99, 243, 0.16), transparent 28%),
+        var(--lm-deep);
     color: white;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
+.lm-side-head { padding: 14px 14px 8px; }
+.lm-side-nav { flex: 1 1 auto; padding: 4px 10px 12px; }
 .lm-brand {
     display: flex;
     align-items: center;
@@ -57,18 +63,80 @@ body { overflow-x: hidden; }
 }
 .lm-side .lm-brand { color: white; }
 .lm-logo, .lm-brand-logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
+    width: auto;
+    max-width: min(100%, 220px);
+    height: auto;
+    border-radius: 10px;
     object-fit: contain;
     display: block;
     flex: none;
     background: transparent;
 }
+.lm-brand-wordmark {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: 52px;
+    object-fit: contain;
+    object-position: left center;
+    border-radius: 12px;
+    background: #000;
+}
 .lm-brand strong, .lm-brand small { display: block; min-width: 0; }
 .lm-brand strong { font-size: 0.92rem; letter-spacing: -0.02em; }
 .lm-brand small { color: var(--limete-muted); font-size: 0.72rem; }
 .lm-side .lm-brand small { color: #9fb0c9; }
+.lm-account {
+    margin-top: auto;
+    padding: 8px 10px 14px;
+    display: grid;
+    gap: 6px;
+}
+.lm-account-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px;
+    border-radius: 14px;
+    text-decoration: none;
+    color: white;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lm-account-card:hover { background: rgba(255, 255, 255, 0.1); }
+.lm-account-logo, .lm-account-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex: none;
+    background: #000;
+}
+.lm-account-mark {
+    display: grid;
+    place-items: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: #1463f3;
+}
+.lm-account-copy { display: grid; min-width: 0; line-height: 1.25; }
+.lm-account-copy strong, .lm-account-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lm-account-copy strong { font-size: 0.75rem; font-weight: 600; }
+.lm-account-copy small { color: #b7c6da; font-size: 0.68rem; }
+.lm-account-import {
+    justify-self: start;
+    margin-left: 8px;
+    color: #d5e4ff;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+.lm-account-import:hover { color: white; }
 
 .lm-top {
     display: flex;
@@ -231,41 +299,52 @@ body { overflow-x: hidden; }
 
 .lm-collapse {
     display: none;
-    margin: 0 16px 12px;
-    min-height: 36px;
+    margin: 10px 0 0;
+    min-height: 32px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.16);
     background: transparent;
-    color: white;
-    font-weight: 700;
+    color: #d5e4ff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
 }
-.lm-nav { display: grid; gap: 2px; }
+.lm-nav { display: grid; gap: 1px; }
 .lm-nav-link, .lm-nav summary {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 40px;
-    padding: 6px 10px;
-    border-radius: 10px;
-    color: white;
+    min-height: 34px;
+    padding: 4px 8px;
+    border-radius: 9px;
+    color: #e7eef8;
     text-decoration: none;
     cursor: pointer;
     list-style: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: background-color .16s ease, color .16s ease;
 }
 .lm-nav summary::-webkit-details-marker { display: none; }
-.lm-nav-link.is-current, .lm-nav-sub a.is-current { background: rgba(255, 255, 255, 0.14); }
+.lm-nav-link.is-current, .lm-nav-sub a.is-current {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: inset 2px 0 0 #5aa2ff;
+}
 .lm-nav-link:hover, .lm-nav summary:hover, .lm-nav-sub a:hover { background: rgba(255, 255, 255, 0.08); }
-.lm-ico { width: 1.1rem; flex: none; text-align: center; font-size: 0.95rem; line-height: 1; }
-.lm-nav-sub { display: grid; gap: 1px; padding: 0 0 6px 22px; }
+.lm-ico { width: 1rem; flex: none; text-align: center; font-size: 0.82rem; line-height: 1; opacity: 0.9; }
+.lm-nav-sub { display: grid; gap: 1px; padding: 0 0 4px 18px; }
 .lm-nav-sub a {
     display: flex;
     align-items: center;
-    min-height: 34px;
-    padding: 4px 8px;
+    min-height: 30px;
+    padding: 2px 8px;
     border-radius: 8px;
-    color: #d5e2f2;
+    color: #c5d4e8;
     text-decoration: none;
-    font-size: 0.82rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    transition: background-color .16s ease, color .16s ease;
 }
 .lm-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .lm-quick a {
@@ -342,8 +421,19 @@ body { overflow-x: hidden; }
     .lm-frame.is-collapsed { grid-template-columns: 76px 1fr; }
     .lm-frame.is-collapsed .lm-brand span,
     .lm-frame.is-collapsed .lm-nav-label,
-    .lm-frame.is-collapsed .lm-nav-sub { display: none; }
-    .lm-frame.is-collapsed .lm-collapse { font-size: 0; width: 40px; margin-left: 12px; margin-right: 12px; justify-content: center; }
+    .lm-frame.is-collapsed .lm-nav-sub,
+    .lm-frame.is-collapsed .lm-account-copy,
+    .lm-frame.is-collapsed .lm-account-import { display: none; }
+    .lm-frame.is-collapsed .lm-brand-wordmark {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        object-position: left center;
+    }
+    .lm-frame.is-collapsed .lm-side-head,
+    .lm-frame.is-collapsed .lm-account { padding-left: 8px; padding-right: 8px; }
+    .lm-frame.is-collapsed .lm-account-card { justify-content: center; padding: 6px; }
+    .lm-frame.is-collapsed .lm-collapse { font-size: 0; width: 40px; margin-left: auto; margin-right: auto; justify-content: center; }
     .lm-frame.is-collapsed .lm-collapse::after { content: "›"; font-size: 1.15rem; line-height: 1; }
     .lm-frame.is-collapsed .lm-nav-link,
     .lm-frame.is-collapsed .lm-nav summary { justify-content: center; padding-left: 0; padding-right: 0; }

@@ -13,8 +13,9 @@
                 <input class="form-control" id="business-name" name="name" value="{{ old('name', $tenant->name) }}" required maxlength="160">
                 <label class="form-label mt-3" for="slogan">Slogan <span class="text-secondary">(facultatif)</span></label>
                 <input class="form-control" id="slogan" name="slogan" value="{{ old('slogan', $tenant->slogan) }}" maxlength="200">
-                <div class="mt-3" id="logo">
+                <div class="mt-3 lm-logo-drop" id="logo">
                     <label class="form-label" for="logo-file">Logo</label>
+                    <p class="form-text mb-2">Ce logo apparaît sur vos tickets, la boutique et le compte entrepreneur.</p>
                     <input class="form-control" id="logo-file" type="file" name="logo" accept="image/png,image/jpeg,image/webp" data-logo-input="#logo-preview">
                     <p class="form-text">PNG, JPG, JPEG ou WEBP. 2 Mo maximum. Entre 32 et 4096 pixels.</p>
                     <img id="logo-preview" class="logo-preview mt-2 {{ $tenant->logoUrl() ? '' : 'd-none' }}" src="{{ $tenant->logoUrl() }}" alt="Aperçu du logo">
@@ -52,10 +53,10 @@
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm mt-3">
+        <div class="card border-0 shadow-sm mt-3 lm-geo-card">
             <div class="card-body">
                 <h2 class="h5">Localisation</h2>
-                <p class="text-secondary small">La position n’est lue qu’après votre clic.</p>
+                <p class="text-secondary small mb-3">La position n’est lue qu’après votre clic. Elle sert à situer le business.</p>
                 <div class="row g-2">
                     <div class="col-sm-6">
                         <label class="form-label" for="latitude">Latitude</label>
@@ -66,8 +67,9 @@
                         <input class="form-control" id="longitude" name="longitude" inputmode="decimal" value="{{ old('longitude', $tenant->longitude) }}">
                     </div>
                 </div>
-                <button type="button" class="btn btn-outline-secondary mt-3" data-geo data-lat="latitude" data-lng="longitude">Utiliser ma position</button>
+                <button type="button" class="btn btn-outline-primary mt-3" data-geo data-lat="latitude" data-lng="longitude">Utiliser ma position</button>
                 <p class="form-text" data-geo-note></p>
+                @include('partials.geo-map', ['lat' => old('latitude', $tenant->latitude), 'lng' => old('longitude', $tenant->longitude)])
             </div>
         </div>
     </section>
