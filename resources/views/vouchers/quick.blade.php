@@ -44,6 +44,8 @@
     @if($cards === [])
         <p class="mt-3 text-sm text-slate-500">Aucun profil nommé n’est encore lié à un forfait ou lu sur le MikroTik.</p>
     @else
+        <details class="mt-4" id="quick-detailed">
+            <summary class="cursor-pointer text-sm font-semibold">Autres réglages</summary>
         <form class="mt-4 grid gap-4" method="POST" action="{{ route('vouchers.quick.preview') }}" data-quick-form>
             @csrf
             <input type="hidden" name="wifi_zone_id" value="{{ $quickZone->id }}">
@@ -170,6 +172,7 @@
                 <button class="min-h-14 rounded-xl border bg-white px-4 py-3 font-semibold" type="submit">Associer à un forfait existant</button>
             </form>
         </div>
+        </details>
         <script type="application/json" id="quick-profiles">@json($cards)</script>
         <script type="application/json" id="quick-servers">@json($quick['servers'])</script>
     @endif

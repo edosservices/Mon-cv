@@ -145,9 +145,9 @@ body { overflow-x: hidden; }
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px 10px;
     min-height: 64px;
-    padding: 10px 16px;
+    padding: 10px 12px;
     background: rgba(255, 255, 255, 0.92);
     border-bottom: 1px solid var(--lm-line);
     position: sticky;
@@ -155,11 +155,13 @@ body { overflow-x: hidden; }
     z-index: 20;
     backdrop-filter: blur(10px);
 }
+.lm-top-brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; }
 .lm-top-title { min-width: 0; }
 .lm-top-title p, .lm-top-title h1 { margin: 0; overflow: hidden; text-overflow: ellipsis; }
 .lm-kicker { color: var(--lm-muted); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.lm-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.lm-actions a, .lm-actions button, .lm-chip {
+.lm-actions { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; margin-left: auto; }
+.lm-actions form { display: flex; }
+.lm-actions a, .lm-actions button, .lm-chip, .lm-icon-btn {
     min-height: 40px;
     border-radius: 999px;
     border: 1px solid var(--lm-line);
@@ -170,16 +172,33 @@ body { overflow-x: hidden; }
     font-weight: 700;
     text-decoration: none;
 }
+.lm-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    position: relative;
+}
+.lm-icon-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
 .lm-menu {
     display: inline-flex;
     align-items: center;
-    min-height: 40px;
-    border-radius: 999px;
-    border: 1px solid var(--lm-line);
-    background: white;
-    padding: 8px 12px;
     font-weight: 800;
 }
+.lm-express-choice { display: block; }
+.lm-express-detail { display: none; }
+.lm-express-choice:has(input:checked) {
+    border-color: var(--lm-ink);
+}
+.lm-express-choice:has(input:checked) .lm-express-detail { display: grid; }
 
 .lm-main { min-width: 0; }
 .lm-content { width: min(100%, 1120px); margin: 0 auto; padding: 20px 16px 96px; min-width: 0; }
@@ -360,6 +379,21 @@ body { overflow-x: hidden; }
 .lm-guest-wrap { width: min(100%, 440px); margin: 0 auto; padding: 28px 16px 48px; }
 .lm-guest-brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; margin-bottom: 18px; font-weight: 800; }
 
+@media (max-width: 760px) {
+    .lm-top-title { display: none; }
+    .lm-icon-btn { padding: 8px; min-width: 40px; }
+    .lm-icon-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+}
 @media (max-width: 1023px) {
     .lm-side {
         position: fixed;

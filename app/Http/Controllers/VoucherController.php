@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\VoucherStatus;
+use App\Models\Mikrotik;
 use App\Models\Plan;
 use App\Models\Voucher;
 use App\Models\WifiZone;
@@ -21,6 +22,7 @@ use App\Support\TicketTemplates;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -148,6 +150,121 @@ class VoucherController extends Controller
         ]);
 
         return redirect()->route('vouchers.generated')->with('status', count($created).' tickets créés.');
+    }
+
+    public function quickExpress(Request $request, TicketQuick $quick, TicketAssist $assist)
+    {
+        $data = $request->validate([
+            'wifi_zone_id' => ['required', 'integer'],
+            'profile' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
+            'qty' => ['required', 'integer', 'min:1', 'max:100'],
+        ], [
+            'profile.regex' => 'Paramètres incompatibles.',
+        ]);
+        $zone = WifiZone::findOrFail($data['wifi_zone_id']);
+        $input = [
+            'wifi_zone_id' => $zone->id,
+            'profile' => $data['profile'],
+            'server' => 'all',
+            'mode' => 'generate',
+            'qty' => (int) $data['qty'],
+            'prefix' => 'LM',
+            'length' => 4,
+            'charset' => 'mixed',
+            'draft' => (string) Str::uuid(),
+            'data_unlimited' => true,
+        ];
+
+        try {
+            $result = $quick->commit($zone, $input);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        if (! empty($result['needs_plan'])) {
+            return view('vouchers.quick-link', [
+                'zone' => $zone,
+                'preview' => $result,
+            ]);
+        }
+
+        $created = $result['vouchers'];
+        if (count($created) === 1) {
+            return redirect()->route('vouchers.assist.show', $created[0])->with('status', 'Ticket créé et enregistré.');
+        }
+
+        session([
+            'voucher_batch' => [
+                'ids' => array_map(fn ($voucher) => $voucher->id, $created),
+                'wifi_zone_id' => $zone->id,
+                'plan_id' => $created[0]->plan_id,
+                'template' => 'moderne',
+                'per_page' => 6,
+                'count' => count($created),
+            ],
+        ]);
+
+        return redirect()->route('vouchers.generated')->with('status', count($created).' tickets créés et enregistrés.');
+    }
+
+    public function quickUser(Request $request, TicketQuick $quick, TicketAssist $assist, MikrotikPreparation $preparation, MikrotikService $mikrotik)
+    {
+        $data = $request->validate([
+            'wifi_zone_id' => ['required', 'integer'],
+            'profile' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
+            'server' => ['nullable', 'string', 'max:32'],
+            'username' => ['nullable', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$/'],
+            'password' => ['nullable', 'string', 'regex:/^\d{3,8}$/'],
+            'time_limit' => ['nullable', 'string', 'max:32'],
+            'data_mb' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'comment' => ['nullable', 'string', 'max:120'],
+        ], [
+            'profile.regex' => 'Paramètres incompatibles.',
+            'username.regex' => 'Paramètres incompatibles.',
+            'password.regex' => 'Paramètres incompatibles.',
+        ]);
+        $zone = WifiZone::findOrFail($data['wifi_zone_id']);
+
+        try {
+            $time = $preparation->normalizedTime($data['time_limit'] ?? null);
+        } catch (RuntimeException) {
+            throw ValidationException::withMessages(['time_limit' => 'Paramètres incompatibles.']);
+        }
+
+        $unlimited = ! filled($data['data_mb'] ?? null);
+        $input = [
+            'wifi_zone_id' => $zone->id,
+            'profile' => $data['profile'],
+            'server' => filled($data['server'] ?? null) ? $data['server'] : 'all',
+            'mode' => 'add',
+            'qty' => 1,
+            'username' => $data['username'] ?? '',
+            'password' => $data['password'] ?? '',
+            'draft' => (string) Str::uuid(),
+            'data_unlimited' => $unlimited,
+            'data_value' => $unlimited ? null : (int) $data['data_mb'],
+            'data_unit' => 'MB',
+        ];
+
+        try {
+            $result = $quick->commit($zone, $input);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        if (! empty($result['needs_plan'])) {
+            return view('vouchers.quick-link', [
+                'zone' => $zone,
+                'preview' => $result,
+            ]);
+        }
+
+        /** @var Voucher $voucher */
+        $voucher = $result['vouchers'][0];
+        $comment = $this->userComment($data, $voucher->username, $time);
+        $this->applyUserFields($mikrotik, $assist, $zone, $voucher, $time, $comment);
+
+        return redirect()->route('vouchers.assist.show', $voucher)->with('status', 'Utilisateur créé.');
     }
 
     public function quickPlan(Request $request, TicketQuick $quick, TicketAssist $assist, MikrotikPreparation $preparation)
@@ -509,6 +626,60 @@ class VoucherController extends Controller
     /**
      * @return array{wifi_zone_id: int, plan_id: int, mbps: int, data_gb: int, username: ?string, password: ?string, profile_choice: ?string, alternate_name: ?string, draft: ?string}
      */
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function userComment(array $data, string $username, ?string $time): string
+    {
+        $comment = trim((string) ($data['comment'] ?? ''));
+        if ($comment === '') {
+            $parts = array_filter([
+                $username,
+                (string) ($data['profile'] ?? ''),
+                $time,
+                filled($data['data_mb'] ?? null) ? ((int) $data['data_mb']).' MB' : null,
+                now()->timezone(config('app.timezone'))->format('d/m/Y'),
+            ]);
+            $comment = implode(' · ', $parts);
+        }
+
+        $password = (string) ($data['password'] ?? '');
+        if ($password !== '') {
+            $comment = str_replace($password, '', $comment);
+        }
+        $comment = trim((string) preg_replace('/[\r\n=]+/', ' ', $comment));
+
+        return mb_substr($comment, 0, 120);
+    }
+
+    private function applyUserFields(MikrotikService $mikrotik, TicketAssist $assist, WifiZone $zone, Voucher $voucher, ?string $time, string $comment): void
+    {
+        $router = Mikrotik::query()->where('wifi_zone_id', $zone->id)->where('is_active', true)->orderBy('id')->first();
+        if (! $router || $voucher->sync_status !== 'synced') {
+            return;
+        }
+
+        $attributes = [];
+        if (filled($time)) {
+            $attributes['limit-uptime'] = $time;
+        }
+        if ($comment !== '') {
+            $attributes['comment'] = $comment;
+        }
+        if ($attributes === []) {
+            return;
+        }
+
+        try {
+            $mikrotik->updateHotspotUser($router, $voucher->username, $attributes);
+        } catch (\Throwable $exception) {
+            $voucher->forceFill([
+                'sync_status' => 'failed',
+                'sync_error' => $assist->readable($exception),
+            ])->save();
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
