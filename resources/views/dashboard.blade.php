@@ -228,10 +228,10 @@
                         <tr>
                             <td class="font-semibold">{{ $router->name }}</td>
                             <td>
-                                @if($router->status === 'online') Connecté
-                                @elseif($router->status === 'error') Erreur
-                                @elseif($router->status === 'offline') Hors ligne
-                                @else En attente @endif
+                                @if($router->status === 'online') 🟢 Connecté
+                                @elseif($router->status === 'error') 🟠 Erreur
+                                @elseif($router->status === 'offline') 🔴 Hors ligne
+                                @else 🟠 En attente @endif
                                 @if(in_array($router->status, ['offline', 'error'], true))
                                     <span class="block text-xs font-semibold">MikroTik hors ligne</span>
                                 @endif
