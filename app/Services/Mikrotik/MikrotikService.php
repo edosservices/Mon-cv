@@ -243,11 +243,12 @@ class MikrotikService
         return $profiles;
     }
 
-    public function createHotspotUser(Mikrotik $router, Voucher $voucher, bool $remember = true): Voucher
+    public function createHotspotUser(Mikrotik $router, Voucher $voucher, bool $remember = true, ?string $profile = null): Voucher
     {
         $this->assertPair($router, $voucher);
         $voucher->loadMissing('plan');
-        $profile = $this->profileNameFor($router, $voucher);
+        $explicit = filled($profile);
+        $profile = $explicit ? $profile : $this->profileNameFor($router, $voucher);
 
         if (! filled($profile)) {
             throw new RuntimeException('Profil non associé. Le forfait n’a pas de profil MikroTik. Le compte n’a pas été créé sur le routeur.');
@@ -263,14 +264,17 @@ class MikrotikService
             fn (array $row) => ($row['name'] ?? '') === $voucher->username,
         ));
         if ($existing === []) {
-            $this->command($router, [
+            $words = [
                 '/ip/hotspot/user/add',
                 '=name='.$voucher->username,
                 '=password='.$voucher->password,
                 '=profile='.$profile,
-                '=limit-uptime='.RouterOsProtocol::secondsToRouterTime((int) $voucher->plan->duration_seconds),
-                '=comment=limete-manager',
-            ], [$voucher->password]);
+            ];
+            if (! $explicit) {
+                $words[] = '=limit-uptime='.RouterOsProtocol::secondsToRouterTime((int) $voucher->plan->duration_seconds);
+            }
+            $words[] = '=comment=limete-manager';
+            $this->command($router, $words, [$voucher->password]);
         }
 
         if ($remember) {
@@ -397,7 +401,7 @@ class MikrotikService
         ];
     }
 
-    public function provisionVoucher(Voucher $voucher): Voucher
+    public function provisionVoucher(Voucher $voucher, ?string $profile = null): Voucher
     {
         if ($voucher->sync_status === 'synced' && $voucher->mikrotik_id) {
             return $voucher;
@@ -417,7 +421,7 @@ class MikrotikService
 
         foreach ($targets as $router) {
             try {
-                $this->createHotspotUser($router, $voucher, ! $remembered);
+                $this->createHotspotUser($router, $voucher, ! $remembered, $profile);
                 $remembered = true;
             } catch (Throwable $exception) {
                 $error = $this->redact($exception->getMessage(), [$router->password, $voucher->password]);
