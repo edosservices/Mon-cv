@@ -16,8 +16,16 @@ class WifiZone extends Model
     protected $fillable = [
         'tenant_id', 'name', 'display_name', 'slug', 'location', 'description', 'slogan',
         'phone', 'whatsapp', 'email', 'logo_path', 'banner_path', 'primary_color',
-        'secondary_color', 'status',
+        'secondary_color', 'latitude', 'longitude', 'status',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
+        ];
+    }
 
     public function tenant(): BelongsTo
     {
@@ -39,6 +47,11 @@ class WifiZone extends Model
         return $this->hasMany(Voucher::class);
     }
 
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
+
     public function displayLabel(): string
     {
         $label = trim((string) $this->display_name);
@@ -48,17 +61,61 @@ class WifiZone extends Model
 
     public function brandColor(): string
     {
-        return $this->hexColor($this->primary_color, '#0b5ed7');
+        return $this->validHex($this->primary_color)
+            ?? $this->tenant?->brandColor()
+            ?? '#0b5ed7';
     }
 
     public function secondaryColor(): string
     {
-        return $this->hexColor($this->secondary_color, '#071e3d');
+        return $this->validHex($this->secondary_color)
+            ?? $this->tenant?->secondaryColor()
+            ?? '#071e3d';
+    }
+
+    public function buttonColor(): string
+    {
+        return $this->tenant?->buttonColor() ?? $this->brandColor();
     }
 
     public function logoUrl(): ?string
     {
-        return $this->mediaUrl($this->logo_path);
+        return $this->mediaUrl($this->logo_path) ?? $this->tenant?->logoUrl();
+    }
+
+    public function contactPhone(): ?string
+    {
+        return filled($this->phone) ? (string) $this->phone : ($this->tenant?->phone ?: null);
+    }
+
+    public function contactWhatsapp(): ?string
+    {
+        return filled($this->whatsapp) ? (string) $this->whatsapp : ($this->tenant?->whatsapp ?: null);
+    }
+
+    public function contactEmail(): ?string
+    {
+        return filled($this->email) ? (string) $this->email : ($this->tenant?->email ?: null);
+    }
+
+    public function sloganLine(): ?string
+    {
+        return filled($this->slogan) ? (string) $this->slogan : ($this->tenant?->slogan ?: null);
+    }
+
+    public function addressLine(): ?string
+    {
+        if (filled($this->location)) {
+            return (string) $this->location;
+        }
+
+        $parts = array_values(array_filter([
+            $this->tenant?->address,
+            $this->tenant?->city,
+            $this->tenant?->country,
+        ]));
+
+        return $parts === [] ? null : implode(', ', $parts);
     }
 
     public function bannerUrl(): ?string
@@ -77,15 +134,15 @@ class WifiZone extends Model
             'slug' => $this->slug,
             'name' => $this->displayLabel(),
             'zone' => $this->name,
-            'slogan' => $this->slogan,
+            'slogan' => $this->sloganLine(),
             'primary' => $this->brandColor(),
             'secondary' => $this->secondaryColor(),
             'logo' => $this->absoluteMedia($this->logoUrl()),
             'banner' => $this->absoluteMedia($this->bannerUrl()),
             'whatsapp' => $this->whatsappDigits(),
-            'phone' => $this->phone,
-            'email' => $this->email,
-            'address' => $this->location,
+            'phone' => $this->contactPhone(),
+            'email' => $this->contactEmail(),
+            'address' => $this->addressLine(),
             'shop' => route('shop.show', $this->slug),
         ];
     }
@@ -119,14 +176,14 @@ class WifiZone extends Model
 
     public function whatsappDigits(): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $this->whatsapp);
+        $digits = preg_replace('/\D+/', '', (string) $this->contactWhatsapp());
 
         return $digits !== '' ? $digits : null;
     }
 
-    private function hexColor(mixed $value, string $fallback): string
+    private function validHex(mixed $value): ?string
     {
-        return preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $value) ? (string) $value : $fallback;
+        return preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $value) ? (string) $value : null;
     }
 
     private function mediaUrl(mixed $path): ?string

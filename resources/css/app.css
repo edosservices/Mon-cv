@@ -94,7 +94,7 @@ body {
         text-decoration: none;
         cursor: pointer;
     }
-    .btn-primary { background: var(--shop, #0b5ed7); color: white; }
+    .btn-primary { background: var(--shop-btn, var(--shop, #0b5ed7)); color: white; }
     .btn-ghost { background: #f3f7fb; color: #10233f; }
     .btn-wa { background: #128c4a; color: white; }
     .btn:disabled { opacity: .7; cursor: progress; }

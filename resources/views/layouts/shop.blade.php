@@ -1,6 +1,7 @@
 @php
     $brand = $zone->brandColor();
     $brand2 = $zone->secondaryColor();
+    $brandBtn = $zone->buttonColor();
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -17,7 +18,7 @@
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="shop" style="--shop: {{ $brand }}; --shop-2: {{ $brand2 }}">
+<body class="shop" style="--shop: {{ $brand }}; --shop-2: {{ $brand2 }}; --shop-btn: {{ $brandBtn }}">
     <a class="skip" href="#contenu">Aller au contenu</a>
     <div class="shop-wrap">
         <header class="shop-top">

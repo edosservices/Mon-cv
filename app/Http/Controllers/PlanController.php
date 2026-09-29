@@ -6,13 +6,18 @@ use App\Models\Plan;
 use App\Models\WifiZone;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PlanController extends Controller
 {
     public function index()
     {
-        return view('plans.index', ['plans' => Plan::with('wifiZone')->latest()->get()]);
+        return view('plans.index', [
+            'plans' => Plan::with('wifiZone')->withCount([
+                'vouchers as sold_count' => fn ($query) => $query->whereHas('saleItem'),
+            ])->latest()->get(),
+        ]);
     }
 
     public function create()
@@ -31,6 +36,24 @@ class PlanController extends Controller
     public function edit(Plan $plan)
     {
         return view('plans.form', ['plan' => $plan, 'zones' => WifiZone::orderBy('name')->get()]);
+    }
+
+    public function duplicate(Plan $plan, AuditLogger $audit)
+    {
+        $copy = $plan->replicate();
+        $copy->name = Str::limit('Copie de '.$plan->name, 120, '');
+        $copy->save();
+        $audit->record('plan.created', $copy, null, $copy->only(['name', 'price', 'duration_seconds']));
+
+        return redirect()->route('plans.edit', $copy)->with('status', 'Forfait dupliqué. Ajustez-le puis enregistrez.');
+    }
+
+    public function status(Plan $plan, AuditLogger $audit)
+    {
+        $plan->update(['status' => $plan->status === 'active' ? 'inactive' : 'active']);
+        $audit->record('plan.updated', $plan, null, $plan->only(['status']));
+
+        return back()->with('status', $plan->status === 'active' ? 'Forfait activé.' : 'Forfait désactivé.');
     }
 
     public function update(Request $request, Plan $plan, AuditLogger $audit)
@@ -52,6 +75,28 @@ class PlanController extends Controller
 
     private function validated(Request $request): array
     {
+        if ($request->filled('duration_value')) {
+            $value = (int) $request->input('duration_value');
+            $seconds = match ((string) $request->input('duration_unit', 'hours')) {
+                'minutes' => $value * 60,
+                'days' => $value * 86400,
+                default => $value * 3600,
+            };
+            $request->merge(['duration_seconds' => $seconds]);
+        }
+
+        if (! $request->filled('currency')) {
+            $request->merge(['currency' => config('limete.currency', 'CDF')]);
+        }
+
+        if (! $request->filled('status')) {
+            $request->merge(['status' => 'active']);
+        }
+
+        if ($request->input('price') === '') {
+            $request->merge(['price' => null]);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'wifi_zone_id' => ['nullable', Rule::exists('wifi_zones', 'id')->where('tenant_id', auth()->user()->tenant_id)],
@@ -66,7 +111,7 @@ class PlanController extends Controller
         ]);
 
         $data['unlimited_data'] = $request->boolean('unlimited_data');
-        $data['badge'] = $data['badge'] ?: null;
+        $data['badge'] = ($data['badge'] ?? null) ?: null;
 
         return $data;
     }

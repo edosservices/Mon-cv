@@ -1,27 +1,53 @@
-@extends('layouts.app')
-@section('heading', 'WiFi Zones')
+@extends('layouts.business')
+@section('heading', 'Mes WiFi Zones')
 @section('content')
-<div class="mb-4"><a class="rounded-lg bg-electric px-4 py-2 text-sm text-white" href="{{ route('wifi-zones.create') }}">Nouvelle zone</a></div>
-<div class="space-y-3">
-    @forelse($zones as $zone)
-        <article class="rounded-2xl bg-white p-4 shadow-sm">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0">
-                    <h2 class="font-semibold">{{ $zone->name }}</h2>
-                    <p class="text-sm text-slate-500">{{ $zone->location }} · {{ $zone->status === 'active' ? 'Active' : 'Inactive' }}</p>
-                    <p class="mt-1 break-all text-sm">/wifi/{{ $zone->slug }}</p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    @if($zone->status === 'active')
-                        <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('shop.show', $zone->slug) }}" target="_blank" rel="noopener">Voir ma boutique</a>
-                        <button type="button" class="js-copy rounded-xl border border-slate-300 px-4 py-3 text-sm" data-url="{{ route('shop.show', $zone->slug) }}">Copier le lien</button>
-                    @endif
-                    <a class="rounded-xl border border-slate-300 px-4 py-3 text-sm" href="{{ route('wifi-zones.edit', $zone) }}">Modifier</a>
-                </div>
-            </div>
-        </article>
-    @empty
-        <p class="text-sm text-slate-500">Aucune zone pour le moment.</p>
-    @endforelse
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h2 class="h4 mb-0">Mes WiFi Zones</h2>
+    @unless($first)
+        <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">+ Nouvelle WiFi Zone</a>
+    @endunless
 </div>
+
+@if($first)
+    <section class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h3 class="h5">Crée ta première WiFi Zone</h3>
+            <p class="text-secondary mb-3">Un nom et une adresse suffisent. Les réglages avancés restent masqués.</p>
+            <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">Créer ma zone</a>
+        </div>
+    </section>
+@else
+    <div class="row g-3">
+        @foreach($zones as $zone)
+            <div class="col-12 col-md-6">
+                <article class="card zone-card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between gap-2">
+                            <h3 class="h5 mb-1">{{ $zone->name }}</h3>
+                            <span class="badge {{ $zone->status === 'active' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $zone->status === 'active' ? 'Active' : 'Inactive' }}</span>
+                        </div>
+                        <p class="text-secondary mb-2">{{ $zone->location ?: 'Localisation non renseignée' }}</p>
+                        <p class="mb-3">{{ $zone->vouchers_count }} tickets · {{ (int) ($clientCounts[$zone->id] ?? 0) }} clients</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            @if($zone->status === 'active')
+                                <a class="btn btn-sm biz-btn" href="{{ route('shop.show', $zone->slug) }}" target="_blank" rel="noopener">Ouvrir</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ route('shop.show', $zone->slug) }}" target="_blank" rel="noopener">Voir ma boutique</a>
+                                <button type="button" class="js-copy btn btn-sm btn-outline-secondary" data-url="{{ route('shop.show', $zone->slug) }}">Copier le lien</button>
+                            @endif
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ route('wifi-zones.edit', $zone) }}">Modifier</a>
+                            <form method="POST" action="{{ route('wifi-zones.status', $zone) }}">
+                                @csrf
+                                @method('PATCH')
+                                <button class="btn btn-sm btn-outline-secondary">{{ $zone->status === 'active' ? 'Désactiver' : 'Activer' }}</button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDelete" data-delete-action="{{ route('wifi-zones.destroy', $zone) }}" data-delete-title="Supprimer cette WiFi Zone ?">Supprimer</button>
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ route('vouchers.generate', ['wifi_zone_id' => $zone->id]) }}">Générer des tickets</a>
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ route('sales.quick', ['wifi_zone_id' => $zone->id]) }}">Vendre</a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        @endforeach
+    </div>
+@endif
 @endsection
