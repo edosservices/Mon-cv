@@ -48,7 +48,11 @@ class VoucherController extends Controller
                 'wifi_zone_id' => request()->integer('wifi_zone_id') ?: null,
                 'plan_id' => request()->integer('plan_id') ?: null,
                 'count' => request()->integer('count') ?: null,
-                'template' => TicketTemplates::normalize(request()->string('template')->toString()),
+                'template' => TicketTemplates::normalize(
+                    request()->filled('template')
+                        ? request()->string('template')->toString()
+                        : (string) request()->user()?->tenant?->ticket_style
+                ),
                 'per_page' => in_array(request()->integer('per_page'), [4, 6, 8], true) ? request()->integer('per_page') : 6,
             ],
         ]);

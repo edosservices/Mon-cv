@@ -63,6 +63,7 @@ class TicketSheet
     private function payload(Voucher $voucher, string $template): array
     {
         $zone = $voucher->wifiZone;
+        $zone?->loadMissing('tenant');
         $plan = $voucher->plan;
         $publicUrl = route('tickets.public', $voucher->public_token);
 
@@ -82,16 +83,17 @@ class TicketSheet
             'public_url' => $publicUrl,
             'created' => $voucher->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i'),
             'expires' => $voucher->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i'),
-            'phone' => $zone?->phone,
-            'whatsapp' => $zone?->whatsapp,
-            'address' => $zone?->location,
+            'phone' => $zone?->contactPhone(),
+            'whatsapp' => $zone?->contactWhatsapp(),
+            'address' => $zone?->addressLine(),
             'status' => $voucher->statusLabel(),
         ];
     }
 
     private function logo(WifiZone $zone): ?string
     {
-        $path = (string) $zone->logo_path;
+        $zone->loadMissing('tenant');
+        $path = filled($zone->logo_path) ? (string) $zone->logo_path : (string) ($zone->tenant?->logo_path ?? '');
         if ($path === '' || str_contains($path, '..')) {
             return null;
         }

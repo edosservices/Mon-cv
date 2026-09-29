@@ -7,6 +7,7 @@
             ['wifi-zones.index', 'Toutes les zones', 'zones.manage'],
         ],
         'Ventes' => [
+            ['sales.quick', 'Vente rapide', 'sales.confirm'],
             ['sales.index', 'Toutes les ventes', 'sales.view'],
             ['vouchers.index', 'Tickets', 'vouchers.manage'],
             ['vouchers.generate', 'Générer des tickets', 'vouchers.manage'],
@@ -22,6 +23,7 @@
             ['active-users.index', 'Utilisateurs actifs', 'sessions.view'],
         ],
         'Rapports' => [
+            ['reports.index', 'Rapports', 'sales.view'],
             ['sales.index', 'Ventes', 'sales.view'],
             ['dashboard', 'Revenus', null],
             ['plans.index', 'Forfaits', 'plans.manage'],
@@ -29,6 +31,7 @@
             ['statistics', 'Statistiques', 'statistics.view'],
         ],
         'Paramètres' => [
+            ['business.edit', 'Mon Business', 'settings.manage'],
             ['settings.edit', 'Paramètres', 'settings.manage'],
             ['plans.index', 'Forfaits', 'plans.manage'],
             ['subscription.show', 'Abonnement', 'subscription.manage'],
