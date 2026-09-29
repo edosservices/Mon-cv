@@ -4,6 +4,9 @@
     $share = 'https://wa.me/?text='.rawurlencode($ticket->clientShareText());
 @endphp
 <article class="client-card p-3 mb-3">
+    @if($mark = $ticket->wifiZone?->logoUrl())
+        <img class="client-ticket-logo" src="{{ $mark }}" alt="{{ $ticket->wifiZone->tenant?->name ?: $ticket->wifiZone->name }}">
+    @endif
     <p class="mb-1"><strong>{{ $snapshot['profile'] ?? ($ticket->plan->mikrotik_profile ?: ($ticket->plan->name ?? 'Forfait')) }}</strong></p>
     <p class="mb-1">{{ $ticket->username }}@if($reveal ?? false) · {{ $ticket->password }}@endif</p>
     <p class="mb-1 small">Validité {{ $snapshot['validity'] ?? $ticket->plan?->durationLabel() }} · Temps {{ $snapshot['time_label'] ?? ($snapshot['time_limit'] ?? '—') }}</p>

@@ -1,7 +1,7 @@
 <style>
-.pass { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 22px; overflow: hidden; color: #10233f; font-family: sans-serif; }
+.pass { max-width: 420px; margin: 0 auto; background: #fff; border-radius: 22px; overflow: hidden; color: #10233f; font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif; }
 .pass-head { color: #fff; padding: 20px 16px 16px; text-align: center; }
-.pass-head img { width: 64px; height: auto; margin-bottom: 8px; }
+.pass-head img { width: min(168px, 72%); height: auto; margin: 0 auto 8px; object-fit: contain; background: #000; border-radius: 12px; }
 .pass-head p { margin: 0; font-size: 18px; font-weight: 800; }
 .pass-body { padding: 8px 16px 18px; }
 .pass-plan { margin: 12px 0 0; text-align: center; font-size: 22px; font-weight: 800; }
@@ -32,6 +32,9 @@
         @endif
         <p>{{ $voucher->wifiZone->displayLabel() }}</p>
         <p class="fine">{{ $voucher->wifiZone->name }}</p>
+        @if($place = $voucher->wifiZone->addressLine())
+            <p class="fine">{{ $place }}</p>
+        @endif
     </header>
     <div class="pass-body">
         <p class="pass-plan">{{ $voucher->plan->name }}</p>
