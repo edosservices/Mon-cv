@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\Admin\ProductionCheckController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClientPortalController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExportController;
@@ -38,6 +39,28 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+
+Route::prefix('client')->name('client.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [ClientPortalController::class, 'loginForm'])->name('login');
+        Route::post('/login', [ClientPortalController::class, 'login'])->middleware('throttle:client-login');
+        Route::get('/register', [ClientPortalController::class, 'registerForm'])->name('register');
+        Route::post('/register', [ClientPortalController::class, 'register'])->middleware('throttle:client-register');
+        Route::get('/forgot', [ClientPortalController::class, 'forgotForm'])->name('forgot');
+        Route::post('/forgot', [ClientPortalController::class, 'forgot'])->middleware('throttle:client-recover');
+        Route::get('/reset', [ClientPortalController::class, 'resetForm'])->name('reset');
+        Route::post('/reset', [ClientPortalController::class, 'reset'])->middleware('throttle:client-recover');
+    });
+
+    Route::get('/acheter', [ClientPortalController::class, 'buy'])->name('buy');
+
+    Route::middleware(['auth', 'role:client'])->group(function () {
+        Route::get('/dashboard', [ClientPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/tickets', [ClientPortalController::class, 'tickets'])->name('tickets');
+        Route::get('/profile', [ClientPortalController::class, 'profile'])->name('profile');
+        Route::put('/profile', [ClientPortalController::class, 'updateProfile'])->name('profile.update');
+    });
+});
 
 Route::get('/wifi/{slug}', [WifiShopController::class, 'show'])->name('shop.show');
 Route::get('/wifi/{slug}/marque', [WifiShopController::class, 'brand'])->name('shop.brand');
