@@ -46,6 +46,31 @@ class VoucherGenerator
         throw new RuntimeException('Impossible de générer des identifiants uniques pour tous les tickets.');
     }
 
+    public function issue(WifiZone $zone, Plan $plan, string $username, string $password): Voucher
+    {
+        $username = trim($username);
+        $taken = Voucher::withoutGlobalScope('tenant')->withTrashed()
+            ->where('tenant_id', $zone->tenant_id)
+            ->where('username', $username)
+            ->exists();
+
+        if ($taken || $username === '' || $password === '' || $username === $password) {
+            throw new RuntimeException('Cet utilisateur existe déjà.');
+        }
+
+        $rows = $this->rows($zone, $plan, [[
+            'username' => $username,
+            'password' => $password,
+            'public_token' => $this->makeToken(),
+        ]], false);
+        Voucher::insert($rows);
+
+        return Voucher::withoutGlobalScope('tenant')
+            ->where('tenant_id', $zone->tenant_id)
+            ->where('public_token', $rows[0]['public_token'])
+            ->firstOrFail();
+    }
+
     public function activate(Voucher $voucher): Voucher
     {
         if ($voucher->status === VoucherStatus::Disabled->value) {
