@@ -12,10 +12,10 @@
     <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
         <div><dt class="text-slate-500">Utilisateur</dt><dd class="font-semibold">{{ $voucher->username }}</dd></div>
         <div><dt class="text-slate-500">Mot de passe</dt><dd class="font-semibold">{{ $voucher->password }}</dd></div>
-        <div><dt class="text-slate-500">Profil</dt><dd class="font-semibold">{{ $handover['profile'] ?? ($voucher->plan->mikrotik_profile ?: '—') }}</dd></div>
-        <div><dt class="text-slate-500">Durée</dt><dd class="font-semibold">{{ $handover['duration'] ?? $voucher->plan->durationLabel() }}</dd></div>
-        <div><dt class="text-slate-500">Data</dt><dd class="font-semibold">{{ $handover['data'] ?? '—' }}</dd></div>
-        <div><dt class="text-slate-500">Débit</dt><dd class="font-semibold">{{ $handover['rate'] ?? '—' }}</dd></div>
+        <div><dt class="text-slate-500">Profil</dt><dd class="font-semibold">{{ $voucher->profile_snapshot['profile'] ?? ($handover['profile'] ?? ($voucher->plan->mikrotik_profile ?: '—')) }}</dd></div>
+        <div><dt class="text-slate-500">Durée</dt><dd class="font-semibold">{{ $voucher->profile_snapshot['validity_label'] ?? ($handover['duration'] ?? $voucher->plan->durationLabel()) }}</dd></div>
+        <div><dt class="text-slate-500">Data</dt><dd class="font-semibold">{{ $voucher->profile_snapshot['data_label'] ?? ($handover['data'] ?? '—') }}</dd></div>
+        <div><dt class="text-slate-500">Débit</dt><dd class="font-semibold">{{ $voucher->profile_snapshot['rate_limit'] ?? ($handover['rate'] ?? '—') }}</dd></div>
     </dl>
     @if($voucher->isSynced())
         <p class="mt-4 font-semibold text-emerald-700">✓ Synchronisé</p>

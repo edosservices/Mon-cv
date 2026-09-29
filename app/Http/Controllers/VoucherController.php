@@ -11,6 +11,7 @@ use App\Services\Mikrotik\MikrotikService;
 use App\Services\PlanLimiter;
 use App\Services\TicketAssist;
 use App\Services\TicketBatch;
+use App\Services\TicketQuick;
 use App\Services\TicketSheet;
 use App\Services\VoucherGenerator;
 use App\Support\QrCodes;
@@ -40,15 +41,26 @@ class VoucherController extends Controller
         ]);
     }
 
-    public function createBatch(PlanLimiter $limits)
+    public function createBatch(PlanLimiter $limits, TicketQuick $quick)
     {
         $zones = WifiZone::orderBy('name')->get();
         $assist = app(TicketAssist::class);
+        $zone = $zones->firstWhere('id', request()->integer('wifi_zone_id')) ?? $zones->first();
+        $catalog = ['profiles' => [], 'servers' => [], 'offline' => true, 'notice' => null, 'last' => null];
+        if ($zone) {
+            try {
+                $catalog = $quick->catalog($zone);
+            } catch (RuntimeException $exception) {
+                $catalog['notice'] = $assist->readable($exception);
+            }
+        }
 
         return view('vouchers.generate', [
             'plans' => Plan::with('wifiZone')->orderBy('name')->get(),
             'zones' => $zones,
             'durations' => $zones->mapWithKeys(fn (WifiZone $zone) => [$zone->id => $assist->durations($zone)]),
+            'quickZone' => $zone,
+            'quick' => $catalog,
             'templates' => TicketTemplates::options(),
             'limit' => $limits->voucherBatchLimit(),
             'prefill' => [
@@ -63,6 +75,65 @@ class VoucherController extends Controller
                 'per_page' => in_array(request()->integer('per_page'), [4, 6, 8], true) ? request()->integer('per_page') : 6,
             ],
         ]);
+    }
+
+    public function quickPreview(Request $request, TicketQuick $quick, TicketAssist $assist)
+    {
+        $input = $this->quickInput($request);
+        $zone = WifiZone::findOrFail($input['wifi_zone_id']);
+
+        try {
+            $preview = $quick->preview($zone, $input);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        return view('vouchers.quick-preview', [
+            'zone' => $zone,
+            'preview' => $preview,
+            'input' => $input,
+        ]);
+    }
+
+    public function quickStore(Request $request, TicketQuick $quick, TicketAssist $assist)
+    {
+        $input = $this->quickInput($request);
+        $request->validate(['confirm' => ['accepted']]);
+        $zone = WifiZone::findOrFail($input['wifi_zone_id']);
+
+        try {
+            $created = $quick->confirm($zone, $input);
+        } catch (RuntimeException $exception) {
+            return back()->with('warning', $assist->readable($exception))->withInput();
+        }
+
+        if (count($created) === 1) {
+            return redirect()->route('vouchers.assist.show', $created[0]);
+        }
+
+        session([
+            'voucher_batch' => [
+                'ids' => array_map(fn ($voucher) => $voucher->id, $created),
+                'wifi_zone_id' => $zone->id,
+                'plan_id' => $created[0]->plan_id,
+                'template' => 'moderne',
+                'per_page' => 6,
+                'count' => count($created),
+            ],
+        ]);
+
+        return redirect()->route('vouchers.generated')->with('status', count($created).' tickets créés.');
+    }
+
+    public function quickUsername(Request $request, TicketQuick $quick)
+    {
+        $data = $request->validate([
+            'wifi_zone_id' => ['required', 'integer'],
+            'q' => ['nullable', 'string', 'max:32'],
+        ]);
+        $zone = WifiZone::findOrFail($data['wifi_zone_id']);
+
+        return response()->json($quick->usernameHint($zone, (string) ($data['q'] ?? '')));
     }
 
     public function assistPreview(Request $request, TicketAssist $assist)
@@ -356,6 +427,48 @@ class VoucherController extends Controller
     /**
      * @return array{wifi_zone_id: int, plan_id: int, mbps: int, data_gb: int, username: ?string, password: ?string, profile_choice: ?string, alternate_name: ?string, draft: ?string}
      */
+    /**
+     * @return array<string, mixed>
+     */
+    private function quickInput(Request $request): array
+    {
+        $data = $request->validate([
+            'wifi_zone_id' => ['required', 'integer'],
+            'profile' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
+            'server' => ['nullable', 'string', 'max:32'],
+            'data_value' => ['required', 'integer', 'min:1', 'max:100000'],
+            'data_unit' => ['required', 'in:MB,GB'],
+            'mode' => ['required', 'in:add,generate'],
+            'qty' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'prefix' => ['nullable', 'string', 'max:12'],
+            'length' => ['nullable', 'integer', 'min:3', 'max:8'],
+            'charset' => ['nullable', 'in:mixed,digits,lower,upper'],
+            'username' => ['nullable', 'string', 'max:32'],
+            'password' => ['nullable', 'string', 'max:8'],
+            'draft' => ['required', 'string', 'max:80'],
+        ], [
+            'profile.regex' => 'Paramètres incompatibles.',
+            'data_value.min' => 'Paramètres incompatibles.',
+            'data_unit.in' => 'Paramètres incompatibles.',
+        ]);
+
+        return [
+            'wifi_zone_id' => (int) $data['wifi_zone_id'],
+            'profile' => $data['profile'],
+            'server' => $data['server'] ?? 'all',
+            'data_value' => (int) $data['data_value'],
+            'data_unit' => $data['data_unit'],
+            'mode' => $data['mode'],
+            'qty' => (int) ($data['qty'] ?? 1),
+            'prefix' => $data['prefix'] ?? '',
+            'length' => (int) ($data['length'] ?? 4),
+            'charset' => $data['charset'] ?? 'mixed',
+            'username' => $data['username'] ?? '',
+            'password' => $data['password'] ?? '',
+            'draft' => $data['draft'],
+        ];
+    }
+
     private function assistInput(Request $request): array
     {
         $data = $request->validate([

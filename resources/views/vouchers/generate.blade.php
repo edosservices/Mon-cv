@@ -2,6 +2,9 @@
 @section('heading', 'Créer un ticket')
 @section('content')
 @include('vouchers.assist-steps', ['step' => 1])
+@if($quickZone)
+    @include('vouchers.quick')
+@endif
 
 <section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
     <h2 class="text-lg font-semibold">Choisir la durée</h2>
