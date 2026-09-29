@@ -19,6 +19,7 @@
             ['payments.index', 'Paiements', 'sales.view'],
         ],
         'MikroTik' => [
+            ['mikrotiks.assistant', 'Connecter mon MikroTik', 'mikrotiks.manage'],
             ['mikrotiks.index', 'Routeurs', 'mikrotiks.manage'],
             ['active-users.index', 'Utilisateurs actifs', 'sessions.view'],
         ],

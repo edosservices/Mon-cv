@@ -65,6 +65,9 @@
     @endif
     @if(auth()->user()->hasPermission('settings.manage'))
         <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('business.edit') }}">Mon Business</a>
+        @if(auth()->user()->hasPermission('mikrotiks.manage'))
+            <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('mikrotiks.assistant') }}">Connecter mon MikroTik</a>
+        @endif
     @endif
     @if(auth()->user()->hasPermission('sales.view'))
         <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('reports.index') }}">Mes Rapports</a>
@@ -203,12 +206,25 @@
             @php $router = $card['router']; @endphp
             <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
                 <p class="font-semibold">{{ $router->name }}</p>
+                @php
+                    $pendingTickets = $report['unsynced']->where('wifi_zone_id', $router->wifi_zone_id)->count();
+                    $incomplete = ! $router->wifi_zone_id || ! filled($router->host) || ! filled($router->username);
+                @endphp
                 <p class="mt-1 text-sm">
                     @if($router->status === 'online') 🟢 Connecté
                     @elseif($router->status === 'error') 🟠 Erreur
                     @elseif($router->status === 'offline') 🔴 Hors ligne
-                    @else ⚪ Non vérifié @endif
+                    @else 🟠 En attente @endif
                 </p>
+                @if($incomplete)
+                    <p class="mt-1 text-sm">⚠ Configuration incomplète</p>
+                @endif
+                @if($pendingTickets > 0)
+                    <p class="mt-1 text-sm">🟠 En attente · Tickets en attente : {{ $pendingTickets }}</p>
+                @endif
+                @if(($router->details['connection_mode'] ?? null) === 'simulation')
+                    <p class="mt-1 text-sm">SIMULATION — aucun routeur réel n’est connecté.</p>
+                @endif
                 @if(in_array($router->status, ['offline', 'error'], true))
                     <p class="mt-2 text-sm font-semibold">MikroTik hors ligne</p>
                 @endif
@@ -217,6 +233,8 @@
                     <div class="flex justify-between gap-3"><dt>Adresse</dt><dd class="truncate">{{ $router->host }}</dd></div>
                     <div class="flex justify-between gap-3"><dt>Utilisateurs actifs</dt><dd>{{ count($card['users']) }}</dd></div>
                     <div class="flex justify-between gap-3"><dt>Dernière vérification</dt><dd>{{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt>Dernière synchronisation</dt><dd>{{ $router->last_synced_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</dd></div>
+                    <div class="flex justify-between gap-3"><dt>Tickets en attente</dt><dd>{{ $pendingTickets }}</dd></div>
                     @if(!empty($card['resource']['version']))<div class="flex justify-between gap-3"><dt>RouterOS</dt><dd>{{ $card['resource']['version'] }}</dd></div>@endif
                     @if(!empty($card['resource']['cpu-load']))<div class="flex justify-between gap-3"><dt>CPU</dt><dd>{{ $card['resource']['cpu-load'] }}</dd></div>@endif
                 </dl>

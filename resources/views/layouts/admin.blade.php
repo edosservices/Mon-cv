@@ -15,6 +15,7 @@
         <nav class="flex flex-wrap gap-3 text-sm">
             <a href="{{ route('admin.dashboard') }}">Tableau</a>
             <a href="{{ route('admin.tenants') }}">Entrepreneurs</a>
+            <a href="{{ route('admin.mikrotiks') }}">MikroTik</a>
             <a href="{{ route('admin.plans') }}">Plans</a>
             <a href="{{ route('admin.payments') }}">Paiements</a>
             <a href="{{ route('admin.logs') }}">Journal</a>
