@@ -51,28 +51,27 @@
     </form>
 </header>
 
-<p class="mb-2 text-sm font-semibold text-slate-500">Actions rapides</p>
-<nav class="lm-blocks mb-4" aria-label="Actions rapides">
+<nav class="lm-quick" aria-label="Actions rapides">
     @if(auth()->user()->hasPermission('sales.confirm'))
-        <a class="lm-block" href="{{ route('sales.quick') }}"><strong>+ Vendre un ticket</strong><span>Encaisser un forfait tout de suite.</span><em>Vendre</em></a>
+        <a href="{{ route('sales.quick') }}">+ Vendre un ticket</a>
     @endif
     @if(auth()->user()->hasPermission('vouchers.manage'))
-        <a class="lm-block" href="{{ route('vouchers.generate') }}"><strong>+ Générer des tickets</strong><span>Préparer un lot prêt à imprimer.</span><em>Générer</em></a>
+        <a href="{{ route('vouchers.generate') }}">+ Générer des tickets</a>
     @endif
     @if(auth()->user()->hasPermission('plans.manage'))
-        <a class="lm-block" href="{{ route('plans.create') }}"><strong>+ Créer un forfait</strong><span>Durée, prix et accès.</span><em>Nouveau forfait</em></a>
+        <a href="{{ route('plans.create') }}">+ Créer un forfait</a>
     @endif
     @if(auth()->user()->hasPermission('zones.manage'))
-        <a class="lm-block" href="{{ route('wifi-zones.create') }}"><strong>+ Ajouter une WiFi Zone</strong><span>Un lieu, une boutique.</span><em>Nouvelle zone</em></a>
+        <a href="{{ route('wifi-zones.create') }}">+ Ajouter une WiFi Zone</a>
     @endif
     @if(auth()->user()->hasPermission('settings.manage'))
-        <a class="lm-block" href="{{ route('business.edit') }}"><strong>Mon Business</strong><span>Logo, couleurs et contact.</span><em>Ouvrir</em></a>
+        <a href="{{ route('business.edit') }}">Mon Business</a>
         @if(auth()->user()->hasPermission('mikrotiks.manage'))
-            <a class="lm-block" href="{{ route('mikrotiks.assistant') }}"><strong>Connecter mon MikroTik</strong><span>Associer le routeur de la zone.</span><em>Connecter</em></a>
+            <a href="{{ route('mikrotiks.assistant') }}">Connecter mon MikroTik</a>
         @endif
     @endif
     @if(auth()->user()->hasPermission('sales.view'))
-        <a class="lm-block" href="{{ route('reports.index') }}"><strong>Mes Rapports</strong><span>Ventes, zones et forfaits.</span><em>Voir</em></a>
+        <a href="{{ route('reports.index') }}">Mes Rapports</a>
     @endif
 </nav>
 
@@ -152,7 +151,7 @@
 
 <section id="revenus" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-semibold">Évolution du chiffre d'affaires</h2>
+        <h2 class="font-semibold">Revenus</h2>
         <div class="flex flex-wrap gap-2">
             @foreach(['day' => 'Jour', 'week' => 'Semaine', 'month' => 'Mois'] as $value => $label)
                 <a class="rounded-lg border px-3 py-2 text-sm {{ $filters['grain'] === $value ? 'border-electric text-electric' : '' }}" href="{{ route('dashboard', array_merge($query, ['grain' => $value])) }}">{{ $label }}</a>
@@ -187,75 +186,82 @@
 
 @if($report['zone_rows'] !== [])
 <section id="zones" class="mt-6">
-    <h2 class="font-semibold">Mes WiFi Zones</h2>
-    <div class="mt-3 grid gap-3 md:grid-cols-2">
-        @foreach($report['zone_rows'] as $zone)
-            <a class="min-w-0 rounded-2xl bg-white p-4 shadow-sm" href="{{ route('dashboard', array_merge($query, ['zone' => $zone['id']])) }}">
-                <p class="font-semibold">{{ $zone['name'] }}</p>
-                <p class="truncate text-sm text-slate-500">{{ $zone['slug'] }} · {{ $zone['status'] === 'active' ? 'Active' : $zone['status'] }}</p>
-                <p class="mt-2 text-sm">MikroTik : {{ $zone['router'] ?: 'Aucun' }}</p>
-                <p class="text-sm">Utilisateurs actifs : {{ $zone['online'] }}</p>
-                <p class="text-sm">Ventes aujourd’hui : {{ $zone['sales'] }}</p>
-                <p class="text-sm">CA aujourd’hui : {{ \App\Support\Money::format($zone['revenue']) }}</p>
-            </a>
-        @endforeach
+    <h2 class="font-semibold">Zones</h2>
+    <div class="lm-table-wrap mt-3 rounded-2xl bg-white shadow-sm">
+        <table class="lm-table">
+            <thead>
+                <tr><th>Zone</th><th>Routeur</th><th>En ligne</th><th>Ventes</th><th>CA</th></tr>
+            </thead>
+            <tbody>
+                @foreach($report['zone_rows'] as $zone)
+                    <tr>
+                        <td><a class="font-semibold" href="{{ route('dashboard', array_merge($query, ['zone' => $zone['id']])) }}">{{ $zone['name'] }}</a><span class="block text-xs text-slate-500">{{ $zone['slug'] }} · {{ $zone['status'] === 'active' ? 'Active' : $zone['status'] }}</span></td>
+                        <td>{{ $zone['router'] ?: 'Aucun' }}</td>
+                        <td>{{ $zone['online'] }}</td>
+                        <td>{{ $zone['sales'] }}</td>
+                        <td>{{ \App\Support\Money::format($zone['revenue']) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </section>
 @endif
 
 <section id="mikrotik" class="mt-6">
-    <h2 class="font-semibold">État du MikroTik</h2>
-    <div class="mt-3 grid gap-3 md:grid-cols-2">
-        @forelse($report['routers'] as $card)
-            @php $router = $card['router']; @endphp
-            <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-                <p class="font-semibold">{{ $router->name }}</p>
-                @php
-                    $pendingTickets = $report['unsynced']->where('wifi_zone_id', $router->wifi_zone_id)->count();
-                    $incomplete = ! $router->wifi_zone_id || ! filled($router->host) || ! filled($router->username);
-                @endphp
-                <p class="mt-1 text-sm">
-                    @if($router->status === 'online') 🟢 Connecté
-                    @elseif($router->status === 'error') 🟠 Erreur
-                    @elseif($router->status === 'offline') 🔴 Hors ligne
-                    @else 🟠 En attente @endif
-                </p>
-                @if($incomplete)
-                    <p class="mt-1 text-sm">⚠ Configuration incomplète</p>
-                @endif
-                @if($pendingTickets > 0)
-                    <p class="mt-1 text-sm">🟠 En attente · Tickets en attente : {{ $pendingTickets }}</p>
-                @endif
-                @if(($router->details['connection_mode'] ?? null) === 'simulation')
-                    <p class="mt-1 text-sm">SIMULATION — aucun routeur réel n’est connecté.</p>
-                @endif
-                @if(in_array($router->status, ['offline', 'error'], true))
-                    <p class="mt-2 text-sm font-semibold">MikroTik hors ligne</p>
-                @endif
-                <dl class="mt-3 space-y-1 text-sm">
-                    <div class="flex justify-between gap-3"><dt>Identity</dt><dd class="truncate">{{ $router->identity ?: '—' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt>Adresse</dt><dd class="truncate">{{ $router->host }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt>Utilisateurs actifs</dt><dd>{{ count($card['users']) }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt>Dernière vérification</dt><dd>{{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt>Dernière synchronisation</dt><dd>{{ $router->last_synced_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</dd></div>
-                    <div class="flex justify-between gap-3"><dt>Tickets en attente</dt><dd>{{ $pendingTickets }}</dd></div>
-                    @if(!empty($card['resource']['version']))<div class="flex justify-between gap-3"><dt>RouterOS</dt><dd>{{ $card['resource']['version'] }}</dd></div>@endif
-                    @if(!empty($card['resource']['cpu-load']))<div class="flex justify-between gap-3"><dt>CPU</dt><dd>{{ $card['resource']['cpu-load'] }}</dd></div>@endif
-                </dl>
-                @if($router->last_error)<p class="mt-2 break-words text-sm text-amber-800">{{ $router->last_error }}</p>@endif
-                <form class="mt-3" method="POST" action="{{ route('mikrotiks.test', $router) }}">
-                    @csrf
-                    <button class="rounded-xl border px-4 py-3 text-sm font-semibold">Tester la connexion</button>
-                </form>
-            </article>
-        @empty
-            <p class="text-sm text-slate-500">Aucun routeur relié.</p>
-        @endforelse
-    </div>
+    <h2 class="font-semibold">Routeur</h2>
+    @if($report['routers'] === [])
+        <p class="mt-3 text-sm text-slate-500">Aucun routeur relié.</p>
+    @else
+        <div class="lm-table-wrap mt-3 rounded-2xl bg-white shadow-sm">
+            <table class="lm-table">
+                <thead>
+                    <tr><th>Nom</th><th>État</th><th>Identity</th><th>Adresse</th><th>Actifs</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach($report['routers'] as $card)
+                        @php
+                            $router = $card['router'];
+                            $pendingTickets = $report['unsynced']->where('wifi_zone_id', $router->wifi_zone_id)->count();
+                            $incomplete = ! $router->wifi_zone_id || ! filled($router->host) || ! filled($router->username);
+                        @endphp
+                        <tr>
+                            <td class="font-semibold">{{ $router->name }}</td>
+                            <td>
+                                @if($router->status === 'online') 🟢 Connecté
+                                @elseif($router->status === 'error') 🟠 Erreur
+                                @elseif($router->status === 'offline') 🔴 Hors ligne
+                                @else 🟠 En attente @endif
+                                @if(in_array($router->status, ['offline', 'error'], true))
+                                    <span class="block text-xs font-semibold">MikroTik hors ligne</span>
+                                @endif
+                                @if($incomplete)<span class="block text-xs">Configuration incomplète</span>@endif
+                                @if($pendingTickets > 0)<span class="block text-xs">Tickets en attente : {{ $pendingTickets }}</span>@endif
+                                @if(($router->details['connection_mode'] ?? null) === 'simulation')
+                                    <span class="block text-xs">SIMULATION — aucun routeur réel n’est connecté.</span>
+                                @endif
+                                @if($router->last_error)<span class="block max-w-xs whitespace-normal text-xs text-amber-800">{{ $router->last_error }}</span>@endif
+                                <span class="block text-xs text-slate-500">Dernière vérification {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</span>
+                            </td>
+                            <td>{{ $router->identity ?: '—' }}</td>
+                            <td>{{ $router->host }}</td>
+                            <td>{{ count($card['users']) }}</td>
+                            <td>
+                                <form method="POST" action="{{ route('mikrotiks.test', $router) }}">
+                                    @csrf
+                                    <button class="min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold">Tester la connexion</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 </section>
 
-<section id="connectes" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <h2 class="font-semibold">Utilisateurs actuellement connectés</h2>
+<section id="connectes" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm" data-live-table>
+    <h2 class="font-semibold">Connectés</h2>
     @if($report['sessions'] === [])
         <p class="mt-3 text-sm text-slate-500">
             @if(collect($report['routers'])->contains(fn ($card) => in_array($card['router']->status, ['offline', 'error'], true)))
@@ -265,24 +271,75 @@
             @endif
         </p>
     @else
-        <div class="mt-3 space-y-3">
-            @foreach($report['sessions'] as $session)
-                <article class="min-w-0 rounded-xl bg-slate-50 p-3 text-sm">
-                    <p class="font-semibold">{{ $session['username'] }}</p>
-                    <p>IP {{ $session['ip'] }} · connexion {{ $session['uptime'] }}</p>
-                    <p>Forfait {{ $session['plan'] ?: 'Selon le ticket' }}</p>
-                    <p>Début {{ $session['started']?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
-                    <p>Expiration {{ $session['expires']?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
-                    <p>Temps restant {{ $session['remaining'] ?: '—' }}</p>
-                </article>
-            @endforeach
+        <div class="lm-live-tools">
+            <input type="search" data-live-search placeholder="Rechercher" aria-label="Rechercher un client connecté">
+            <select data-live-status aria-label="Filtrer le statut">
+                <option value="">Tous</option>
+                <option value="online">En ligne</option>
+                <option value="offline">Hors ligne</option>
+            </select>
+        </div>
+        <div class="lm-table-wrap mt-3">
+            <table class="lm-table">
+                <thead>
+                    <tr>
+                        <th><button class="lm-sort" type="button" data-live-sort="client">Client</button></th>
+                        <th><button class="lm-sort" type="button" data-live-sort="username">Username</button></th>
+                        <th><button class="lm-sort" type="button" data-live-sort="profile">Profil</button></th>
+                        <th><button class="lm-sort" type="button" data-live-sort="ip">IP</button></th>
+                        <th><button class="lm-sort" type="button" data-live-sort="rate">Débit</button></th>
+                        <th><button class="lm-sort" type="button" data-live-sort="time">Temps</button></th>
+                        <th><button class="lm-sort" type="button" data-live-sort="status">Statut</button></th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($report['sessions'] as $session)
+                        <tr data-live-row data-status="{{ $session['status'] }}">
+                            <td data-k="client">{{ $session['client'] ?: '—' }}</td>
+                            <td data-k="username">{{ $session['username'] }}</td>
+                            <td data-k="profile">{{ $session['profile'] ?: ($session['plan'] ?: '—') }}</td>
+                            <td data-k="ip">{{ $session['ip'] }}</td>
+                            <td data-k="rate">{{ $session['rate'] ?: '—' }}</td>
+                            <td data-k="time">
+                                {{ $session['uptime'] }}
+                                <span class="block text-xs text-slate-500">Expiration {{ $session['expires']?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</span>
+                            </td>
+                            <td data-k="status"><span class="lm-status is-on">En ligne</span></td>
+                            <td>
+                                <details class="lm-pop">
+                                    <summary aria-label="Actions">⋮</summary>
+                                    <div class="lm-pop-panel">
+                                        <a href="{{ route('active-users.index') }}">Sessions</a>
+                                        @if(auth()->user()->hasPermission('sessions.disconnect') && filled($session['active_id']))
+                                            <form method="POST" action="{{ route('active-users.disconnect') }}">
+                                                @csrf
+                                                <input type="hidden" name="mikrotik_id" value="{{ $session['mikrotik_id'] }}">
+                                                <input type="hidden" name="active_id" value="{{ $session['active_id'] }}">
+                                                <input type="hidden" name="username" value="{{ $session['username'] }}">
+                                                <button type="submit">Déconnecter</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </details>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <p class="mt-3 text-sm text-slate-500" data-live-empty hidden>Aucun client pour ce filtre.</p>
+        <div class="lm-pager" data-live-pager hidden>
+            <button type="button" data-live-prev>Précédent</button>
+            <span data-live-page>1 / 1</span>
+            <button type="button" data-live-next>Suivant</button>
         </div>
     @endif
 </section>
 
 <section id="paiements" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-semibold">État des paiements</h2>
+        <h2 class="font-semibold">Paiements</h2>
         <a class="text-sm font-semibold text-electric" href="{{ route('exports.payments', $query) }}">Exporter CSV</a>
     </div>
     <ul class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -299,7 +356,7 @@
 </section>
 
 <section id="forfaits" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <h2 class="font-semibold">Performance des forfaits</h2>
+    <h2 class="font-semibold">Forfaits</h2>
     @if($report['plans'] === [])
         <p class="mt-3 text-sm text-slate-500">Aucun forfait.</p>
     @else
@@ -320,7 +377,7 @@
 </section>
 
 <section id="heures" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <h2 class="font-semibold">Heures de pointe</h2>
+    <h2 class="font-semibold">Heures</h2>
     @if($report['hours'] === [])
         <p class="mt-3 text-sm text-slate-500">Pas assez de données</p>
     @else
@@ -343,18 +400,26 @@
         <li class="rounded-xl bg-slate-50 p-3">Actifs <strong class="block text-lg">{{ $report['customers']['active'] }}</strong></li>
         <li class="rounded-xl bg-slate-50 p-3">Plusieurs achats <strong class="block text-lg">{{ $report['customers']['repeat'] }}</strong></li>
     </ul>
-    <div class="mt-3 space-y-2">
-        @forelse($report['customers']['rows'] as $customer)
-            <article class="min-w-0 rounded-xl border p-3 text-sm">
-                <p class="font-semibold">{{ $customer['name'] }}</p>
-                <p class="break-all">{{ $customer['phone'] ?: '—' }} · {{ $customer['zone'] }}</p>
-                <p>{{ $customer['purchases'] }} achat(s) · dernier {{ $customer['last_purchase'] ? \Illuminate\Support\Carbon::parse($customer['last_purchase'])->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—' }}</p>
-                <p>Dernière connexion {{ $customer['last_seen'] ? \Illuminate\Support\Carbon::parse($customer['last_seen'])->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—' }}</p>
-            </article>
-        @empty
-            <p class="text-sm text-slate-500">Aucun client.</p>
-        @endforelse
-    </div>
+    @if($report['customers']['rows'] === [] || (is_countable($report['customers']['rows']) && count($report['customers']['rows']) === 0))
+        <p class="mt-3 text-sm text-slate-500">Aucun client.</p>
+    @else
+        <div class="lm-table-wrap mt-3">
+            <table class="lm-table">
+                <thead><tr><th>Client</th><th>Téléphone</th><th>Zone</th><th>Achats</th><th>Dernier</th></tr></thead>
+                <tbody>
+                    @foreach($report['customers']['rows'] as $customer)
+                        <tr>
+                            <td>{{ $customer['name'] }}</td>
+                            <td>{{ $customer['phone'] ?: '—' }}</td>
+                            <td>{{ $customer['zone'] }}</td>
+                            <td>{{ $customer['purchases'] }}</td>
+                            <td>{{ $customer['last_purchase'] ? \Illuminate\Support\Carbon::parse($customer['last_purchase'])->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 </section>
 
 <section id="sync" class="mt-6 min-w-0 rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -362,20 +427,26 @@
     @if($report['unsynced']->isEmpty())
         <p class="mt-2 text-sm">Aucun ticket en attente de synchronisation.</p>
     @else
-        <div class="mt-3 space-y-3">
-            @foreach($report['unsynced'] as $voucher)
-                <article class="min-w-0 rounded-xl bg-white p-3 text-sm">
-                    <p class="font-semibold">{{ $voucher->username }} · {{ $voucher->plan->name ?? 'Forfait' }}</p>
-                    <p>{{ $voucher->customer->phone ?? $voucher->customer->name ?? '—' }}</p>
-                    <p>{{ $voucher->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</p>
-                    <p class="break-words">{{ $voucher->sync_label }} @if($voucher->sync_error)· {{ $voucher->sync_error }}@endif</p>
-                    <p>Tentatives : {{ $voucher->sync_attempts }}</p>
-                    <form class="mt-2" method="POST" action="{{ route('vouchers.sync', $voucher) }}">
-                        @csrf
-                        <button class="rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white">Synchroniser</button>
-                    </form>
-                </article>
-            @endforeach
+        <div class="lm-table-wrap mt-3">
+            <table class="lm-table">
+                <thead><tr><th>Ticket</th><th>Client</th><th>Date</th><th>Sync</th><th></th></tr></thead>
+                <tbody>
+                    @foreach($report['unsynced'] as $voucher)
+                        <tr>
+                            <td>{{ $voucher->username }} · {{ $voucher->plan->name ?? 'Forfait' }}</td>
+                            <td>{{ $voucher->customer->phone ?? $voucher->customer->name ?? '—' }}</td>
+                            <td>{{ $voucher->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</td>
+                            <td class="whitespace-normal">{{ $voucher->sync_label }} @if($voucher->sync_error)· {{ $voucher->sync_error }}@endif<span class="block text-xs">Tentatives : {{ $voucher->sync_attempts }}</span></td>
+                            <td>
+                                <form method="POST" action="{{ route('vouchers.sync', $voucher) }}">
+                                    @csrf
+                                    <button class="min-h-10 rounded-lg bg-navy px-3 py-2 text-sm font-semibold text-white">Synchroniser</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
     @endif
 </section>
@@ -393,7 +464,7 @@
 </section>
 
 <section id="activite" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <h2 class="font-semibold">Activité récente</h2>
+    <h2 class="font-semibold">Activité</h2>
     <ul class="mt-3 space-y-2 text-sm">
         @forelse($report['activity'] as $event)
             <li class="flex items-baseline justify-between gap-3"><span>{{ $event['label'] }}</span><time class="shrink-0 text-slate-500">{{ $event['at']?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</time></li>

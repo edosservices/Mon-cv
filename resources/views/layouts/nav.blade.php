@@ -1,68 +1,113 @@
 @php
+    $can = fn (?string $permission) => $permission === null || auth()->user()->hasPermission($permission);
     $groups = [
-        'Pilotage' => [
-            ['dashboard', 'Dashboard', null],
-            ['entrepreneur.dashboard', 'Espace entrepreneur', null],
+        [
+            'label' => 'Ventes',
+            'icon' => '≡',
+            'links' => array_values(array_filter([
+                $can('sales.view') ? ['sales.index', 'Ventes', ['sales.index', 'entrepreneur.sales']] : null,
+                $can('sales.confirm') ? ['sales.quick', 'Encaisser', ['sales.quick']] : null,
+                $can('sales.view') ? ['payments.index', 'Paiements', ['payments.index']] : null,
+                ['audit.index', 'Historique', ['audit.index']],
+            ])),
         ],
-        'HotSpot' => [
-            ['entrepreneur.profiles', 'Profils', 'plans.manage'],
-            ['entrepreneur.generate', 'Generate User', 'vouchers.manage'],
-            ['entrepreneur.users', 'Utilisateurs', 'sessions.view'],
-            ['entrepreneur.tickets', 'Tickets', 'vouchers.manage'],
-            ['entrepreneur.sales', 'Ventes', 'sales.view'],
-            ['entrepreneur.customers', 'Clients', 'customers.manage'],
-            ['entrepreneur.reports', 'Rapports', 'sales.view'],
-            ['entrepreneur.statistics', 'Statistiques', 'statistics.view'],
-            ['entrepreneur.zones', 'WiFi Zones', 'zones.manage'],
-            ['entrepreneur.mikrotik', 'MikroTik', 'mikrotiks.manage'],
-            ['entrepreneur.business', 'Mon Business', 'settings.manage'],
-            ['entrepreneur.settings', 'Paramètres', 'settings.manage'],
+        [
+            'label' => 'Tickets',
+            'icon' => '▤',
+            'links' => array_values(array_filter([
+                $can('vouchers.manage') ? ['vouchers.index', 'Tickets', ['vouchers.index', 'entrepreneur.tickets']] : null,
+                $can('vouchers.manage') ? ['vouchers.generate', 'Générer', ['vouchers.generate', 'entrepreneur.generate']] : null,
+            ])),
         ],
-        'WiFi Zones' => [
-            ['wifi-zones.index', 'Toutes les zones', 'zones.manage'],
+        [
+            'label' => 'Clients',
+            'icon' => '●',
+            'links' => array_values(array_filter([
+                $can('customers.manage') ? ['customers.index', 'Clients', ['customers.index', 'entrepreneur.customers']] : null,
+                $can('sessions.view') ? ['sessions.index', 'Sessions', ['sessions.index']] : null,
+            ])),
         ],
-        'Ventes' => [
-            ['sales.quick', 'Vente rapide', 'sales.confirm'],
-            ['sales.index', 'Toutes les ventes', 'sales.view'],
-            ['vouchers.index', 'Tickets', 'vouchers.manage'],
-            ['vouchers.generate', 'Générer des tickets', 'vouchers.manage'],
+        [
+            'label' => 'WiFi',
+            'icon' => '⌁',
+            'links' => array_values(array_filter([
+                $can('zones.manage') ? ['wifi-zones.index', 'Zones', ['wifi-zones.index', 'entrepreneur.zones']] : null,
+                $can('plans.manage') ? ['entrepreneur.profiles', 'Profils', ['entrepreneur.profiles', 'entrepreneur.profiles.*']] : null,
+                $can('plans.manage') ? ['plans.index', 'Forfaits', ['plans.index', 'plans.*']] : null,
+                $can('sessions.view') ? ['active-users.index', 'Utilisateurs', ['active-users.index', 'entrepreneur.users']] : null,
+            ])),
         ],
-        'Clients' => [
-            ['customers.index', 'Clients', 'customers.manage'],
+        [
+            'label' => 'Routeur',
+            'icon' => '⌂',
+            'links' => array_values(array_filter([
+                $can('mikrotiks.manage') ? ['mikrotiks.index', 'Vue', ['mikrotiks.index', 'mikrotiks.show', 'entrepreneur.mikrotik']] : null,
+                $can('mikrotiks.manage') ? ['mikrotiks.assistant', 'HotSpot', ['mikrotiks.assistant']] : null,
+                $can('sessions.view') ? ['active-users.index', 'Sessions', ['active-users.index']] : null,
+                $can('settings.manage') ? ['settings.edit', 'Paramètres', ['settings.edit', 'entrepreneur.settings']] : null,
+            ])),
         ],
-        'Paiements' => [
-            ['payments.index', 'Paiements', 'sales.view'],
+        [
+            'label' => 'Rapports',
+            'icon' => '▥',
+            'links' => array_values(array_filter([
+                $can('sales.view') ? ['reports.index', 'Résumé', ['reports.index', 'entrepreneur.reports']] : null,
+                $can('sales.view') ? ['sales.index', 'Ventes', ['sales.index']] : null,
+                $can('statistics.view') ? ['statistics', 'Utilisation', ['statistics', 'entrepreneur.statistics']] : null,
+            ])),
         ],
-        'MikroTik' => [
-            ['mikrotiks.assistant', 'Connecter mon MikroTik', 'mikrotiks.manage'],
-            ['mikrotiks.index', 'Routeurs', 'mikrotiks.manage'],
-            ['active-users.index', 'Utilisateurs actifs', 'sessions.view'],
-        ],
-        'Rapports' => [
-            ['reports.index', 'Rapports', 'sales.view'],
-            ['sales.index', 'Ventes', 'sales.view'],
-            ['dashboard', 'Revenus', null],
-            ['plans.index', 'Forfaits', 'plans.manage'],
-            ['customers.index', 'Clients', 'customers.manage'],
-            ['statistics', 'Statistiques', 'statistics.view'],
-        ],
-        'Paramètres' => [
-            ['business.edit', 'Mon Business', 'settings.manage'],
-            ['settings.edit', 'Paramètres', 'settings.manage'],
-            ['plans.index', 'Forfaits', 'plans.manage'],
-            ['subscription.show', 'Abonnement', 'subscription.manage'],
-            ['staff.index', 'Équipe', 'staff.manage'],
-            ['notifications.index', 'Notifications', null],
-            ['audit.index', 'Journal', null],
-            ['sessions.index', 'Sessions', 'sessions.view'],
+        [
+            'label' => 'Plus',
+            'icon' => '⋯',
+            'links' => array_values(array_filter([
+                $can('settings.manage') ? ['business.edit', 'Business', ['business.edit', 'entrepreneur.business']] : null,
+                $can('staff.manage') ? ['staff.index', 'Équipe', ['staff.index']] : null,
+                $can('subscription.manage') ? ['subscription.show', 'Abonnement', ['subscription.show']] : null,
+                ['notifications.index', 'Alertes', ['notifications.index']],
+            ])),
         ],
     ];
+    $current = function (array $names): bool {
+        foreach ($names as $name) {
+            if (request()->routeIs($name)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
 @endphp
-@foreach($groups as $title => $links)
-    <p class="px-3 pb-1 pt-4 text-[11px] uppercase tracking-wide text-sky-200">{{ $title }}</p>
-    @foreach($links as [$route, $label, $permission])
-        @if($permission === null || auth()->user()->hasPermission($permission))
-            <a data-short="{{ mb_substr($label, 0, 1) }}" href="{{ route($route) }}{{ $route === 'dashboard' && $label === 'Revenus' ? '#revenus' : '' }}" class="block rounded-lg px-3 py-2 {{ request()->routeIs($route) && $label !== 'Revenus' ? 'bg-white/15' : 'hover:bg-white/10' }}">{{ $label }}</a>
+<div class="lm-nav">
+    @php $exclusiveOpen = false; @endphp
+    <a class="lm-nav-link {{ request()->routeIs('dashboard', 'entrepreneur.dashboard') ? 'is-current' : '' }}" href="{{ route('dashboard') }}">
+        <span class="lm-ico" aria-hidden="true">▣</span>
+        <span class="lm-nav-label">Tableau</span>
+    </a>
+    @foreach($groups as $group)
+        @if($group['links'] !== [])
+            @php
+                $opened = false;
+                if (! $exclusiveOpen) {
+                    foreach ($group['links'] as $link) {
+                        if ($current($link[2])) {
+                            $opened = true;
+                            $exclusiveOpen = true;
+                            break;
+                        }
+                    }
+                }
+            @endphp
+            <details class="lm-nav-group" @if($opened) open @endif>
+                <summary>
+                    <span class="lm-ico" aria-hidden="true">{{ $group['icon'] }}</span>
+                    <span class="lm-nav-label">{{ $group['label'] }}</span>
+                </summary>
+                <div class="lm-nav-sub">
+                    @foreach($group['links'] as [$route, $label, $names])
+                        <a class="{{ $current($names) ? 'is-current' : '' }}" href="{{ route($route) }}">{{ $label }}</a>
+                    @endforeach
+                </div>
+            </details>
         @endif
     @endforeach
-@endforeach
+</div>

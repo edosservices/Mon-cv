@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('heading', 'Mes MikroTik')
+@section('heading', 'Routeur')
 @section('content')
 <ol class="lm-chain" aria-label="Parcours du réseau">
     <li>Internet</li>

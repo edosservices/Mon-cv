@@ -23,7 +23,89 @@ ready(() => {
             apply(next);
             window.localStorage.setItem('lm-sidebar', next ? 'collapsed' : 'open');
         });
+        document.querySelectorAll('.lm-nav-group').forEach((group) => {
+            const summary = group.querySelector('summary');
+            summary?.addEventListener('click', (event) => {
+                if (!frame.classList.contains('is-collapsed')) {
+                    return;
+                }
+                event.preventDefault();
+                apply(false);
+                window.localStorage.setItem('lm-sidebar', 'open');
+                group.open = true;
+            });
+            group.addEventListener('toggle', () => {
+                if (!group.open) {
+                    return;
+                }
+                document.querySelectorAll('.lm-nav-group').forEach((other) => {
+                    if (other !== group) {
+                        other.open = false;
+                    }
+                });
+            });
+        });
     }
+
+    document.querySelectorAll('[data-live-table]').forEach((root) => {
+        const rows = [...root.querySelectorAll('[data-live-row]')];
+        const search = root.querySelector('[data-live-search]');
+        const status = root.querySelector('[data-live-status]');
+        const empty = root.querySelector('[data-live-empty]');
+        const pager = root.querySelector('[data-live-pager]');
+        const prev = root.querySelector('[data-live-prev]');
+        const next = root.querySelector('[data-live-next]');
+        const pageLabel = root.querySelector('[data-live-page]');
+        const size = 8;
+        let page = 0;
+        let sortKey = '';
+        let sortDir = 1;
+        const filtered = () => {
+            const query = (search?.value || '').trim().toLowerCase();
+            const state = status?.value || '';
+            return rows.filter((row) => {
+                const matchesQuery = query === '' || row.textContent.toLowerCase().includes(query);
+                const matchesState = state === '' || row.getAttribute('data-status') === state;
+                return matchesQuery && matchesState;
+            });
+        };
+        const paint = () => {
+            const list = filtered();
+            const pages = Math.max(1, Math.ceil(list.length / size));
+            page = Math.min(page, pages - 1);
+            rows.forEach((row) => { row.hidden = true; });
+            list.slice(page * size, page * size + size).forEach((row) => { row.hidden = false; });
+            if (empty) {
+                empty.hidden = list.length !== 0;
+            }
+            if (pager) {
+                pager.hidden = list.length <= size;
+            }
+            if (pageLabel) {
+                pageLabel.textContent = (page + 1) + ' / ' + pages;
+            }
+        };
+        search?.addEventListener('input', () => { page = 0; paint(); });
+        status?.addEventListener('change', () => { page = 0; paint(); });
+        prev?.addEventListener('click', () => { page = Math.max(0, page - 1); paint(); });
+        next?.addEventListener('click', () => { page += 1; paint(); });
+        root.querySelectorAll('[data-live-sort]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const key = button.getAttribute('data-live-sort');
+                sortDir = sortKey === key ? sortDir * -1 : 1;
+                sortKey = key;
+                const body = root.querySelector('tbody');
+                [...rows].sort((left, right) => {
+                    const a = left.querySelector(`[data-k="${key}"]`)?.textContent.trim().toLowerCase() || '';
+                    const b = right.querySelector(`[data-k="${key}"]`)?.textContent.trim().toLowerCase() || '';
+                    return a.localeCompare(b, 'fr') * sortDir;
+                }).forEach((row) => body.appendChild(row));
+                page = 0;
+                paint();
+            });
+        });
+        paint();
+    });
 
     document.querySelectorAll('[data-password-toggle]').forEach((button) => {
         button.addEventListener('click', () => {

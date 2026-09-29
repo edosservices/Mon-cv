@@ -616,7 +616,7 @@ class BusinessReport
 
         $vouchers = $usernames === []
             ? collect()
-            : Voucher::query()->with('plan:id,name')->whereIn('username', $usernames)->get()->keyBy('username');
+            : Voucher::query()->with(['plan:id,name,mikrotik_profile', 'customer:id,name'])->whereIn('username', $usernames)->get()->keyBy('username');
 
         foreach ($cards as $card) {
             foreach ($card['users'] as $user) {
@@ -624,15 +624,22 @@ class BusinessReport
                 if ($voucher) {
                     $voucher->refreshExpiry();
                 }
+                $snapshot = is_array($voucher?->profile_snapshot) ? $voucher->profile_snapshot : [];
                 $sessions[] = [
+                    'client' => $voucher?->customer?->name ?: null,
                     'username' => $user['user'] ?? '—',
                     'ip' => $user['address'] ?? '—',
                     'uptime' => $user['uptime'] ?? '—',
                     'plan' => $voucher?->plan?->name,
+                    'profile' => $user['profile'] ?? ($voucher?->plan?->mikrotik_profile ?: $voucher?->plan?->name),
+                    'rate' => $user['rate-limit'] ?? ($snapshot['rate_limit'] ?? null),
                     'started' => $voucher?->activated_at,
                     'expires' => $voucher?->expires_at,
                     'remaining' => $voucher?->remainingLabel(),
                     'router' => $card['router']->name,
+                    'status' => 'online',
+                    'mikrotik_id' => $card['router']->id,
+                    'active_id' => $user['.id'] ?? null,
                 ];
             }
         }
