@@ -20,6 +20,7 @@
         <li>Payer</li>
         <li>Recevoir</li>
     </ol>
+    @include('shop.journey', ['current' => 1])
 </section>
 
 <section class="shop-section" aria-labelledby="plans-title">

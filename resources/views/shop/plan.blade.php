@@ -2,6 +2,7 @@
 @section('title', $plan->name.' — '.$zone->name)
 @section('content')
 <a class="back" href="{{ route('shop.show', $zone->slug) }}">Tous les forfaits</a>
+@include('shop.journey', ['current' => 1])
 
 <section class="panel" aria-labelledby="plan-title">
     <p class="eyebrow">Votre forfait</p>

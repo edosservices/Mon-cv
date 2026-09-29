@@ -2,6 +2,7 @@
 @section('title', 'Paiement — '.$zone->name)
 @section('content')
 <a class="back" href="{{ route('shop.plan', [$zone->slug, $plan->id]) }}">Modifier le numéro</a>
+@include('shop.journey', ['current' => 2])
 
 <section class="panel" aria-labelledby="order-title">
     <p class="eyebrow">Votre commande</p>
@@ -43,6 +44,7 @@
     <label class="field" for="transaction_reference">Référence <span>(si vous l’avez)</span>
         <input id="transaction_reference" name="transaction_reference" type="text" value="{{ old('transaction_reference') }}" maxlength="80" placeholder="Reçu ou référence comptoir">
     </label>
-    <button class="btn btn-primary" type="submit">Payer</button>
+    <p class="help">Confirmation : le ticket n’est créé qu’après la réponse officielle du moyen de paiement.</p>
+    <button class="btn btn-primary" type="submit">Confirmer et payer</button>
 </form>
 @endsection
