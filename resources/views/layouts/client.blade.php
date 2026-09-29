@@ -30,10 +30,11 @@
         @auth
             @if(auth()->user()->isClient())
                 <nav class="client-nav" aria-label="Espace client">
-                    <a href="{{ route('client.dashboard') }}" @if(request()->routeIs('client.dashboard')) aria-current="page" @endif>Accueil</a>
-                    <a href="{{ route('client.tickets') }}" @if(request()->routeIs('client.tickets')) aria-current="page" @endif>Mes tickets</a>
+                    <a href="{{ route('client.dashboard') }}" @if(request()->routeIs('client.dashboard')) aria-current="page" @endif>Dashboard</a>
+                    <a href="{{ route('client.tickets') }}" @if(request()->routeIs('client.tickets')) aria-current="page" @endif>Mes Tickets</a>
                     <a href="{{ route('client.buy') }}" @if(request()->routeIs('client.buy')) aria-current="page" @endif>Acheter</a>
-                    <a href="{{ route('client.profile') }}" @if(request()->routeIs('client.profile')) aria-current="page" @endif>Profil</a>
+                    <a href="{{ route('client.history') }}" @if(request()->routeIs('client.history')) aria-current="page" @endif>Historique</a>
+                    <a href="{{ route('client.profile') }}" @if(request()->routeIs('client.profile')) aria-current="page" @endif>Mon Profil</a>
                 </nav>
             @endif
         @endauth

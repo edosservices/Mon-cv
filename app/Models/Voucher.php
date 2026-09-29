@@ -32,6 +32,11 @@ class Voucher extends Model
         ];
     }
 
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
@@ -72,6 +77,25 @@ class Voucher extends Model
         $lines[] = 'Code : '.$this->username;
         $lines[] = 'Expiration : '.$expires;
         $lines[] = 'Ticket : '.route('tickets.public', $this->public_token);
+
+        return implode("\n", $lines);
+    }
+
+    public function clientShareText(): string
+    {
+        $snapshot = is_array($this->profile_snapshot) ? $this->profile_snapshot : [];
+        $lines = [
+            'LIMETE WIFI',
+            'Mon ticket WiFi',
+            'Durée : '.($snapshot['validity_label'] ?? $this->plan?->durationLabel() ?? '—'),
+        ];
+        if (filled($snapshot['data_label'] ?? null)) {
+            $lines[] = 'Data : '.$snapshot['data_label'];
+        }
+        if (filled($snapshot['rate_limit'] ?? null)) {
+            $lines[] = 'Débit : '.$snapshot['rate_limit'];
+        }
+        $lines[] = 'Se connecter : '.route('tickets.public', $this->public_token);
 
         return implode("\n", $lines);
     }

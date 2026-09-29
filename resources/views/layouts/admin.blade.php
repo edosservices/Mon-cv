@@ -17,13 +17,24 @@
                 <small>Super admin</small>
             </span>
         </a>
-        <nav class="lm-actions" aria-label="Administration">
+        <nav class="lm-actions flex flex-wrap gap-x-3 gap-y-1" aria-label="Administration">
             <a href="{{ route('admin.dashboard') }}">Tableau</a>
+            <a href="{{ route('admin.dashboard') }}">Dashboard</a>
             <a href="{{ route('admin.tenants') }}">Entrepreneurs</a>
+            <a href="{{ route('admin.clients') }}">Clients</a>
+            <a href="{{ route('admin.zones') }}">WiFi Zones</a>
             <a href="{{ route('admin.mikrotiks') }}">MikroTik</a>
-            <a href="{{ route('admin.plans') }}">Plans</a>
+            <a href="{{ route('admin.mikrotiks') }}">Routeurs</a>
+            <a href="{{ route('admin.profiles') }}">Profils</a>
+            <a href="{{ route('admin.users') }}">Utilisateurs</a>
+            <a href="{{ route('admin.tickets') }}">Tickets</a>
+            <a href="{{ route('admin.sales') }}">Ventes</a>
             <a href="{{ route('admin.payments') }}">Paiements</a>
+            <a href="{{ route('admin.reports') }}">Rapports</a>
             <a href="{{ route('admin.logs') }}">Journal</a>
+            <a href="{{ route('admin.logs') }}">Logs</a>
+            <a href="{{ route('admin.settings') }}">Paramètres</a>
+            <a href="{{ route('admin.plans') }}">Plans</a>
             <a href="{{ route('admin.production-check') }}">Production</a>
             <form method="POST" action="{{ route('logout') }}">@csrf<button>Sortir</button></form>
         </nav>

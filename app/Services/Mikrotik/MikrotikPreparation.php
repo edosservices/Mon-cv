@@ -581,6 +581,16 @@ class MikrotikPreparation
         return $value;
     }
 
+    public function normalizedTime(mixed $value): ?string
+    {
+        return $this->routerTime($value);
+    }
+
+    public function normalizedRate(mixed $value): ?string
+    {
+        return $this->rateLimit($value);
+    }
+
     private function routerTime(mixed $value): ?string
     {
         if ($value === null || $value === '') {

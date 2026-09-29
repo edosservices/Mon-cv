@@ -2,6 +2,21 @@
     $groups = [
         'Pilotage' => [
             ['dashboard', 'Dashboard', null],
+            ['entrepreneur.dashboard', 'Espace entrepreneur', null],
+        ],
+        'HotSpot' => [
+            ['entrepreneur.profiles', 'Profils', 'plans.manage'],
+            ['entrepreneur.generate', 'Generate User', 'vouchers.manage'],
+            ['entrepreneur.users', 'Utilisateurs', 'sessions.view'],
+            ['entrepreneur.tickets', 'Tickets', 'vouchers.manage'],
+            ['entrepreneur.sales', 'Ventes', 'sales.view'],
+            ['entrepreneur.customers', 'Clients', 'customers.manage'],
+            ['entrepreneur.reports', 'Rapports', 'sales.view'],
+            ['entrepreneur.statistics', 'Statistiques', 'statistics.view'],
+            ['entrepreneur.zones', 'WiFi Zones', 'zones.manage'],
+            ['entrepreneur.mikrotik', 'MikroTik', 'mikrotiks.manage'],
+            ['entrepreneur.business', 'Mon Business', 'settings.manage'],
+            ['entrepreneur.settings', 'Paramètres', 'settings.manage'],
         ],
         'WiFi Zones' => [
             ['wifi-zones.index', 'Toutes les zones', 'zones.manage'],

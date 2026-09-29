@@ -26,8 +26,23 @@ class VoucherController extends Controller
 {
     public function index(Request $request)
     {
+        $status = (string) $request->string('status');
         $vouchers = Voucher::with(['plan', 'wifiZone', 'customer', 'saleItem.sale.payment'])
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when(in_array($status, ['available', 'active', 'expired', 'disabled'], true), fn ($query) => $query->where('status', $status))
+            ->when($status === 'sold', fn ($query) => $query->whereHas('saleItem.sale', fn ($sale) => $sale->where('status', 'paid')))
+            ->when($status === 'used', fn ($query) => $query->whereIn('status', ['active', 'expired']))
+            ->when($status === 'pending_sync', fn ($query) => $query->where('sync_status', 'pending'))
+            ->when($status === 'failed', fn ($query) => $query->where('sync_status', 'failed'))
+            ->when($request->filled('q'), function ($query) use ($request) {
+                $term = '%'.$request->string('q').'%';
+                $query->where(function ($inner) use ($term) {
+                    $inner->where('username', 'like', $term)
+                        ->orWhere('public_token', 'like', $term)
+                        ->orWhereHas('plan', fn ($plan) => $plan->where('name', 'like', $term)->orWhere('mikrotik_profile', 'like', $term));
+                });
+            })
+            ->when($request->filled('from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('from')))
+            ->when($request->filled('to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('to')))
             ->latest()
             ->paginate(20)
             ->withQueryString();
@@ -275,6 +290,21 @@ class VoucherController extends Controller
             'vouchers' => $vouchers,
             'batch' => $batch,
             'templates' => TicketTemplates::options(),
+        ]);
+    }
+
+    public function bulk(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['integer'],
+            'density' => ['required', 'integer', 'in:20,30,40,50'],
+        ]);
+        $vouchers = Voucher::with(['plan', 'wifiZone'])->whereIn('id', $data['ids'])->orderBy('id')->get();
+
+        return view('vouchers.bulk-ticket', [
+            'vouchers' => $vouchers,
+            'perPage' => (int) $data['density'],
         ]);
     }
 

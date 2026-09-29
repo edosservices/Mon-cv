@@ -14,15 +14,22 @@ class Plan extends Model
 
     protected $fillable = [
         'tenant_id', 'wifi_zone_id', 'name', 'duration_seconds', 'price',
-        'currency', 'mikrotik_profile', 'description', 'badge', 'unlimited_data', 'status',
+        'currency', 'selling_price', 'selling_currency', 'hotspot', 'mikrotik_profile', 'description', 'badge', 'unlimited_data', 'status',
     ];
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
+            'selling_price' => 'decimal:2',
+            'hotspot' => 'array',
             'unlimited_data' => 'boolean',
         ];
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     public function wifiZone(): BelongsTo
