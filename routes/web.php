@@ -111,6 +111,10 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::resource('mikrotiks', MikrotikController::class)->middleware('permission:mikrotiks.manage');
         Route::resource('plans', PlanController::class)->except('show')->middleware('permission:plans.manage');
         Route::get('/vouchers', [VoucherController::class, 'index'])->middleware('permission:vouchers.manage')->name('vouchers.index');
+        Route::get('/vouchers/generate', [VoucherController::class, 'createBatch'])->middleware('permission:vouchers.manage')->name('vouchers.generate');
+        Route::get('/vouchers/generated', [VoucherController::class, 'generated'])->middleware('permission:vouchers.manage')->name('vouchers.generated');
+        Route::post('/vouchers/print', [VoucherController::class, 'printSheet'])->middleware('permission:vouchers.manage')->name('vouchers.print');
+        Route::post('/vouchers/pdf-sheet', [VoucherController::class, 'pdfSheet'])->middleware('permission:vouchers.manage')->name('vouchers.sheet-pdf');
         Route::post('/vouchers', [VoucherController::class, 'store'])->middleware('permission:vouchers.manage')->name('vouchers.store');
         Route::post('/vouchers/{voucher}/sync', [VoucherController::class, 'sync'])->middleware('permission:vouchers.manage')->name('vouchers.sync');
         Route::post('/vouchers/{voucher}/retry-sync', [VoucherController::class, 'sync'])->middleware('permission:vouchers.manage')->name('vouchers.retry');

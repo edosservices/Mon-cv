@@ -9,6 +9,7 @@
         'Ventes' => [
             ['sales.index', 'Toutes les ventes', 'sales.view'],
             ['vouchers.index', 'Tickets', 'vouchers.manage'],
+            ['vouchers.generate', 'Générer des tickets', 'vouchers.manage'],
         ],
         'Clients' => [
             ['customers.index', 'Clients', 'customers.manage'],
