@@ -13,6 +13,8 @@ export default defineConfig({
                 'resources/js/business.js',
                 'resources/css/client.css',
                 'resources/js/client.js',
+                'resources/css/landing.css',
+                'resources/js/landing.js',
             ],
             refresh: true,
             fonts: [
