@@ -2,6 +2,17 @@
 @section('heading', 'Accueil')
 @section('content')
 <p class="mb-3">{{ auth()->user()->name !== 'Client' ? auth()->user()->name : auth()->user()->client_phone }}<br><span class="text-secondary">{{ auth()->user()->client_phone }}</span></p>
+@if($active->isNotEmpty())
+    @php $lead = $active->first(); @endphp
+    <section class="client-card client-hero mb-3">
+        <p class="mb-1">Ticket actif</p>
+        <h2 class="h5 mb-1">{{ $lead->plan->name ?? 'Forfait' }}</h2>
+        <p class="mb-1">{{ $lead->wifiZone->name ?? 'Zone' }}</p>
+        <p class="mb-1">Expiration {{ $lead->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
+        <p class="mb-2">{{ $lead->statusLabel() }}</p>
+        <div class="ticket-qr bg-white rounded-3 d-inline-block p-2">{!! \App\Support\QrCodes::svg(route('tickets.public', $lead->public_token)) !!}</div>
+    </section>
+@endif
 <div class="client-grid mb-3">
     <article class="client-card"><a class="client-action" href="{{ route('client.tickets') }}"><strong>Mes tickets</strong><span>{{ $active->count() }} actif(s)</span></a></article>
     <article class="client-card"><a class="client-action" href="{{ route('client.buy') }}"><strong>Acheter</strong><span>Sans recommencer l’inscription</span></a></article>

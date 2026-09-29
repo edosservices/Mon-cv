@@ -14,9 +14,10 @@
     $query = request()->except('page');
 @endphp
 
-<header class="mb-4 min-w-0">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <p class="text-lg font-semibold">Bonjour, {{ auth()->user()->name }}</p>
+<header class="lm-hero min-w-0">
+    <p class="lm-pill">{{ auth()->user()->tenant?->name ?? 'Business' }}</p>
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <h2>Bonjour, {{ auth()->user()->name }} 👋</h2>
         @if(auth()->user()->hasPermission('vouchers.manage'))
             <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
         @endif
@@ -50,27 +51,28 @@
     </form>
 </header>
 
-<nav class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label="Actions rapides">
+<p class="mb-2 text-sm font-semibold text-slate-500">Actions rapides</p>
+<nav class="lm-blocks mb-4" aria-label="Actions rapides">
     @if(auth()->user()->hasPermission('sales.confirm'))
-        <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('sales.quick') }}">+ Vendre un ticket</a>
+        <a class="lm-block" href="{{ route('sales.quick') }}"><strong>+ Vendre un ticket</strong><span>Encaisser un forfait tout de suite.</span><em>Vendre</em></a>
     @endif
     @if(auth()->user()->hasPermission('vouchers.manage'))
-        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-electric shadow-sm" href="{{ route('vouchers.generate') }}">+ Générer des tickets</a>
+        <a class="lm-block" href="{{ route('vouchers.generate') }}"><strong>+ Générer des tickets</strong><span>Préparer un lot prêt à imprimer.</span><em>Générer</em></a>
     @endif
     @if(auth()->user()->hasPermission('plans.manage'))
-        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('plans.create') }}">+ Créer un forfait</a>
+        <a class="lm-block" href="{{ route('plans.create') }}"><strong>+ Créer un forfait</strong><span>Durée, prix et accès.</span><em>Nouveau forfait</em></a>
     @endif
     @if(auth()->user()->hasPermission('zones.manage'))
-        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('wifi-zones.create') }}">+ Ajouter une WiFi Zone</a>
+        <a class="lm-block" href="{{ route('wifi-zones.create') }}"><strong>+ Ajouter une WiFi Zone</strong><span>Un lieu, une boutique.</span><em>Nouvelle zone</em></a>
     @endif
     @if(auth()->user()->hasPermission('settings.manage'))
-        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('business.edit') }}">Mon Business</a>
+        <a class="lm-block" href="{{ route('business.edit') }}"><strong>Mon Business</strong><span>Logo, couleurs et contact.</span><em>Ouvrir</em></a>
         @if(auth()->user()->hasPermission('mikrotiks.manage'))
-            <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('mikrotiks.assistant') }}">Connecter mon MikroTik</a>
+            <a class="lm-block" href="{{ route('mikrotiks.assistant') }}"><strong>Connecter mon MikroTik</strong><span>Associer le routeur de la zone.</span><em>Connecter</em></a>
         @endif
     @endif
     @if(auth()->user()->hasPermission('sales.view'))
-        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('reports.index') }}">Mes Rapports</a>
+        <a class="lm-block" href="{{ route('reports.index') }}"><strong>Mes Rapports</strong><span>Ventes, zones et forfaits.</span><em>Voir</em></a>
     @endif
 </nav>
 
@@ -102,9 +104,9 @@
 </section>
 @endif
 
-<section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Indicateurs">
+<section class="lm-grid sm:grid-cols-2 xl:grid-cols-3" aria-label="Indicateurs">
     @foreach($report['kpis'] as $kpi)
-        <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+        <article class="lm-kpi">
             <p class="flex items-center justify-between gap-2 text-sm text-slate-500">
                 <span>{{ $kpi['label'] }}</span>
                 <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 text-electric" aria-hidden="true">
@@ -128,21 +130,21 @@
             @endif
         </article>
     @endforeach
-    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-        <p class="text-sm text-slate-500">Chiffre d’affaires du mois</p>
-        <p class="mt-2 break-words text-2xl font-semibold">{{ \App\Support\Money::format($pulse['month']) }}</p>
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Chiffre d’affaires du mois</p>
+        <p class="lm-kpi-value">{{ \App\Support\Money::format($pulse['month']) }}</p>
     </article>
-    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-        <p class="text-sm text-slate-500">Tickets vendus</p>
-        <p class="mt-2 text-2xl font-semibold">{{ $pulse['sold'] }}</p>
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Tickets vendus</p>
+        <p class="lm-kpi-value">{{ $pulse['sold'] }}</p>
     </article>
-    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-        <p class="text-sm text-slate-500">Tickets disponibles</p>
-        <p class="mt-2 text-2xl font-semibold">{{ $pulse['available'] }}</p>
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Tickets disponibles</p>
+        <p class="lm-kpi-value">{{ $pulse['available'] }}</p>
     </article>
-    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-        <p class="text-sm text-slate-500">Sessions actives</p>
-        <p class="mt-2 text-2xl font-semibold">{{ $pulse['sessions'] }}</p>
+    <article class="lm-kpi">
+        <p class="lm-kpi-label">Sessions actives</p>
+        <p class="lm-kpi-value">{{ $pulse['sessions'] }}</p>
     </article>
 </section>
 

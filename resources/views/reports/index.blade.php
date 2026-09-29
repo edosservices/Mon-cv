@@ -42,6 +42,12 @@
 </div>
 <section class="card border-0 shadow-sm mb-3">
     <div class="card-body">
+        <h3 class="h6">Graphique</h3>
+        <canvas id="report-chart" height="160" data-chart='@json(collect($report["plans"])->map(fn ($plan) => ["label" => $plan["name"], "value" => $plan["sold"]])->values())'></canvas>
+    </div>
+</section>
+<section class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
         <h3 class="h6">Forfaits</h3>
         @if($report['plans'] === [])
             <p class="mb-0 text-secondary">Aucun forfait.</p>

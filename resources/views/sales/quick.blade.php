@@ -37,7 +37,12 @@
             <input class="form-control" id="phone" name="phone" value="{{ old('phone') }}" maxlength="30">
             <label class="form-label mt-3" for="customer-name">Nom</label>
             <input class="form-control" id="customer-name" name="name" value="{{ old('name') }}" maxlength="120">
-            <button class="btn biz-btn mt-4">Créer / vendre</button>
+            <div class="lm-total mt-4" data-sale-total>
+                <p>Total</p>
+                <strong data-sale-total-value>Selon le forfait</strong>
+                <p class="mt-2">Quantité × prix du forfait choisi.</p>
+            </div>
+            <button class="btn biz-btn w-100 mt-3 py-3">Créer / vendre</button>
         </div>
     </form>
 @endif
