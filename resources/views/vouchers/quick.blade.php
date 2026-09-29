@@ -100,7 +100,7 @@
                 <label class="text-sm font-semibold">Nom
                     <input class="mt-1 w-full rounded-xl border px-3 py-3 text-base" name="username" value="{{ old('username') }}" maxlength="32" autocapitalize="none" autocomplete="off" data-username>
                 </label>
-                <p class="hidden rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900" data-username-warning></p>
+                <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900" data-username-warning hidden></p>
                 <div class="flex flex-wrap gap-2" data-username-suggestions></div>
                 <label class="text-sm font-semibold">Mot de passe <span class="font-normal text-slate-500">facultatif, 3 à 8 chiffres</span>
                     <input class="mt-1 w-full rounded-xl border px-3 py-3 text-base" name="password" value="{{ old('password') }}" inputmode="numeric" maxlength="8">
