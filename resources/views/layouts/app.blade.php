@@ -60,7 +60,9 @@
                 <div class="flex min-w-0 items-center gap-2">
                     <button class="lm-menu lg:hidden" type="button" data-lm-menu aria-expanded="false" aria-controls="lm-side">Menu</button>
                     @if(auth()->user()->tenant?->logoUrl())
-                        <img src="{{ auth()->user()->tenant->logoUrl() }}" alt="" class="h-10 w-10 shrink-0 rounded-xl object-cover">
+                        <img class="lm-nav-logo" src="{{ auth()->user()->tenant->logoUrl() }}" alt="{{ auth()->user()->tenant->name }}">
+                    @else
+                        <img class="lm-nav-logo" src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI MANAGER">
                     @endif
                     <div class="lm-top-title min-w-0">
                         <p class="lm-kicker">{{ auth()->user()->tenant?->name ?? 'Administration' }}</p>
@@ -92,17 +94,34 @@
                 @endif
                 @include('partials.onboarding')
                 @yield('content')
-                <p class="lm-foot">LIMETE WIFI MANAGER</p>
             </main>
         </div>
     </div>
-    <nav class="lm-tabbar no-print" aria-label="Navigation mobile">
-        <a href="{{ route('dashboard') }}">Accueil</a>
-        <a href="{{ route('wifi-zones.index') }}">Zones</a>
-        <a href="{{ route('vouchers.index') }}">Tickets</a>
-        <a href="{{ route('sales.index') }}">Ventes</a>
-        <a href="{{ route('settings.edit') }}">Plus</a>
-    </nav>
+    <footer class="lm-dock no-print">
+        <p class="lm-sign">Développé par Edouard Bengehya</p>
+        <nav class="lm-tabbar" aria-label="Navigation mobile">
+            <a href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard', 'entrepreneur.dashboard')) aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg>
+                <span>Accueil</span>
+            </a>
+            <a href="{{ route('wifi-zones.index') }}" @if(request()->routeIs('wifi-zones.*')) aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.6-3.2a7 7 0 0 1 9.2 0M4.9 12a11 11 0 0 1 14.2 0M2.2 8.6a15 15 0 0 1 19.6 0"/></svg>
+                <span>Zones</span>
+            </a>
+            <a href="{{ route('vouchers.index') }}" @if(request()->routeIs('vouchers.*')) aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/></svg>
+                <span>Tickets</span>
+            </a>
+            <a href="{{ route('sales.index') }}" @if(request()->routeIs('sales.*')) aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0.01 0M18 20a1 1 0 1 0 0.01 0"/></svg>
+                <span>Ventes</span>
+            </a>
+            <a href="{{ route('settings.edit') }}" @if(request()->routeIs('settings.*', 'business.*')) aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 4-2.1.6a7 7 0 0 1-.7 1.6l1.2 1.8-1.6 1.6-1.8-1.2a7 7 0 0 1-1.6.7L12 20l-1.4-2.1a7 7 0 0 1-1.6-.7l-1.8 1.2-1.6-1.6 1.2-1.8a7 7 0 0 1-.7-1.6L4 12l2.1-.6a7 7 0 0 1 .7-1.6L5.6 8l1.6-1.6 1.8 1.2a7 7 0 0 1 1.6-.7L12 4l1.4 2.1a7 7 0 0 1 1.6.7l1.8-1.2L18.4 8l-1.2 1.8c.3.5.5 1 .7 1.6z"/></svg>
+                <span>Plus</span>
+            </a>
+        </nav>
+    </footer>
     @stack('scripts')
 </body>
 </html>
