@@ -22,7 +22,7 @@
     <x-animated-background />
     <a class="skip" href="#contenu">Aller au contenu</a>
     <div class="shop-wrap">
-        <header class="shop-top">
+        <header class="shop-top no-print">
             <a class="shop-brand" href="{{ route('shop.show', $zone->slug) }}">
                 @if($zone->logoUrl())
                     <img class="shop-logo" src="{{ $zone->logoUrl() }}" alt="">
@@ -42,7 +42,7 @@
         </header>
 
         @isset($step)
-            <ol class="progress" aria-label="Étapes d’achat">
+            <ol class="progress no-print" aria-label="Étapes d’achat">
                 @foreach(['Forfait', 'Informations', 'Paiement', 'Confirmation', 'Ticket'] as $index => $label)
                     <li class="{{ $step === $index ? 'is-current' : ($step > $index ? 'is-done' : '') }}" @if($step === $index) aria-current="step" @endif>{{ $label }}</li>
                 @endforeach
@@ -66,7 +66,7 @@
         @yield('content')
         </main>
 
-        <footer class="shop-foot">
+        <footer class="shop-foot no-print">
             @if($zone->whatsappDigits())
                 <a href="https://wa.me/{{ $zone->whatsappDigits() }}">WhatsApp {{ $zone->whatsapp }}</a>
             @endif
@@ -87,6 +87,21 @@
                 if (!button || button.disabled) return;
                 button.disabled = true;
                 button.textContent = 'Patientez…';
+            });
+        });
+        document.querySelectorAll('[data-share]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var url = button.getAttribute('data-share') || '';
+                var done = function () { button.textContent = 'Lien copié'; };
+                if (navigator.share) {
+                    navigator.share({ title: 'Ticket WiFi', url: url }).catch(function () {});
+                    return;
+                }
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(url).then(done).catch(function () { window.prompt('Partagez ce lien', url); });
+                    return;
+                }
+                window.prompt('Partagez ce lien', url);
             });
         });
         document.querySelectorAll('[data-copy]').forEach(function (button) {

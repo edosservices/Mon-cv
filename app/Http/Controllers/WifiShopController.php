@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Rules\CustomerPhone;
+use App\Services\AuditLogger;
 use App\Services\Mikrotik\MikrotikService;
 use App\Services\Payments\PaymentManager;
 use App\Services\SaleService;
@@ -227,6 +228,29 @@ class WifiShopController extends Controller
                 ['src' => asset('icons/icon-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
             ],
         ], 200, ['Content-Type' => 'application/manifest+json']);
+    }
+
+    public function retrySync(string $token, MikrotikService $mikrotik, AuditLogger $audit)
+    {
+        $voucher = $this->publicVoucher($token);
+
+        if ($voucher->isSynced()) {
+            return back()->with('status', 'Le ticket est déjà synchronisé.');
+        }
+
+        $result = $mikrotik->provisionVoucher($voucher);
+        $audit->record(
+            $result->sync_status === 'synced' ? 'voucher.sync_success' : 'voucher.sync_failed',
+            $result,
+            null,
+            ['sync_status' => $result->sync_status],
+        );
+
+        if ($result->sync_status === 'synced') {
+            return back()->with('status', 'Le ticket est synchronisé.');
+        }
+
+        return back()->with('warning', 'Synchronisation en attente. Le ticket reste utilisable.');
     }
 
     public function pdf(string $token)

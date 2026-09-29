@@ -85,6 +85,7 @@ Route::get('/hotspot/session.js', [HotspotSessionController::class, 'script'])
     ->name('hotspot.session.script');
 Route::get('/ticket/{token}', [WifiShopController::class, 'ticket'])->name('tickets.public');
 Route::get('/ticket/{token}/pdf', [WifiShopController::class, 'pdf'])->name('tickets.pdf');
+Route::post('/ticket/{token}/synchroniser', [WifiShopController::class, 'retrySync'])->middleware('throttle:10,1')->name('tickets.sync');
 
 Route::middleware(['auth', 'tenant', 'role:super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [PlatformController::class, 'dashboard'])->name('dashboard');

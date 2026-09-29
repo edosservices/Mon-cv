@@ -27,6 +27,8 @@
     <header class="pass-head" style="background: {{ $voucher->wifiZone->brandColor() }}">
         @if($voucher->wifiZone->logoUrl())
             <img src="{{ $voucher->wifiZone->logoUrl() }}" alt="">
+        @else
+            <img src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI">
         @endif
         <p>{{ $voucher->wifiZone->displayLabel() }}</p>
         <p class="fine">{{ $voucher->wifiZone->name }}</p>
@@ -75,10 +77,11 @@
                     Votre ticket est créé. Le WiFi est temporairement en cours de synchronisation.
                 @endif
                 Non synchronisé. Ticket créé, synchronisation MikroTik en attente.
+                <strong>Synchronisation en attente</strong>
             </p>
         @endif
         @if(!empty($qr))
-            <div class="qr" aria-label="QR du ticket">{!! $qr !!}</div>
+            <div class="qr" data-ticket-url="{{ route('tickets.public', $voucher->public_token) }}" aria-label="QR du ticket">{!! $qr !!}</div>
             <p class="fine">Ce QR ouvre le ticket. Il ne contient pas le mot de passe.</p>
         @endif
     </div>
