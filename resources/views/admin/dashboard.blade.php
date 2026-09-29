@@ -1,5 +1,6 @@
 @extends('layouts.admin')
 @section('content')
+<p class="lm-kicker">Réseau global</p>
 <h1 class="mb-4 text-2xl font-semibold">Plateforme</h1>
 <div class="lm-grid sm:grid-cols-2 xl:grid-cols-3">
     @foreach([

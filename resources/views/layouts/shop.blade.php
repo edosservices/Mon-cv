@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="{{ $zone->displayLabel() }}">
     <title>@yield('title', $zone->displayLabel())</title>
     <link rel="manifest" href="{{ route('shop.manifest', $zone->slug) }}">
-    <link rel="icon" href="{{ asset('brand/logo-limete-wifi.svg') }}">
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

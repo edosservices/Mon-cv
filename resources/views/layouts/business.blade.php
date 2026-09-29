@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Mon business') — {{ auth()->user()->tenant?->name ?? 'LIMETE WIFI' }}</title>
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
     @vite(['resources/css/business.css', 'resources/js/business.js'])
 </head>
 <body class="biz" style="--biz: {{ auth()->user()->tenant?->brandColor() ?? '#0b5ed7' }}; --biz-2: {{ auth()->user()->tenant?->secondaryColor() ?? '#071e3d' }}; --biz-btn: {{ auth()->user()->tenant?->buttonColor() ?? '#0b5ed7' }}">

@@ -1,6 +1,7 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import './limete.css';
 @import './limete-background.css';
+@import './limete-finish.css';
 
 body.client {
     margin: 0;
