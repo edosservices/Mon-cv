@@ -126,9 +126,16 @@
 .lm-kpi {
     position: relative;
     overflow: hidden;
-    padding-bottom: 28px;
+    padding-bottom: 14px;
+}
+@media (min-width: 1024px) {
+    .lm-kpi { padding-bottom: 28px; }
+}
+@media (max-width: 1023px) {
+    .lm-dash .lm-kpi::after { display: none; }
 }
 .lm-kpi-label { letter-spacing: .04em; text-transform: uppercase; font-size: .72rem; }
+.lm-dash .lm-kpi-label { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 700; }
 .lm-kpi::after {
     content: "";
     position: absolute;
