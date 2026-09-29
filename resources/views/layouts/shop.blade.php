@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="{{ $zone->displayLabel() }}">
     <title>@yield('title', $zone->displayLabel())</title>
     <link rel="manifest" href="{{ route('shop.manifest', $zone->slug) }}">
-    <link rel="icon" href="{{ asset('icons/icon-192.png') }}">
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi.svg') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -33,7 +33,11 @@
                     @if($zone->location)<small>{{ $zone->location }}</small>@endif
                 </span>
             </a>
-            <a class="shop-link" href="{{ route('shop.tickets', $zone->slug) }}">Mes tickets</a>
+            <div class="shop-tools">
+                <input class="shop-search" type="search" data-filter-list=".plan-list" aria-label="Rechercher un forfait" placeholder="Rechercher">
+                <a class="shop-link" href="{{ route('client.login') }}">Connexion</a>
+                <a class="shop-link" href="{{ route('shop.tickets', $zone->slug) }}">Mes tickets</a>
+            </div>
         </header>
 
         @isset($step)
@@ -71,6 +75,7 @@
             @if($zone->email)
                 <p>{{ $zone->email }}</p>
             @endif
+            <p class="shop-platform"><x-brand-logo width="24" height="24" alt="" /> LIMETE WIFI</p>
             <p>{{ $zone->name }}</p>
         </footer>
     </div>

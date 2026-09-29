@@ -22,12 +22,29 @@
             <div class="col-12 col-md-6">
                 <article class="card zone-card shadow-sm h-100">
                     <div class="card-body">
+                        @php
+                            $routers = $zone->mikrotiks;
+                            $routerState = match (true) {
+                                $routers->isEmpty() => 'pending',
+                                $routers->contains(fn ($router) => $router->status === 'online') => 'active',
+                                $routers->contains(fn ($router) => $router->status === 'error') => 'sync',
+                                $routers->contains(fn ($router) => $router->status === 'offline') => 'offline',
+                                default => 'pending',
+                            };
+                            $routerLabel = match ($routerState) {
+                                'active' => 'Routeur en ligne',
+                                'sync' => 'Erreur de connexion',
+                                'offline' => 'Hors ligne',
+                                default => 'Routeur en attente',
+                            };
+                        @endphp
                         <div class="d-flex justify-content-between gap-2">
                             <h3 class="h5 mb-1">{{ $zone->name }}</h3>
-                            <span class="badge {{ $zone->status === 'active' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $zone->status === 'active' ? 'Active' : 'Inactive' }}</span>
+                            <x-ui.badge :class="$zone->status === 'active' ? 'is-active' : 'is-inactive'">{{ $zone->status === 'active' ? 'Active' : 'Inactive' }}</x-ui.badge>
                         </div>
                         <p class="text-secondary mb-2">{{ $zone->location ?: 'Localisation non renseignée' }}</p>
-                        <p class="mb-3">{{ $zone->vouchers_count }} tickets · {{ (int) ($clientCounts[$zone->id] ?? 0) }} clients</p>
+                        <p class="mb-2">{{ $zone->plans()->count() }} forfaits · {{ $zone->vouchers_count }} tickets · {{ (int) ($clientCounts[$zone->id] ?? 0) }} clients</p>
+                        <p class="mb-3"><x-ui.badge :class="'is-'.$routerState">{{ $routerLabel }}</x-ui.badge></p>
                         <div class="d-flex flex-wrap gap-2">
                             @if($zone->status === 'active')
                                 <a class="btn btn-sm biz-btn" href="{{ route('shop.show', $zone->slug) }}" target="_blank" rel="noopener">Ouvrir</a>

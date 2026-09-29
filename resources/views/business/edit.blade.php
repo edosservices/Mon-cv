@@ -73,8 +73,8 @@
     </section>
 
     <section class="col-12 col-lg-5">
-        <aside class="lm-preview mb-3" data-business-preview style="--preview: {{ $tenant->brandColor() }}; --preview-2: {{ $tenant->secondaryColor() }};">
-            <p class="mb-2">Aperçu business</p>
+        <aside class="lm-preview mb-3" data-business-preview style="--preview: {{ $tenant->brandColor() }}; --preview-2: {{ $tenant->secondaryColor() }}; --preview-btn: {{ $tenant->buttonColor() }};">
+            <p class="mb-2">Voici à quoi votre business ressemble</p>
             <div class="d-flex align-items-center gap-2 mb-2">
                 @if($tenant->logoUrl())
                     <img src="{{ $tenant->logoUrl() }}" alt="" width="48" height="48" class="rounded-3">
@@ -88,6 +88,11 @@
             </div>
             <p class="mb-1" data-preview-phone>{{ $tenant->phone }}</p>
             <p class="mb-0" data-preview-city>{{ trim(($tenant->city ?? '').' '.($tenant->country ?? '')) }}</p>
+            <div class="preview-samples">
+                <button type="button" data-preview-button>Bouton</button>
+                <div class="sample">Ticket · {{ $tenant->name }}</div>
+                <div class="sample">Carte WiFi · {{ $tenant->city ?: 'Zone' }}</div>
+            </div>
         </aside>
         <div class="card border-0 shadow-sm">
             <div class="card-body">

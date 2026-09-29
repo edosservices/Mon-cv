@@ -1,4 +1,5 @@
 import * as bootstrap from 'bootstrap';
+import './limete-ui.js';
 
 window.bootstrap = bootstrap;
 
@@ -119,8 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
             set('[data-preview-mark]', (name || 'L').slice(0, 1));
             preview.style.setProperty('--preview', read('primary_color') || '#1463f3');
             preview.style.setProperty('--preview-2', read('secondary_color') || '#071428');
+            preview.style.setProperty('--preview-btn', read('button_color') || read('primary_color') || '#1463f3');
         };
-        ['name', 'slogan', 'phone', 'city', 'country', 'primary_color', 'secondary_color'].forEach((field) => {
+        ['name', 'slogan', 'phone', 'city', 'country', 'primary_color', 'secondary_color', 'button_color'].forEach((field) => {
             document.querySelector(`[name="${field}"]`)?.addEventListener('input', paint);
         });
     });

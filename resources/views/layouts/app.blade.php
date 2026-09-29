@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'LIMETE WIFI MANAGER')</title>
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi.svg') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @auth
         @if(auth()->user()->tenant)
@@ -21,12 +22,13 @@
         <aside class="lm-side no-print" id="lm-side">
             <div class="px-4 py-5">
                 <a class="lm-brand" href="{{ route('dashboard') }}">
-                    <span class="lm-logo" aria-hidden="true">L</span>
+                    <x-brand-logo />
                     <span>
                         <strong>LIMETE WIFI MANAGER</strong>
                         <small>Gestion hotspot</small>
                     </span>
                 </a>
+                <button class="lm-collapse" type="button" data-lm-collapse aria-pressed="false">Réduire</button>
             </div>
             <nav class="space-y-1 px-3 pb-8 text-sm" aria-label="Navigation">
                 @include('layouts.nav')

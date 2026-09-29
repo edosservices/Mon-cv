@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @section('heading', 'Tickets')
 @section('content')
+<label class="no-print mb-3 block text-sm font-semibold">Rechercher
+    <input class="mt-1 w-full rounded-xl border px-3 py-3" type="search" data-filter-list="#ticket-list" placeholder="Nom, zone ou forfait" aria-label="Rechercher un ticket">
+</label>
 <div class="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
     <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('vouchers.generate') }}">Générer</a>
     <p class="text-sm text-slate-600">Maximum {{ $limit }} tickets par génération.</p>
@@ -27,7 +30,7 @@
         <button class="rounded-xl border px-4 py-3 text-sm font-semibold" formaction="{{ route('vouchers.sheet-pdf') }}">PDF</button>
     </div>
 </form>
-<div class="space-y-3">
+<div class="space-y-3" id="ticket-list">
     @foreach($vouchers as $voucher)
         @php
             $payment = $voucher->saleItem?->sale?->payment;
@@ -38,7 +41,7 @@
                 default => 'bg-slate-100 text-slate-700',
             };
         @endphp
-        <article class="min-w-0 rounded-2xl bg-white p-4 text-sm shadow-sm">
+        <article class="min-w-0 rounded-2xl bg-white p-4 text-sm shadow-sm" data-filter-item>
             <div class="flex flex-wrap items-start justify-between gap-2">
                 <p class="font-semibold">{{ $voucher->username }}</p>
                 <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ $badge }}">{{ $voucher->statusLabel() }}</span>
@@ -62,6 +65,7 @@
             <div class="no-print mt-3 flex flex-wrap items-center gap-2">
                 <label class="inline-flex items-center gap-2"><input class="ticket-check" form="ticket-bulk" type="checkbox" name="ids[]" value="{{ $voucher->id }}"> Sélectionner</label>
                 <a class="text-electric" href="{{ route('vouchers.show', $voucher) }}">Voir</a>
+                <button type="button" class="js-copy rounded-lg border px-3 py-2" data-url="{{ route('tickets.public', $voucher->public_token) }}">Partager</button>
                 <form method="POST" action="{{ route('vouchers.print') }}">@csrf
                     <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
                     <input type="hidden" name="template" value="moderne">

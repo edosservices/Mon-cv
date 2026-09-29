@@ -1,3 +1,5 @@
+import './limete-ui.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const header = document.querySelector('.lp-header');
     const burger = document.querySelector('.lp-burger');

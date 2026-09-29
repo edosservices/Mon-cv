@@ -14,9 +14,13 @@
                         <h3 class="h5 mb-1">{{ $plan->name }}</h3>
                         <span class="badge {{ $plan->status === 'active' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $plan->status === 'active' ? 'Actif' : 'Inactif' }}</span>
                     </div>
+                    <p class="text-secondary mb-1">{{ $plan->durationLabel() }}</p>
                     <p class="lm-price mb-1">{{ \App\Support\Money::format($plan->price, $plan->currency) }}</p>
                     <p class="text-secondary mb-1">{{ $plan->validityLabel() }}</p>
                     <p class="mb-1">{{ $plan->unlimited_data ? 'Internet illimité' : 'Données limitées' }}</p>
+                    @if($plan->mikrotik_profile)
+                        <p class="mb-1">Débit : profil {{ $plan->mikrotik_profile }}</p>
+                    @endif
                     <p class="mb-3">{{ $plan->sold_count }} tickets vendus</p>
                     <div class="d-flex flex-wrap gap-2">
                         <a class="btn btn-sm btn-outline-secondary" href="{{ route('plans.edit', $plan) }}">Modifier</a>

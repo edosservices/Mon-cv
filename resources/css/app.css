@@ -169,5 +169,12 @@ body {
     to { transform: rotate(360deg); }
 }
 
+@media (max-width: 640px) {
+    .shop-top { align-items: stretch; flex-direction: column; }
+    .shop-tools { justify-content: flex-start; }
+    .shop-search { width: 100%; }
+    .shop-brand strong, .shop-brand small { white-space: normal; text-overflow: unset; overflow: visible; }
+}
+
 .chart { width: 100%; max-width: 100%; overflow: hidden; }
 .chart svg { display: block; max-width: 100%; height: auto; }
