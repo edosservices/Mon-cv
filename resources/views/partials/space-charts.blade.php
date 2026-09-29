@@ -1,4 +1,4 @@
-<section class="mt-6 rounded-2xl bg-white p-4 shadow-sm" aria-label="Graphiques">
+<section class="lm-panel" aria-label="Graphiques">
     <div class="flex flex-wrap items-end justify-between gap-3">
         <h2 class="font-semibold">Activité</h2>
         <form class="flex flex-wrap gap-2" method="GET">
@@ -20,7 +20,7 @@
         </form>
     </div>
 
-    <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="lm-grid">
         @foreach($charts['kpis'] as $label => $value)
             <article class="rounded-2xl border p-3">
                 <p class="text-sm text-slate-500">{{ $label }}</p>
@@ -87,44 +87,14 @@
         </article>
     </div>
 
-    <div class="mt-6 grid gap-4 lg:grid-cols-2">
-        <article>
-            <h3 class="font-semibold">Activité récente</h3>
-            <ul class="mt-2 space-y-2 text-sm">
-                @forelse($charts['activity'] as $item)
-                    <li class="flex justify-between gap-3"><span>{{ $item['text'] }}</span><time class="text-slate-500">{{ $item['at'] }}</time></li>
-                @empty
-                    <li class="text-slate-500">Aucune activité récente.</li>
-                @endforelse
-            </ul>
-        </article>
-        <article>
-            <h3 class="font-semibold">MikroTik</h3>
-            @if($charts['router'])
-                <p class="mt-2 text-sm font-semibold">{{ $charts['router']['online'] ? 'Connected' : 'Offline' }}</p>
-                <dl class="mt-2 grid grid-cols-2 gap-2 text-sm">
-                    <div><dt class="text-slate-500">Nom</dt><dd>{{ $charts['router']['name'] }}</dd></div>
-                    <div><dt class="text-slate-500">Identity</dt><dd>{{ $charts['router']['identity'] ?: '—' }}</dd></div>
-                    <div><dt class="text-slate-500">RouterOS</dt><dd>{{ $charts['router']['version'] ?: '—' }}</dd></div>
-                    <div><dt class="text-slate-500">Uptime</dt><dd>{{ $charts['router']['uptime'] ?: '—' }}</dd></div>
-                    <div><dt class="text-slate-500">CPU</dt><dd>{{ $charts['router']['cpu'] ?: '—' }}</dd></div>
-                    <div><dt class="text-slate-500">Mémoire</dt><dd>{{ $charts['router']['memory'] ?: '—' }}</dd></div>
-                    <div><dt class="text-slate-500">Interfaces</dt><dd>{{ $charts['router']['interfaces'] ?? '—' }}</dd></div>
-                    <div><dt class="text-slate-500">HotSpot Servers</dt><dd>{{ $charts['router']['servers'] }}</dd></div>
-                    <div><dt class="text-slate-500">HotSpot Profiles</dt><dd>{{ $charts['router']['profiles'] }}</dd></div>
-                    <div><dt class="text-slate-500">HotSpot Users</dt><dd>{{ $charts['router']['users'] ?? '—' }}</dd></div>
-                    <div><dt class="text-slate-500">Active Sessions</dt><dd>{{ $charts['router']['sessions'] ?? '—' }}</dd></div>
-                </dl>
-                @if(auth()->user()->hasPermission('mikrotiks.manage'))
-                    <div class="mt-3 flex flex-wrap gap-2">
-                        <form method="POST" action="{{ route('mikrotiks.sync', $charts['router']['id']) }}">@csrf<button class="min-h-12 rounded-xl border px-3 py-2 text-sm font-semibold" type="submit">Synchroniser</button></form>
-                        <a class="min-h-12 rounded-xl border px-3 py-2 text-sm font-semibold" href="{{ route('mikrotiks.show', $charts['router']['id']) }}">Voir MikroTik</a>
-                        <form method="POST" action="{{ route('mikrotiks.sync', $charts['router']['id']) }}">@csrf<button class="min-h-12 rounded-xl border px-3 py-2 text-sm font-semibold" type="submit">Réessayer</button></form>
-                    </div>
-                @endif
-            @else
-                <p class="mt-2 text-sm text-slate-500">Aucun routeur associé.</p>
-            @endif
-        </article>
-    </div>
+    <article class="mt-6">
+        <h3 class="font-semibold">Activité récente</h3>
+        <ul class="mt-2 space-y-2 text-sm">
+            @forelse($charts['activity'] as $item)
+                <li class="flex justify-between gap-3"><span class="min-w-0">{{ $item['text'] }}</span><time class="shrink-0 text-slate-500">{{ $item['at'] }}</time></li>
+            @empty
+                <li class="text-slate-500">Aucune activité récente.</li>
+            @endforelse
+        </ul>
+    </article>
 </section>

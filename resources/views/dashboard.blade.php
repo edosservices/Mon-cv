@@ -14,12 +14,13 @@
     $query = request()->except('page');
 @endphp
 
+<div class="lm-dash">
 <header class="lm-hero min-w-0">
-    <p class="lm-pill">{{ auth()->user()->tenant?->name ?? 'Business' }}</p>
-    <div class="flex flex-wrap items-end justify-between gap-3">
-        <h2>Bonjour, {{ auth()->user()->name }} 👋</h2>
+    <p class="lm-page-sub">Vue générale de votre activité</p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="lm-hello">Bonjour, {{ auth()->user()->name }}</p>
         @if(auth()->user()->hasPermission('vouchers.manage'))
-            <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
+            <a class="lm-cta" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
         @endif
     </div>
     <form method="GET" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -51,6 +52,8 @@
     </form>
 </header>
 
+<details class="lm-quick-fold" open>
+    <summary>Actions rapides</summary>
 <nav class="lm-quick" aria-label="Actions rapides">
     @if(auth()->user()->hasPermission('sales.confirm'))
         <a href="{{ route('sales.quick') }}">+ Vendre un ticket</a>
@@ -74,6 +77,7 @@
         <a href="{{ route('reports.index') }}">Mes Rapports</a>
     @endif
 </nav>
+</details>
 
 @if($notices->isNotEmpty())
 <section class="mb-4 space-y-2" aria-label="Notifications">
@@ -103,22 +107,10 @@
 </section>
 @endif
 
-<section class="lm-grid sm:grid-cols-2 xl:grid-cols-3" aria-label="Indicateurs">
+<section class="lm-grid" aria-label="Indicateurs">
     @foreach($report['kpis'] as $kpi)
         <article class="lm-kpi lm-reveal" title="{{ $kpi['label'] }}">
-            <p class="flex items-center justify-between gap-2 text-sm text-slate-500">
-                <span>{{ $kpi['label'] }}</span>
-                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 text-electric" aria-hidden="true">
-                    @switch($kpi['label'])
-                        @case("CA aujourd’hui") ▣ @break
-                        @case('Ventes aujourd’hui') ≡ @break
-                        @case('Tickets actifs') ▤ @break
-                        @case('Clients') ● @break
-                        @case('Utilisateurs connectés') ◉ @break
-                        @default ! 
-                    @endswitch
-                </span>
-            </p>
+            <p class="text-sm text-slate-500">{{ $kpi['label'] }}</p>
             <p class="mt-2 break-words text-2xl font-semibold" @if(! $kpi['money'] && is_numeric($kpi['value'])) data-count="{{ (int) $kpi['value'] }}" @endif>
                 {{ $kpi['money'] ? \App\Support\Money::format($kpi['value']) : $kpi['value'] }}
             </p>
@@ -147,18 +139,45 @@
     </article>
 </section>
 
-@include('partials.space-charts')
+<article class="lm-panel lm-router-card {{ ($charts['router']['online'] ?? false) ? 'is-online' : 'is-down' }}">
+    <h2>Routeur</h2>
+    @if($charts['router'])
+        <p class="lm-router-state">{{ $charts['router']['online'] ? 'Connected' : 'Offline' }}</p>
+        <p class="lm-router-name">{{ $charts['router']['name'] }}</p>
+        <p class="lm-meta">{{ $charts['router']['identity'] ?: '—' }} · RouterOS {{ $charts['router']['version'] ?: '—' }}</p>
+        <dl class="lm-router-grid">
+            <div><dt>CPU</dt><dd>{{ $charts['router']['cpu'] ?: '—' }}</dd></div>
+            <div><dt>Mémoire</dt><dd>{{ $charts['router']['memory'] ?: '—' }}</dd></div>
+            <div><dt>Uptime</dt><dd>{{ $charts['router']['uptime'] ?: '—' }}</dd></div>
+            <div><dt>Interfaces</dt><dd>{{ $charts['router']['interfaces'] ?? '—' }}</dd></div>
+            <div><dt>HotSpot</dt><dd>{{ $charts['router']['servers'] }}</dd></div>
+            <div><dt>Profils</dt><dd>{{ $charts['router']['profiles'] }}</dd></div>
+            <div><dt>Utilisateurs</dt><dd>{{ $charts['router']['users'] ?? '—' }}</dd></div>
+            <div><dt>Sessions</dt><dd>{{ $charts['router']['sessions'] ?? '—' }}</dd></div>
+        </dl>
+        @if(auth()->user()->hasPermission('mikrotiks.manage'))
+            <div class="lm-router-actions">
+                <form class="lm-act-sync" method="POST" action="{{ route('mikrotiks.sync', $charts['router']['id']) }}">@csrf<button type="submit">Synchroniser</button></form>
+                <a class="lm-act-view" href="{{ route('mikrotiks.show', $charts['router']['id']) }}">Voir MikroTik</a>
+                <form class="lm-act-retry" method="POST" action="{{ route('mikrotiks.sync', $charts['router']['id']) }}">@csrf<button type="submit">Réessayer</button></form>
+            </div>
+        @endif
+    @else
+        <p class="mt-2 text-sm text-slate-500">Aucun routeur associé.</p>
+    @endif
+</article>
 
-<section id="revenus" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-semibold">Revenus</h2>
-        <div class="flex flex-wrap gap-2">
-            @foreach(['day' => 'Jour', 'week' => 'Semaine', 'month' => 'Mois'] as $value => $label)
-                <a class="rounded-lg border px-3 py-2 text-sm {{ $filters['grain'] === $value ? 'border-electric text-electric' : '' }}" href="{{ route('dashboard', array_merge($query, ['grain' => $value])) }}">{{ $label }}</a>
+<section id="revenus" class="lm-panel">
+    <div class="lm-panel-head">
+        <h2>Revenus</h2>
+        <div class="lm-tabs">
+            @foreach(['day' => 'Aujourd’hui', 'week' => 'Semaine', 'month' => 'Mois'] as $value => $label)
+                <a class="{{ $filters['grain'] === $value ? 'is-on' : '' }}" href="{{ route('dashboard', array_merge($query, ['grain' => $value])) }}">{{ $label }}</a>
             @endforeach
         </div>
     </div>
-    <p class="mt-2 text-sm text-slate-500">Période : {{ $filters['from']->timezone(config('app.timezone'))->format('d/m/Y') }} – {{ $filters['to']->timezone(config('app.timezone'))->format('d/m/Y') }} · {{ \App\Support\Money::format($report['period_revenue']) }}</p>
+    <p class="lm-figure">{{ \App\Support\Money::format($report['period_revenue']) }}</p>
+    <p class="lm-meta">{{ $filters['from']->timezone(config('app.timezone'))->format('d/m/Y') }} – {{ $filters['to']->timezone(config('app.timezone'))->format('d/m/Y') }}</p>
     @if($report['series'] === [])
         <p class="mt-4 text-sm text-slate-500">Pas encore de vente confirmée sur cette période.</p>
     @else
@@ -208,12 +227,12 @@
 </section>
 @endif
 
-<section id="mikrotik" class="mt-6">
-    <h2 class="font-semibold">Routeur</h2>
+<section id="mikrotik" class="lm-panel">
+    <h2>État MikroTik</h2>
     @if($report['routers'] === [])
         <p class="mt-3 text-sm text-slate-500">Aucun routeur relié.</p>
     @else
-        <div class="lm-table-wrap mt-3 rounded-2xl bg-white shadow-sm">
+        <div class="lm-table-wrap lm-router-table">
             <table class="lm-table">
                 <thead>
                     <tr><th>Nom</th><th>État</th><th>Identity</th><th>Adresse</th><th>Actifs</th><th></th></tr>
@@ -247,9 +266,21 @@
                                     $memory = $asMib($memBytes) ?: ($stored['memory'] ?? null);
                                     $disk = $asMib($hddBytes) ?: ($stored['disk'] ?? null);
                                 @endphp
-                                <span class="lm-res">CPU Load : {{ filled($cpu) ? $cpu : '—' }}</span>
-                                <span class="lm-res">Free Memory : {{ filled($memory) ? $memory : '—' }}</span>
-                                <span class="lm-res">Free HDD : {{ filled($disk) ? $disk : '—' }}</span>
+                                <div class="lm-metrics">
+                                    <div><span>CPU</span><strong>{{ filled($cpu) ? $cpu : '—' }}</strong><small class="lm-sr">CPU Load : {{ filled($cpu) ? $cpu : '—' }}</small></div>
+                                    <div><span>Mémoire</span><strong>{{ filled($memory) ? $memory : '—' }}</strong><small class="lm-sr">Free Memory : {{ filled($memory) ? $memory : '—' }}</small></div>
+                                    <div><span>Disque</span><strong>{{ filled($disk) ? $disk : '—' }}</strong><small class="lm-sr">Free HDD : {{ filled($disk) ? $disk : '—' }}</small></div>
+                                </div>
+                                <details class="lm-inline-details">
+                                    <summary>Voir détails</summary>
+                                    <p>{{ $router->identity ?: '—' }}</p>
+                                    <p>{{ $router->host }}</p>
+                                    <p>{{ count($card['users']) }} actifs</p>
+                                    <form method="POST" action="{{ route('mikrotiks.test', $router) }}">
+                                        @csrf
+                                        <button class="lm-chip-btn" type="submit">Tester la connexion</button>
+                                    </form>
+                                </details>
                             </td>
                             <td>
                                 @if($router->status === 'online') 🟢 Connecté
@@ -267,13 +298,13 @@
                                 @if($router->last_error)<span class="block max-w-xs whitespace-normal text-xs text-amber-800">{{ $router->last_error }}</span>@endif
                                 <span class="block text-xs text-slate-500">Dernière vérification {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</span>
                             </td>
-                            <td>{{ $router->identity ?: '—' }}</td>
-                            <td>{{ $router->host }}</td>
-                            <td>{{ count($card['users']) }}</td>
-                            <td>
+                            <td class="lm-cell-extra">{{ $router->identity ?: '—' }}</td>
+                            <td class="lm-cell-extra">{{ $router->host }}</td>
+                            <td class="lm-cell-extra">{{ count($card['users']) }}</td>
+                            <td class="lm-cell-extra">
                                 <form method="POST" action="{{ route('mikrotiks.test', $router) }}">
                                     @csrf
-                                    <button class="min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold">Tester la connexion</button>
+                                    <button class="lm-chip-btn" type="submit">Tester la connexion</button>
                                 </form>
                             </td>
                         </tr>
@@ -284,25 +315,27 @@
     @endif
 </section>
 
-<section id="connectes" class="mt-6 min-w-0">
-    <details class="lm-fold" @if($report['sessions'] !== []) data-live-table @endif>
-        <summary>
-            <span>
-                <strong>Connectés</strong>
-                <small>
-                    {{ count($report['sessions']) }} en ligne
-                    @if($report['sessions'] === [])
-                        ·
-                        @if(collect($report['routers'])->contains(fn ($card) => in_array($card['router']->status, ['offline', 'error'], true)))
-                            MikroTik hors ligne
-                        @else
-                            Aucun utilisateur connecté.
-                        @endif
+<section id="connectes" class="lm-panel" @if($report['sessions'] !== []) data-live-table @endif>
+    <div class="lm-panel-head">
+        <div>
+            <h2>Clients connectés</h2>
+            <p class="lm-meta">
+                @if(count($report['sessions']) > 0)
+                    <span class="lm-dot" aria-hidden="true"></span>
+                @endif
+                {{ count($report['sessions']) }} en ligne
+                @if($report['sessions'] === [])
+                    ·
+                    @if(collect($report['routers'])->contains(fn ($card) => in_array($card['router']->status, ['offline', 'error'], true)))
+                        MikroTik hors ligne
+                    @else
+                        Aucun utilisateur connecté.
                     @endif
-                </small>
-            </span>
-            <span class="lm-fold-go">Voir la liste</span>
-        </summary>
+                @endif
+            </p>
+        </div>
+        <a class="lm-text-link" href="{{ route('active-users.index') }}">Voir tous</a>
+    </div>
     @if($report['sessions'] === [])
         <p class="lm-fold-body text-sm text-slate-500">
             <a href="{{ route('active-users.index') }}">Ouvrir les sessions</a>
@@ -320,30 +353,30 @@
             <table class="lm-table">
                 <thead>
                     <tr>
-                        <th><button class="lm-sort" type="button" data-live-sort="client">Client</button></th>
+                        <th class="lm-hide-sm"><button class="lm-sort" type="button" data-live-sort="client">Client</button></th>
                         <th><button class="lm-sort" type="button" data-live-sort="username">Username</button></th>
                         <th><button class="lm-sort" type="button" data-live-sort="profile">Profil</button></th>
-                        <th><button class="lm-sort" type="button" data-live-sort="ip">IP</button></th>
-                        <th><button class="lm-sort" type="button" data-live-sort="rate">Débit</button></th>
+                        <th class="lm-hide-sm"><button class="lm-sort" type="button" data-live-sort="ip">IP</button></th>
+                        <th class="lm-hide-sm"><button class="lm-sort" type="button" data-live-sort="rate">Débit</button></th>
                         <th><button class="lm-sort" type="button" data-live-sort="time">Temps</button></th>
-                        <th><button class="lm-sort" type="button" data-live-sort="status">Statut</button></th>
-                        <th>Action</th>
+                        <th class="lm-hide-sm"><button class="lm-sort" type="button" data-live-sort="status">Statut</button></th>
+                        <th class="lm-hide-sm">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($report['sessions'] as $session)
+                    @foreach(collect($report['sessions'])->take(5) as $session)
                         <tr data-live-row data-status="{{ $session['status'] }}">
-                            <td data-k="client">{{ $session['client'] ?: '—' }}</td>
+                            <td class="lm-hide-sm" data-k="client">{{ $session['client'] ?: '—' }}</td>
                             <td data-k="username">{{ $session['username'] }}</td>
                             <td data-k="profile">{{ $session['profile'] ?: ($session['plan'] ?: '—') }}</td>
-                            <td data-k="ip">{{ $session['ip'] }}</td>
-                            <td data-k="rate">{{ $session['rate'] ?: '—' }}</td>
+                            <td class="lm-hide-sm" data-k="ip">{{ $session['ip'] }}</td>
+                            <td class="lm-hide-sm" data-k="rate">{{ $session['rate'] ?: '—' }}</td>
                             <td data-k="time">
                                 {{ $session['uptime'] }}
                                 <span class="block text-xs text-slate-500">Expiration {{ $session['expires']?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</span>
                             </td>
-                            <td data-k="status"><span class="lm-status is-on">En ligne</span></td>
-                            <td>
+                            <td class="lm-hide-sm" data-k="status"><span class="lm-status is-on">En ligne</span></td>
+                            <td class="lm-hide-sm">
                                 <details class="lm-pop">
                                     <summary aria-label="Actions">⋮</summary>
                                     <div class="lm-pop-panel">
@@ -371,11 +404,13 @@
             <span data-live-page>1 / 1</span>
             <button type="button" data-live-next>Suivant</button>
         </div>
+        <a class="lm-text-link lm-more-link" href="{{ route('active-users.index') }}">Voir tous les clients →</a>
     @endif
-    </details>
 </section>
 
-<section id="paiements" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+@include('partials.space-charts')
+
+<section id="paiements" class="lm-panel">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-semibold">Paiements</h2>
         <a class="text-sm font-semibold text-electric" href="{{ route('exports.payments', $query) }}">Exporter CSV</a>
@@ -511,4 +546,5 @@
         @endforelse
     </ul>
 </section>
+</div>
 @endsection
