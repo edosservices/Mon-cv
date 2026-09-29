@@ -9,6 +9,7 @@
 <body class="biz" style="--biz: {{ auth()->user()->tenant?->brandColor() ?? '#0b5ed7' }}; --biz-2: {{ auth()->user()->tenant?->secondaryColor() ?? '#071e3d' }}; --biz-btn: {{ auth()->user()->tenant?->buttonColor() ?? '#0b5ed7' }}">
     <header class="biz-top no-print">
         <div class="biz-brand">
+            <x-brand-logo width="28" height="28" alt="" />
             @if(auth()->user()->tenant?->logoUrl())
                 <img src="{{ auth()->user()->tenant->logoUrl() }}" alt="">
             @else

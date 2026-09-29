@@ -9,10 +9,13 @@
 <body class="client">
     <div class="client-wrap">
         <header class="client-top">
-            <div>
-                <strong>LIMETE WIFI</strong>
-                <small>@yield('heading', 'Espace client')</small>
-            </div>
+            <a class="lm-brand" href="{{ auth()->check() && auth()->user()->isClient() ? route('client.dashboard') : route('home') }}" style="color: inherit;">
+                <x-brand-logo />
+                <span>
+                    <strong>LIMETE WIFI</strong>
+                    <small>@yield('heading', 'Espace client')</small>
+                </span>
+            </a>
             @auth
                 @if(auth()->user()->isClient())
                     <form method="POST" action="{{ route('logout') }}">

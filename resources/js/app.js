@@ -1,3 +1,5 @@
+import './limete-ui.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const button = document.querySelector('[data-lm-menu]');
     const side = document.getElementById('lm-side');

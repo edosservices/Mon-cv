@@ -4,12 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Administration')</title>
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi.svg') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="lm-admin min-h-screen text-ink">
     <header class="lm-top">
         <a class="lm-brand" href="{{ route('admin.dashboard') }}" style="color: inherit;">
-            <span class="lm-logo" aria-hidden="true">L</span>
+            <x-brand-logo />
             <span>
                 <strong>LIMETE WIFI MANAGER</strong>
                 <small>Super admin</small>

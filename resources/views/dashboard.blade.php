@@ -106,7 +106,7 @@
 
 <section class="lm-grid sm:grid-cols-2 xl:grid-cols-3" aria-label="Indicateurs">
     @foreach($report['kpis'] as $kpi)
-        <article class="lm-kpi">
+        <article class="lm-kpi lm-reveal" title="{{ $kpi['label'] }}">
             <p class="flex items-center justify-between gap-2 text-sm text-slate-500">
                 <span>{{ $kpi['label'] }}</span>
                 <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-sky-50 text-electric" aria-hidden="true">
@@ -120,7 +120,7 @@
                     @endswitch
                 </span>
             </p>
-            <p class="mt-2 break-words text-2xl font-semibold">
+            <p class="mt-2 break-words text-2xl font-semibold" @if(! $kpi['money'] && is_numeric($kpi['value'])) data-count="{{ (int) $kpi['value'] }}" @endif>
                 {{ $kpi['money'] ? \App\Support\Money::format($kpi['value']) : $kpi['value'] }}
             </p>
             @if($kpi['change'] !== null)
@@ -136,15 +136,15 @@
     </article>
     <article class="lm-kpi">
         <p class="lm-kpi-label">Tickets vendus</p>
-        <p class="lm-kpi-value">{{ $pulse['sold'] }}</p>
+        <p class="lm-kpi-value" data-count="{{ (int) $pulse['sold'] }}">{{ $pulse['sold'] }}</p>
     </article>
     <article class="lm-kpi">
         <p class="lm-kpi-label">Tickets disponibles</p>
-        <p class="lm-kpi-value">{{ $pulse['available'] }}</p>
+        <p class="lm-kpi-value" data-count="{{ (int) $pulse['available'] }}">{{ $pulse['available'] }}</p>
     </article>
     <article class="lm-kpi">
         <p class="lm-kpi-label">Sessions actives</p>
-        <p class="lm-kpi-value">{{ $pulse['sessions'] }}</p>
+        <p class="lm-kpi-value" data-count="{{ (int) $pulse['sessions'] }}">{{ $pulse['sessions'] }}</p>
     </article>
 </section>
 

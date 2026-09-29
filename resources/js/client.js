@@ -1,3 +1,5 @@
+import './limete-ui.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('form[data-wait]').forEach((form) => {
         form.addEventListener('submit', () => {

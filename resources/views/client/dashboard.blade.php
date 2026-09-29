@@ -1,7 +1,8 @@
 @extends('layouts.client')
 @section('heading', 'Accueil')
 @section('content')
-<p class="mb-3">{{ auth()->user()->name !== 'Client' ? auth()->user()->name : auth()->user()->client_phone }}<br><span class="text-secondary">{{ auth()->user()->client_phone }}</span></p>
+<h2 class="h4">Bonjour @if(auth()->user()->name !== 'Client'), {{ auth()->user()->name }}@endif</h2>
+<p class="mb-3 text-secondary">{{ auth()->user()->client_phone }}</p>
 @if($active->isNotEmpty())
     @php $lead = $active->first(); @endphp
     <section class="client-card client-hero mb-3">

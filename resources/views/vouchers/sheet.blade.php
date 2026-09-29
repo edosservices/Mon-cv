@@ -37,6 +37,10 @@
         .model-compact .business, .model-compact .zone { display: inline; }
         .model-compact .fields { padding: 4px 6px; }
         .model-compact .code { font-size: 12px; }
+        .model-classique { border-top: 4px solid #1463f3; }
+        .model-moderne { border-radius: 14px; }
+        .model-compact { border-style: dashed; }
+        .model-premium { border: 1px solid #c4a35a; box-shadow: inset 0 0 0 1px #f3e6c4; }
         .model-premium .head { background: #071e3d; color: #fff; border-bottom: 3px solid #c4a35a; text-align: center; }
         .layout-4 .code { font-size: 16px; }
         .layout-4 .qr { width: 88px; }

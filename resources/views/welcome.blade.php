@@ -21,7 +21,7 @@
 @endphp
 <header class="lp-header">
     <div class="lp-wrap lp-bar">
-        <a class="lp-logo" href="{{ route('home') }}"><span class="lp-mark">L</span><span>LIMETE WIFI MANAGER</span></a>
+        <a class="lp-logo" href="{{ route('home') }}"><x-brand-logo /><span>LIMETE WIFI MANAGER</span></a>
         <button class="lp-burger" type="button" aria-expanded="false" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
         <nav class="lp-nav" aria-label="Sections">
             <a href="#fonctionnalites">Fonctionnalités</a>

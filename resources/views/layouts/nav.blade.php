@@ -47,7 +47,7 @@
     <p class="px-3 pb-1 pt-4 text-[11px] uppercase tracking-wide text-sky-200">{{ $title }}</p>
     @foreach($links as [$route, $label, $permission])
         @if($permission === null || auth()->user()->hasPermission($permission))
-            <a href="{{ route($route) }}{{ $route === 'dashboard' && $label === 'Revenus' ? '#revenus' : '' }}" class="block rounded-lg px-3 py-2 {{ request()->routeIs($route) && $label !== 'Revenus' ? 'bg-white/15' : 'hover:bg-white/10' }}">{{ $label }}</a>
+            <a data-short="{{ mb_substr($label, 0, 1) }}" href="{{ route($route) }}{{ $route === 'dashboard' && $label === 'Revenus' ? '#revenus' : '' }}" class="block rounded-lg px-3 py-2 {{ request()->routeIs($route) && $label !== 'Revenus' ? 'bg-white/15' : 'hover:bg-white/10' }}">{{ $label }}</a>
         @endif
     @endforeach
 @endforeach
