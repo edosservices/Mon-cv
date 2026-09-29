@@ -1,0 +1,143 @@
+.lm-net {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    color: rgba(20, 99, 243, .55);
+    contain: paint;
+}
+.lm-net-photo,
+.lp .lm-net-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    opacity: .045;
+    filter: grayscale(1) contrast(.85);
+}
+.lm-net-veil {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(65% 55% at 50% 42%, rgba(243, 246, 251, .78), rgba(243, 246, 251, .28) 72%, transparent 100%);
+}
+.lm-net-svg,
+.lp .lm-net-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+}
+.lm-net-links path { opacity: .28; }
+.lm-net-dots circle { opacity: .45; }
+.lm-node {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+.lm-green { color: rgba(15, 138, 75, .7); }
+.lm-glyph {
+    display: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: .1;
+}
+.lm-glyph text {
+    fill: currentColor;
+    stroke: none;
+    font-size: 13px;
+    font-family: var(--lm-font, system-ui, sans-serif);
+    letter-spacing: .04em;
+}
+.lm-net-wifi .lm-glyph-wifi,
+.lm-net-wifi .lm-glyph-antenna,
+.lm-net-auth .lm-glyph-wifi,
+.lm-net-dashboard .lm-glyph-cloud,
+.lm-net-mikrotik .lm-glyph-stack,
+.lm-net-tickets .lm-glyph-qr,
+.lm-net-tickets .lm-glyph-wifi,
+.lm-net-shop .lm-glyph-phone,
+.lm-net-shop .lm-glyph-wifi,
+.lm-net-admin .lm-glyph-globe,
+.lm-net-network .lm-glyph-wifi,
+.lm-net-network .lm-glyph-cloud { display: block; }
+
+.lm-net-auth .lm-glyph-wifi { opacity: .16; transform: scale(1.35); transform-origin: center; }
+.lm-net-wifi .lm-glyph-antenna { opacity: .12; }
+.lm-net-tickets .lm-glyph { opacity: .07; }
+.lm-net-shop .lm-glyph { opacity: .08; }
+.lm-net-admin .lm-glyph-globe { opacity: .09; }
+
+.lm-net-dots circle { animation: lm-blink 7.5s ease-in-out infinite; }
+.lm-net-dots circle:nth-child(2n) { animation-delay: -2.4s; }
+.lm-net-dots circle:nth-child(3n) { animation-duration: 9s; }
+.lm-node { animation: lm-blink 7.5s ease-in-out infinite, lm-node 6.5s ease-in-out infinite; }
+.lm-net-links path { animation: lm-line 8s ease-in-out infinite; }
+.lm-net-links path:nth-child(2n) { animation-delay: -3s; }
+.lm-glyph-wifi path { animation: lm-signal 5.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.lm-glyph-wifi path:nth-child(2) { animation-delay: .4s; }
+.lm-net-flows { display: none; }
+.lm-net[data-paused="1"] * { animation-play-state: paused; }
+@supports (offset-path: path("M0 0 L10 0")) {
+    .lm-net-flows { display: block; }
+    .lm-net-flows circle { opacity: .7; }
+}
+.lm-net-flows circle:nth-child(1) { offset-path: path("M90 150 C 220 90, 340 210, 470 140"); animation: lm-flow 16s linear infinite; }
+.lm-net-flows circle:nth-child(2) { offset-path: path("M180 620 C 340 500, 560 690, 780 540"); animation: lm-flow 18s linear infinite; }
+.lm-net-flows circle:nth-child(3) { offset-path: path("M470 140 C 620 70, 760 220, 930 160"); animation: lm-flow 20s linear infinite; }
+
+@keyframes lm-blink { 0%, 100% { opacity: .28; } 50% { opacity: .8; } }
+@keyframes lm-node { 50% { transform: scale(1.45); } }
+@keyframes lm-line { 0%, 100% { opacity: .16; } 50% { opacity: .42; } }
+@keyframes lm-signal { 0%, 100% { opacity: .25; } 50% { opacity: .9; } }
+@keyframes lm-flow { to { offset-distance: 100%; } }
+
+body:has(.lm-net) :is(table, .table) { background-color: #fff; }
+
+body:has(.lm-net-auth) .auth-brand { position: relative; overflow: hidden; }
+body:has(.lm-net-auth) .auth-brand::before,
+body:has(.lm-net-auth) .auth-brand::after {
+    content: "";
+    position: absolute;
+    border: 2px solid transparent;
+    border-bottom-color: rgba(186, 214, 255, .45);
+    border-left-color: rgba(186, 214, 255, .45);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: lm-signal 6.5s ease-in-out infinite;
+}
+body:has(.lm-net-auth) .auth-brand::before { width: 160px; height: 160px; right: 10%; top: 16%; }
+body:has(.lm-net-auth) .auth-brand::after { width: 250px; height: 250px; right: 4%; top: 8%; animation-delay: .7s; }
+
+@media (max-width: 1024px) {
+    .lm-net .is-full,
+    .lm-net .lm-glyph-stack text,
+    .lm-net .lm-glyph-globe { display: none; }
+}
+@media (max-width: 700px) {
+    .lm-net .is-mid,
+    .lm-net .is-full,
+    .lm-net .lm-net-flows,
+    .lm-net .lm-net-photo,
+    .lm-net .lm-glyph-cloud,
+    .lm-net .lm-glyph-phone,
+    .lm-net .lm-glyph-qr,
+    .lm-net .lm-glyph-antenna,
+    .lm-net .lm-glyph-globe,
+    .lm-net .lm-glyph-stack { display: none; }
+    .lm-net-links path:nth-child(n+5) { display: none; }
+    .lm-net-dots circle:nth-child(n+7) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lm-net, .lm-net * { animation: none !important; }
+    .lm-net-flows { display: none; }
+}
+@media print {
+    .lm-net { display: none !important; }
+}

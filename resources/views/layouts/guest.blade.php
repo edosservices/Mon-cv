@@ -8,6 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="lm-guest min-h-screen">
+    <x-animated-background variant="auth" />
     <div class="auth-shell">
         <aside class="auth-brand">
             <a class="lm-guest-brand" href="{{ route('home') }}" style="color: inherit;">

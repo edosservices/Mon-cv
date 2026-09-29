@@ -1,4 +1,5 @@
 import './limete-ui.js';
+import './limete-background.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const button = document.querySelector('[data-lm-menu]');

@@ -1,5 +1,6 @@
 import * as bootstrap from 'bootstrap';
 import './limete-ui.js';
+import './limete-background.js';
 
 window.bootstrap = bootstrap;
 

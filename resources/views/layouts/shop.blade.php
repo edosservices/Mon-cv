@@ -19,6 +19,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="shop" style="--shop: {{ $brand }}; --shop-2: {{ $brand2 }}; --shop-btn: {{ $brandBtn }}">
+    <x-animated-background />
     <a class="skip" href="#contenu">Aller au contenu</a>
     <div class="shop-wrap">
         <header class="shop-top">

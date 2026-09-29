@@ -1,4 +1,5 @@
 import './limete-ui.js';
+import './limete-background.js';
 import { bootMotion } from './limete-motion.js';
 
 document.addEventListener('DOMContentLoaded', () => {

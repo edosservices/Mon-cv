@@ -14,6 +14,7 @@
     @vite(['resources/css/landing.css', 'resources/js/landing.js'])
 </head>
 <body class="lp">
+    <x-animated-background variant="network" />
     @yield('content')
 </body>
 </html>
