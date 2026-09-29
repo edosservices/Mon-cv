@@ -1,0 +1,15 @@
+body { margin: 0; color: #10233f; font-family: sans-serif; }
+.toolbar { display: flex; gap: 8px; padding: 12px; }
+.sheet { display: grid; gap: 4px; padding: 6px; }
+.sheet-20 { grid-template-columns: repeat(4, 1fr); }
+.sheet-30, .sheet-40, .sheet-50 { grid-template-columns: repeat(5, 1fr); }
+.ticket { break-inside: avoid; border: 1px solid #d5e0ee; border-radius: 8px; padding: 6px; min-width: 0; }
+.ticket img { width: 28px; height: auto; }
+.ticket strong { display: block; font-size: 12px; word-break: break-all; }
+.ticket span, .ticket small { display: block; color: #5c6e86; font-size: 9px; }
+.ticket svg { width: 72px; height: 72px; }
+@media print {
+    .toolbar { display: none; }
+    @page { size: A4; margin: 6mm; }
+    .sheet-50 .ticket svg, .sheet-40 .ticket svg { width: 56px; height: 56px; }
+}

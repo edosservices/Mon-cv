@@ -99,12 +99,26 @@ class ClientPortalController extends Controller
         $user = $request->user();
         $tickets = $portal->tickets($user);
 
+        $sales = $portal->sales($user);
+
         return view('client.dashboard', [
             'tickets' => $tickets,
             'active' => $tickets->where('status', 'active'),
+            'available' => $tickets->where('status', 'available'),
             'expired' => $tickets->where('status', 'expired'),
-            'sales' => $portal->sales($user),
+            'sales' => $sales,
             'zones' => $portal->zones(),
+            'lastSale' => $sales->first(),
+        ]);
+    }
+
+    public function history(Request $request, ClientPortal $portal)
+    {
+        $tickets = $portal->tickets($request->user());
+
+        return view('client.history', [
+            'tickets' => $tickets,
+            'sales' => $portal->sales($request->user(), 20),
         ]);
     }
 

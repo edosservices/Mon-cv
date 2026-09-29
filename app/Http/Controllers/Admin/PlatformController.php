@@ -4,25 +4,90 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\SubscriptionStatus;
 use App\Http\Controllers\Controller;
+use App\Enums\UserRole;
 use App\Models\AuditLog;
 use App\Models\Mikrotik;
 use App\Models\Payment;
 use App\Models\PaymentProviderSetting;
+use App\Models\Plan;
 use App\Models\SaasPlan;
+use App\Models\Sale;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Models\Voucher;
+use App\Models\WifiZone;
 use App\Notifications\PlatformNotification;
 use App\Services\AuditLogger;
 use App\Services\DashboardMetrics;
+use App\Services\SpaceOverview;
 use App\Services\Payments\PaymentManager;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 
 class PlatformController extends Controller
 {
-    public function dashboard(DashboardMetrics $metrics)
+    public function dashboard(DashboardMetrics $metrics, SpaceOverview $spaces)
     {
-        return view('admin.dashboard', ['metrics' => $metrics->platform()]);
+        return view('admin.dashboard', [
+            'metrics' => $metrics->platform(),
+            'overview' => $spaces->platform(),
+        ]);
+    }
+
+    public function clients()
+    {
+        return view('admin.clients', [
+            'clients' => User::query()
+                ->whereHas('role', fn ($query) => $query->where('slug', UserRole::Client->value))
+                ->latest()
+                ->paginate(20),
+        ]);
+    }
+
+    public function zones()
+    {
+        return view('admin.zones', [
+            'zones' => WifiZone::withoutGlobalScope('tenant')->with('tenant:id,name')->latest()->paginate(20),
+        ]);
+    }
+
+    public function profiles()
+    {
+        return view('admin.profiles', [
+            'plans' => Plan::withoutGlobalScope('tenant')->with('tenant:id,name')->latest()->paginate(20),
+        ]);
+    }
+
+    public function users()
+    {
+        return view('admin.users', [
+            'vouchers' => Voucher::withoutGlobalScope('tenant')->with(['tenant:id,name', 'plan:id,name,mikrotik_profile'])->latest()->paginate(20),
+        ]);
+    }
+
+    public function tickets()
+    {
+        return view('admin.tickets', [
+            'vouchers' => Voucher::withoutGlobalScope('tenant')->with(['tenant:id,name', 'plan:id,name'])->latest()->paginate(20),
+        ]);
+    }
+
+    public function sales()
+    {
+        return view('admin.sales', [
+            'sales' => Sale::withoutGlobalScope('tenant')->with('tenant:id,name')->latest()->paginate(20),
+        ]);
+    }
+
+    public function reports(SpaceOverview $spaces)
+    {
+        return view('admin.reports', ['overview' => $spaces->platform()]);
+    }
+
+    public function settings()
+    {
+        return view('admin.settings');
     }
 
     public function mikrotiks()

@@ -21,6 +21,11 @@ class Sale extends Model
         return ['total_amount' => 'decimal:2'];
     }
 
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

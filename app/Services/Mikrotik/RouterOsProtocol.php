@@ -48,6 +48,28 @@ class RouterOsProtocol
         return $payload.chr(0);
     }
 
+    public static function routerTimeToSeconds(string $value): ?int
+    {
+        if (! preg_match('/^(\d+[wdhms])+$/', $value)) {
+            return null;
+        }
+
+        preg_match_all('/(\d+)([wdhms])/', $value, $matches, PREG_SET_ORDER);
+        $seconds = 0;
+        foreach ($matches as $match) {
+            $unit = match ($match[2]) {
+                'w' => 604800,
+                'd' => 86400,
+                'h' => 3600,
+                'm' => 60,
+                default => 1,
+            };
+            $seconds += ((int) $match[1]) * $unit;
+        }
+
+        return $seconds;
+    }
+
     public static function secondsToRouterTime(int $seconds): string
     {
         $weeks = intdiv($seconds, 604800);

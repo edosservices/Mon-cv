@@ -726,6 +726,7 @@ class MikrotikService
             '/ip/address/print',
             '/ip/dns/print',
             '/ip/pool/print',
+            '/queue/simple/print',
         ];
         if (! in_array($path, $allowed, true)) {
             throw new RuntimeException('Lecture non autorisée.');

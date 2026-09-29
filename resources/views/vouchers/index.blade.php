@@ -1,6 +1,26 @@
 @extends('layouts.app')
 @section('heading', 'Tickets')
 @section('content')
+<form class="no-print mb-4 grid gap-2 rounded-2xl bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5" method="GET">
+    <label class="text-sm font-semibold">Statut
+        <select class="mt-1 w-full rounded-xl border px-3 py-3" name="status">
+            <option value="">Tous</option>
+            @foreach(['available' => 'Disponibles', 'sold' => 'Vendus', 'active' => 'Actifs', 'used' => 'Utilisés', 'expired' => 'Expirés', 'pending_sync' => 'Sync en attente', 'failed' => 'Échec de sync'] as $value => $label)
+                <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
+            @endforeach
+        </select>
+    </label>
+    <label class="text-sm font-semibold">Recherche
+        <input class="mt-1 w-full rounded-xl border px-3 py-3" name="q" value="{{ request('q') }}" placeholder="Nom, référence, profil">
+    </label>
+    <label class="text-sm font-semibold">Du
+        <input class="mt-1 w-full rounded-xl border px-3 py-3" type="date" name="from" value="{{ request('from') }}">
+    </label>
+    <label class="text-sm font-semibold">Au
+        <input class="mt-1 w-full rounded-xl border px-3 py-3" type="date" name="to" value="{{ request('to') }}">
+    </label>
+    <button class="self-end min-h-12 rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white" type="submit">Filtrer</button>
+</form>
 <label class="no-print mb-3 block text-sm font-semibold">Rechercher
     <input class="mt-1 w-full rounded-xl border px-3 py-3" type="search" data-filter-list="#ticket-list" placeholder="Nom, zone ou forfait" aria-label="Rechercher un ticket">
 </label>
@@ -24,10 +44,20 @@
             <option value="8">8 tickets / page</option>
         </select>
     </label>
+    <label class="text-sm font-semibold">Impression groupée
+        <select class="mt-1 w-full rounded-xl border px-3 py-3" name="density">
+            <option value="20">20 / page</option>
+            <option value="30">30 / page</option>
+            <option value="40">40 / page</option>
+            <option value="50" selected>50 / page</option>
+        </select>
+    </label>
     <div class="flex flex-wrap items-center gap-3 sm:col-span-2">
         <label class="inline-flex items-center gap-2 text-sm font-semibold"><input type="checkbox" id="select-all"> Tout sélectionner</label>
         <button class="rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white" formaction="{{ route('vouchers.print') }}">Imprimer</button>
         <button class="rounded-xl border px-4 py-3 text-sm font-semibold" formaction="{{ route('vouchers.sheet-pdf') }}">PDF</button>
+        <button class="rounded-xl border px-4 py-3 text-sm font-semibold" formaction="{{ route('vouchers.bulk') }}">Aperçu</button>
+        <button class="rounded-xl border px-4 py-3 text-sm font-semibold" formaction="{{ route('vouchers.bulk') }}">Imprimer la sélection</button>
     </div>
 </form>
 <div class="space-y-3" id="ticket-list">

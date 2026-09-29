@@ -555,10 +555,29 @@ class TicketQuick
         } elseif ($validity !== null && $snapshot['time_limit'] !== $validity) {
             $snapshot['time_label'] = null;
         }
+        $sellingAmount = $plan->selling_price !== null && $plan->selling_price !== '' ? $plan->selling_price : $amount;
+        $sellingCurrency = $plan->selling_currency ?: $currency;
         $snapshot['price_amount'] = $amount;
         $snapshot['price_currency'] = $currency;
-        $snapshot['selling_price_amount'] = $amount;
-        $snapshot['selling_price_currency'] = $currency;
+        $snapshot['selling_price_amount'] = $sellingAmount;
+        $snapshot['selling_price_currency'] = $sellingCurrency;
+        $hotspot = is_array($plan->hotspot) ? $plan->hotspot : [];
+        foreach (['rate_limit' => 'rate_limit', 'lock_user' => 'lock_user', 'address_pool' => 'address_pool', 'parent_queue' => 'parent_queue', 'expired_mode' => 'expired_mode'] as $from => $to) {
+            if (! filled($snapshot[$to] ?? null) && filled($hotspot[$from] ?? null) && ($hotspot[$from] ?? null) !== 'none') {
+                $snapshot[$to] = (string) $hotspot[$from];
+            }
+        }
+        if (! filled($snapshot['shared_users'] ?? null) && filled($hotspot['shared_users'] ?? null)) {
+            $snapshot['shared_users'] = (int) $hotspot['shared_users'];
+        }
+        if (filled($hotspot['time_limit'] ?? null)) {
+            $snapshot['time_limit'] = (string) $hotspot['time_limit'];
+            $limitSeconds = RouterOsProtocol::routerTimeToSeconds((string) $hotspot['time_limit']);
+            $validitySeconds = $validity ? RouterOsProtocol::routerTimeToSeconds($validity) : null;
+            if ($limitSeconds !== null && $validitySeconds !== null && $limitSeconds !== $validitySeconds) {
+                $snapshot['time_label'] = null;
+            }
+        }
         $snapshot['plan_id'] = $plan->id;
         $profile['snapshot'] = $snapshot;
         $profile['plan_id'] = $plan->id;
