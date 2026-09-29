@@ -57,6 +57,7 @@
             });
         });
     </script>
+    @stack('scripts')
     <nav class="no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-slate-200 bg-white text-center text-[11px] lg:hidden">
         <a class="px-1 py-3" href="{{ route('dashboard') }}">Accueil</a>
         <a class="px-1 py-3" href="{{ route('wifi-zones.index') }}">Zones</a>

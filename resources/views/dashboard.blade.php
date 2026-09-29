@@ -15,7 +15,12 @@
 @endphp
 
 <header class="mb-4 min-w-0">
-    <p class="text-lg font-semibold">Bonjour, {{ auth()->user()->name }}</p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-lg font-semibold">Bonjour, {{ auth()->user()->name }}</p>
+        @if(auth()->user()->hasPermission('vouchers.manage'))
+            <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
+        @endif
+    </div>
     <form method="GET" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label class="text-sm font-semibold">WiFi Zone
             <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3" name="zone" onchange="this.form.submit()">
