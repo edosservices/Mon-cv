@@ -15,7 +15,7 @@
             @foreach($page as $voucher)
                 @php $snapshot = is_array($voucher->profile_snapshot) ? $voucher->profile_snapshot : []; @endphp
                 <article class="ticket">
-                    <img src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI">
+                    <img src="{{ $voucher->wifiZone?->logoUrl() ?: asset('brand/logo-limete-wifi-manager.png') }}" alt="{{ $voucher->wifiZone?->tenant?->name ?: 'LIMETE WIFI' }}">
                     <span>Utilisateur</span>
                     <strong>{{ $voucher->username }}</strong>
                     <span>Mot de passe</span>
