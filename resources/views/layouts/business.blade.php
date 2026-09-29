@@ -39,6 +39,7 @@
             <a href="{{ route('customers.index') }}" @if(request()->routeIs('customers.*')) aria-current="page" @endif>Clients</a>
             <a href="{{ route('reports.index') }}" @if(request()->routeIs('reports.*')) aria-current="page" @endif>Rapports</a>
             <a href="{{ route('vouchers.index') }}">Tickets</a>
+            <a href="{{ route('mikrotiks.assistant') }}" @if(request()->routeIs('mikrotiks.assistant*')) aria-current="page" @endif>Mon MikroTik</a>
         </nav>
         <main class="biz-main">
             @include('partials.onboarding', ['onboardingTheme' => 'business'])

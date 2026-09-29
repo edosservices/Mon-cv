@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\SubscriptionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\Mikrotik;
 use App\Models\Payment;
 use App\Models\PaymentProviderSetting;
 use App\Models\SaasPlan;
@@ -22,6 +23,13 @@ class PlatformController extends Controller
     public function dashboard(DashboardMetrics $metrics)
     {
         return view('admin.dashboard', ['metrics' => $metrics->platform()]);
+    }
+
+    public function mikrotiks()
+    {
+        return view('admin.mikrotiks', [
+            'routers' => Mikrotik::with(['tenant:id,name', 'wifiZone:id,name'])->latest()->get(),
+        ]);
     }
 
     public function tenants()

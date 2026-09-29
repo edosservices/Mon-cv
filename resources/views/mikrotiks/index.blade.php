@@ -2,7 +2,8 @@
 @section('heading', 'Mes MikroTik')
 @section('content')
 <div class="mb-4">
-    <a class="inline-flex rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('mikrotiks.create') }}">+ Ajouter un MikroTik</a>
+    <a class="inline-flex rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('mikrotiks.assistant') }}">+ Ajouter mon MikroTik</a>
+    <a class="ml-2 inline-flex rounded-xl border px-4 py-3 text-sm font-semibold" href="{{ route('mikrotiks.create') }}">Formulaire détaillé</a>
 </div>
 <div class="space-y-3">
     @forelse($routers as $router)

@@ -53,6 +53,7 @@
 .biz-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .biz-steps li { padding: 4px 10px; border-radius: 999px; background: #eef2f7; font-size: 14px; }
 .biz-steps li.is-done { background: #e5f6ec; color: #0f6b3c; }
+.biz-steps li.is-current { background: var(--biz-btn, #0b5ed7); color: white; }
 
 .zone-card, .plan-card { border: 0; border-radius: 18px; }
 .preview-card { border-radius: 18px; background: var(--biz-2, #071e3d); color: white; }

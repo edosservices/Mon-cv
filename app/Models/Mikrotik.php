@@ -16,7 +16,7 @@ class Mikrotik extends Model
         'tenant_id', 'wifi_zone_id', 'name', 'description', 'host', 'dns', 'api_port',
         'api_ssl_port', 'connection_type', 'username', 'password', 'timeout',
         'routeros_version', 'architecture', 'board', 'identity', 'hotspot_server',
-        'status', 'is_active', 'last_seen_at', 'last_error', 'details',
+        'status', 'is_active', 'auto_sync', 'last_seen_at', 'last_synced_at', 'last_error', 'details',
     ];
 
     protected $hidden = ['password'];
@@ -28,6 +28,8 @@ class Mikrotik extends Model
             'last_seen_at' => 'datetime',
             'details' => 'array',
             'is_active' => 'boolean',
+            'auto_sync' => 'boolean',
+            'last_synced_at' => 'datetime',
             'api_port' => 'integer',
             'api_ssl_port' => 'integer',
             'timeout' => 'integer',

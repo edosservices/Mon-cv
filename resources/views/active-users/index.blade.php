@@ -12,7 +12,12 @@
                     <article class="min-w-0 rounded-xl bg-slate-50 p-3 text-sm">
                         <p class="font-semibold">{{ $user['user'] ?? '' }}</p>
                         <p class="break-all">IP {{ $user['address'] ?? '—' }}</p>
+                        <p>MAC {{ $user['mac-address'] ?? '—' }}</p>
                         <p>Connexion {{ $user['uptime'] ?? '—' }}</p>
+                        @if(isset($user['bytes-in']) || isset($user['bytes-out']))
+                            <p>Trafic {{ $user['bytes-in'] ?? '0' }} / {{ $user['bytes-out'] ?? '0' }}</p>
+                        @endif
+                        <p>Profil {{ $user['profile'] ?? '—' }}</p>
                         <p>Forfait {{ $user['plan_name'] ?: 'Selon le ticket' }}</p>
                         <p>Expiration {{ $user['commercial_expires']?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '—' }}</p>
                         <form class="mt-2" method="POST" action="{{ route('active-users.disconnect') }}">
