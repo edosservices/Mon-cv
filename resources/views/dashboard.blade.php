@@ -148,6 +148,8 @@
     </article>
 </section>
 
+@include('partials.space-charts')
+
 <section id="revenus" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-semibold">Évolution du chiffre d'affaires</h2>

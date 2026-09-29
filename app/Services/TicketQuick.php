@@ -18,6 +18,8 @@ class TicketQuick
 {
     private const ATTEMPTS = 12;
 
+    public const MISSING_PLAN = 'Ce profil MikroTik existe, mais aucun forfait LIMETE ne lui est encore associé.';
+
     /** @var array<string, mixed>|null */
     private ?array $reading = null;
 
@@ -40,6 +42,9 @@ class TicketQuick
     {
         $reading = $this->read($zone);
         $profiles = $this->merge($zone, $reading['profiles'], $reading['live']);
+        foreach ($profiles as $index => $profile) {
+            $profiles[$index]['plans'] = $profile['ready'] ? [] : $this->compatiblePlans($zone, $profile);
+        }
 
         return [
             'profiles' => $profiles,
@@ -71,6 +76,9 @@ class TicketQuick
     public function preview(WifiZone $zone, array $input): array
     {
         $built = $this->assemble($zone, $input, true);
+        if (! empty($built['needs_plan'])) {
+            return $built;
+        }
         Cache::put($this->draftKey($zone, $built['draft']), [
             'hash' => $built['hash'],
             'identities' => $built['identities'],
@@ -194,6 +202,76 @@ class TicketQuick
     }
 
     /**
+     * @param  array<string, mixed>  $commercial
+     */
+    public function storeLinkedPlan(WifiZone $zone, string $name, array $commercial): Plan
+    {
+        $profile = $this->technicalProfile($zone, $name);
+        if ($profile['ready']) {
+            throw new RuntimeException('Ce profil a déjà un forfait LIMETE.');
+        }
+
+        $snapshot = $profile['snapshot'];
+        $validity = (string) $commercial['validity'];
+        $timeLimit = filled($commercial['time_limit'] ?? null) ? (string) $commercial['time_limit'] : $validity;
+        $seconds = RouterOsProtocol::routerTimeToSeconds($validity);
+        if ($seconds === null) {
+            throw new RuntimeException('Paramètres incompatibles.');
+        }
+
+        $currency = strtoupper((string) $commercial['price_currency']);
+        $sellingCurrency = filled($commercial['selling_price_currency'] ?? null)
+            ? strtoupper((string) $commercial['selling_price_currency'])
+            : $currency;
+        $price = $commercial['price_amount'];
+        $selling = ($commercial['selling_price_amount'] ?? '') === '' ? $price : $commercial['selling_price_amount'];
+
+        $plan = Plan::create([
+            'wifi_zone_id' => $zone->id,
+            'name' => $profile['name'],
+            'duration_seconds' => $seconds,
+            'price' => $price,
+            'currency' => $currency,
+            'selling_price' => $selling,
+            'selling_currency' => $sellingCurrency,
+            'mikrotik_profile' => $profile['name'],
+            'unlimited_data' => true,
+            'status' => 'active',
+            'hotspot' => [
+                'address_pool' => $snapshot['address_pool'],
+                'shared_users' => $snapshot['shared_users'],
+                'rate_limit' => $snapshot['rate_limit'],
+                'expired_mode' => $snapshot['expired_mode'],
+                'lock_user' => $snapshot['lock_user'],
+                'parent_queue' => $snapshot['parent_queue'],
+                'validity' => $validity,
+                'time_limit' => $timeLimit,
+            ],
+        ]);
+        $this->forgetReading();
+
+        return $plan;
+    }
+
+    public function attachPlan(WifiZone $zone, string $name, Plan $plan): Plan
+    {
+        $profile = $this->technicalProfile($zone, $name);
+        if ($profile['ready']) {
+            throw new RuntimeException('Ce profil a déjà un forfait LIMETE.');
+        }
+        if ((int) $plan->tenant_id !== (int) $zone->tenant_id || ! $this->planMatchesProfile($zone, $plan, $profile)) {
+            throw new RuntimeException('Paramètres incompatibles.');
+        }
+
+        $plan->forceFill([
+            'mikrotik_profile' => $profile['name'],
+        ])->save();
+        $this->forgetReading();
+
+        return $plan->fresh();
+    }
+
+    /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
@@ -212,11 +290,30 @@ class TicketQuick
         if ($profile === null) {
             throw new RuntimeException('Profil introuvable.');
         }
-        if (! $profile['ready']) {
-            throw new RuntimeException('Ce profil n’a pas de forfait LIMETE.');
-        }
         if (! $catalog['offline'] && ! $profile['on_router']) {
             throw new RuntimeException('Profil introuvable.');
+        }
+        if (! $profile['ready']) {
+            if (! $withIdentities) {
+                throw new RuntimeException(self::MISSING_PLAN);
+            }
+
+            return [
+                'needs_plan' => true,
+                'draft' => $this->draft($input['draft'] ?? null),
+                'hash' => '',
+                'profile' => $profile,
+                'plans' => $profile['plans'] ?? [],
+                'snapshot' => $profile['snapshot'],
+                'server' => '',
+                'identities' => [],
+                'samples' => [],
+                'offline' => $catalog['offline'],
+                'notice' => self::MISSING_PLAN,
+                'router' => $this->router($zone),
+                'mode' => 'generate',
+                'qty' => 0,
+            ];
         }
 
         $server = trim((string) ($input['server'] ?? ''));
@@ -555,10 +652,29 @@ class TicketQuick
         } elseif ($validity !== null && $snapshot['time_limit'] !== $validity) {
             $snapshot['time_label'] = null;
         }
+        $sellingAmount = $plan->selling_price !== null && $plan->selling_price !== '' ? $plan->selling_price : $amount;
+        $sellingCurrency = $plan->selling_currency ?: $currency;
         $snapshot['price_amount'] = $amount;
         $snapshot['price_currency'] = $currency;
-        $snapshot['selling_price_amount'] = $amount;
-        $snapshot['selling_price_currency'] = $currency;
+        $snapshot['selling_price_amount'] = $sellingAmount;
+        $snapshot['selling_price_currency'] = $sellingCurrency;
+        $hotspot = is_array($plan->hotspot) ? $plan->hotspot : [];
+        foreach (['rate_limit' => 'rate_limit', 'lock_user' => 'lock_user', 'address_pool' => 'address_pool', 'parent_queue' => 'parent_queue', 'expired_mode' => 'expired_mode'] as $from => $to) {
+            if (! filled($snapshot[$to] ?? null) && filled($hotspot[$from] ?? null) && ($hotspot[$from] ?? null) !== 'none') {
+                $snapshot[$to] = (string) $hotspot[$from];
+            }
+        }
+        if (! filled($snapshot['shared_users'] ?? null) && filled($hotspot['shared_users'] ?? null)) {
+            $snapshot['shared_users'] = (int) $hotspot['shared_users'];
+        }
+        if (filled($hotspot['time_limit'] ?? null)) {
+            $snapshot['time_limit'] = (string) $hotspot['time_limit'];
+            $limitSeconds = RouterOsProtocol::routerTimeToSeconds((string) $hotspot['time_limit']);
+            $validitySeconds = $validity ? RouterOsProtocol::routerTimeToSeconds($validity) : null;
+            if ($limitSeconds !== null && $validitySeconds !== null && $limitSeconds !== $validitySeconds) {
+                $snapshot['time_label'] = null;
+            }
+        }
         $snapshot['plan_id'] = $plan->id;
         $profile['snapshot'] = $snapshot;
         $profile['plan_id'] = $plan->id;
@@ -750,6 +866,97 @@ class TicketQuick
         }
 
         return $draft;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function technicalProfile(WifiZone $zone, string $name): array
+    {
+        $catalog = $this->catalog($zone);
+        foreach ($catalog['profiles'] as $candidate) {
+            if ($candidate['name'] !== $name) {
+                continue;
+            }
+            if (! $catalog['offline'] && ! $candidate['on_router']) {
+                throw new RuntimeException('Profil introuvable.');
+            }
+
+            return $candidate;
+        }
+
+        throw new RuntimeException('Profil introuvable.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     * @return list<array{id: int, name: string, summary: string}>
+     */
+    private function compatiblePlans(WifiZone $zone, array $profile): array
+    {
+        $rows = [];
+        $plans = Plan::query()
+            ->where('status', 'active')
+            ->where(function ($query) use ($zone) {
+                $query->whereNull('wifi_zone_id')->orWhere('wifi_zone_id', $zone->id);
+            })
+            ->orderBy('name')
+            ->get();
+
+        foreach ($plans as $plan) {
+            if (! $this->planMatchesProfile($zone, $plan, $profile)) {
+                continue;
+            }
+            $rows[] = [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'summary' => trim($plan->durationLabel().' · '.Money::shop($plan->price, $plan->currency)),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     */
+    private function planMatchesProfile(WifiZone $zone, Plan $plan, array $profile): bool
+    {
+        if ($plan->status !== 'active' || (int) $plan->tenant_id !== (int) $zone->tenant_id) {
+            return false;
+        }
+        if ($plan->wifi_zone_id && (int) $plan->wifi_zone_id !== (int) $zone->id) {
+            return false;
+        }
+
+        $linked = trim((string) $plan->mikrotik_profile);
+        if ($linked !== '' && $linked !== $profile['name']) {
+            return false;
+        }
+
+        $hotspot = is_array($plan->hotspot) ? $plan->hotspot : [];
+        $snapshot = $profile['snapshot'];
+        foreach (['rate_limit', 'lock_user', 'address_pool', 'parent_queue', 'expired_mode'] as $key) {
+            $left = $this->filled($hotspot[$key] ?? null);
+            $right = $this->filled($snapshot[$key] ?? null);
+            if ($left === null || $right === null || strcasecmp($left, 'none') === 0 || strcasecmp($right, 'none') === 0) {
+                continue;
+            }
+            if (strcasecmp($left, $right) !== 0) {
+                return false;
+            }
+        }
+        if (filled($hotspot['shared_users'] ?? null) && filled($snapshot['shared_users'] ?? null) && (int) $hotspot['shared_users'] !== (int) $snapshot['shared_users']) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function forgetReading(): void
+    {
+        $this->reading = null;
+        $this->readingZone = null;
     }
 
     private function token(string $value): bool

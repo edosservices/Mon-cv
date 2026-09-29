@@ -15,15 +15,21 @@
     </section>
 @endif
 <div class="client-grid mb-3">
+    <article class="client-card"><strong>Tickets actifs</strong><span>{{ $active->count() }}</span></article>
+    <article class="client-card"><strong>Tickets disponibles</strong><span>{{ $available->count() }}</span></article>
+    <article class="client-card"><strong>Tickets expirés</strong><span>{{ $expired->count() }}</span></article>
+    <article class="client-card"><strong>Dernier achat</strong><span>{{ $lastSale?->created_at?->timezone(config('app.timezone'))->format('d/m/Y') ?? '—' }}</span></article>
+</div>
+<div class="client-grid mb-3">
     <article class="client-card"><a class="client-action" href="{{ route('client.tickets') }}"><strong>Mes tickets</strong><span>{{ $active->count() }} actif(s)</span></a></article>
     <article class="client-card"><a class="client-action" href="{{ route('client.buy') }}"><strong>Acheter</strong><span>Sans recommencer l’inscription</span></a></article>
     <article class="client-card"><a class="client-action" href="{{ route('client.tickets') }}#historique"><strong>Historique</strong><span>{{ $expired->count() }} expiré(s)</span></a></article>
     <article class="client-card"><a class="client-action" href="{{ route('client.profile') }}"><strong>Profil</strong><span>Téléphone et mot de passe</span></a></article>
 </div>
-<section class="client-card p-3 mb-3">
+<section class="mb-3">
     <h2 class="h6">Tickets actifs</h2>
     @forelse($active as $ticket)
-        <p class="mb-1">{{ $ticket->wifiZone->name ?? 'Zone' }} · {{ $ticket->plan->name ?? 'Forfait' }} · {{ $ticket->username }}</p>
+        @include('client.ticket-card', ['reveal' => true])
     @empty
         <p class="mb-0 text-secondary">Aucun ticket actif.</p>
     @endforelse

@@ -287,6 +287,8 @@ class TicketAssist
             'Création annulée.',
             'Impossible de proposer un identifiant libre.',
             'Ce profil n’a pas de forfait LIMETE.',
+            'Ce profil MikroTik existe, mais aucun forfait LIMETE ne lui est encore associé.',
+            'Ce profil a déjà un forfait LIMETE.',
             'Aperçu expiré.',
         ] as $known) {
             if (str_contains($message, $known)) {
@@ -543,22 +545,6 @@ class TicketAssist
 
     private function routerSeconds(string $value): ?int
     {
-        if (! preg_match('/^(\d+[wdhms])+$/', $value)) {
-            return null;
-        }
-        preg_match_all('/(\d+)([wdhms])/', $value, $matches, PREG_SET_ORDER);
-        $seconds = 0;
-        foreach ($matches as $match) {
-            $unit = match ($match[2]) {
-                'w' => 604800,
-                'd' => 86400,
-                'h' => 3600,
-                'm' => 60,
-                default => 1,
-            };
-            $seconds += ((int) $match[1]) * $unit;
-        }
-
-        return $seconds;
+        return RouterOsProtocol::routerTimeToSeconds($value);
     }
 }
