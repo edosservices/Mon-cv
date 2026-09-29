@@ -1,6 +1,8 @@
 import './limete-ui.js';
+import { bootMotion } from './limete-motion.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    bootMotion();
     const header = document.querySelector('.lp-header');
     const burger = document.querySelector('.lp-burger');
     if (burger && header) {
