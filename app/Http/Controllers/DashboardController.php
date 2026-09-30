@@ -6,11 +6,12 @@ use App\Enums\VoucherStatus;
 use App\Models\Voucher;
 use App\Services\BusinessReport;
 use App\Services\DashboardAlerts;
+use App\Services\SpaceOverview;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, BusinessReport $report, DashboardAlerts $alerts)
+    public function __invoke(Request $request, BusinessReport $report, DashboardAlerts $alerts, SpaceOverview $spaces)
     {
         $filters = $report->filters($request);
         $data = $report->build($filters);
@@ -24,6 +25,7 @@ class DashboardController extends Controller
             'sales' => $report->sales($filters, 5),
             'shopZones' => $data['zones']->where('status', 'active'),
             'notices' => $request->user()->unreadNotifications()->latest()->limit(4)->get(),
+            'charts' => $spaces->entrepreneur($request),
             'pulse' => [
                 'month' => $report->netRevenue(now()->startOfMonth(), now()->endOfMonth(), $zoneId),
                 'sold' => (clone $vouchers)->whereIn('status', [VoucherStatus::Active->value, VoucherStatus::Expired->value])->count(),

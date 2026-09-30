@@ -3,7 +3,10 @@
 namespace App\Services\Mikrotik;
 
 use App\Models\Mikrotik;
+use App\Models\MikrotikProfile;
 use App\Models\MikrotikSnapshot;
+use App\Models\Plan;
+use App\Models\PlanMikrotikProfile;
 use App\Services\AuditLogger;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -111,6 +114,55 @@ class MikrotikPreparation
         ]);
 
         return $result;
+    }
+
+    /**
+     * @return array{name: string, session_timeout: string, duration_label: string, data_label: string, rate_label: string, shared_users: int}
+     */
+    public function previewPlanProfile(Plan $plan): array
+    {
+        return $this->mikrotik->profileBlueprint($plan);
+    }
+
+    public function createPlanProfile(Mikrotik $router, Plan $plan, bool $confirmed): string
+    {
+        if (! $confirmed) {
+            throw new RuntimeException('Confirmation requise avant de créer le profil.');
+        }
+
+        if ($plan->wifi_zone_id && $router->wifi_zone_id && (int) $plan->wifi_zone_id !== (int) $router->wifi_zone_id) {
+            throw new RuntimeException('Ce forfait n’appartient pas à la WiFi Zone du routeur.');
+        }
+
+        $blueprint = $this->mikrotik->profileBlueprint($plan);
+        $existingLink = $plan->mikrotik_profile;
+        if (filled($existingLink) && $existingLink !== $blueprint['name']) {
+            throw new RuntimeException('Ce forfait est déjà associé à un profil. Il n’a pas été modifié.');
+        }
+
+        $message = $this->apply($router, 'profile', [
+            'profile_name' => $blueprint['name'],
+            'session_timeout' => $blueprint['session_timeout'],
+            'shared_users' => $blueprint['shared_users'],
+        ]);
+
+        $this->mikrotik->getHotspotProfiles($router);
+        $profile = MikrotikProfile::query()
+            ->where('mikrotik_id', $router->id)
+            ->where('name', $blueprint['name'])
+            ->first();
+
+        if (! $profile) {
+            throw new RuntimeException('Le profil n’apparaît pas sur le routeur. Aucun forfait n’a été associé.');
+        }
+
+        PlanMikrotikProfile::updateOrCreate(
+            ['plan_id' => $plan->id, 'mikrotik_id' => $router->id],
+            ['mikrotik_profile_id' => $profile->id],
+        );
+        $plan->forceFill(['mikrotik_profile' => $profile->name])->save();
+
+        return $message.' Le profil '.$profile->name.' a été relu sur le routeur.';
     }
 
     /**
@@ -527,6 +579,16 @@ class MikrotikPreparation
         }
 
         return $value;
+    }
+
+    public function normalizedTime(mixed $value): ?string
+    {
+        return $this->routerTime($value);
+    }
+
+    public function normalizedRate(mixed $value): ?string
+    {
+        return $this->rateLimit($value);
     }
 
     private function routerTime(mixed $value): ?string

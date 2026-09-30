@@ -1,14 +1,19 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
+@import './limete.css';
+@import './limete-background.css';
+@import './limete-finish.css';
 
 body.client {
     margin: 0;
-    background: #f4f7fb;
-    color: #10233f;
-    font-family: system-ui, sans-serif;
+    background: var(--lm-bg);
+    color: var(--lm-ink);
+    font-family: var(--lm-font);
 }
 
-.client-wrap { width: min(100%, 32rem); margin: 0 auto; padding: 16px 16px 32px; }
+.client-wrap { width: min(100%, 32rem); margin: 0 auto; padding: 16px 16px 32px; min-width: 0; }
 .client-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.client-hero { padding: 18px; background: var(--lm-deep); color: white; }
+.client-hero a, .client-hero .text-secondary { color: #d5e2f5; }
 .client-top strong { display: block; }
 .client-top small { color: #5c6e86; }
 .client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -19,6 +24,6 @@ body.client {
 .client-btn { background: #0b5ed7; border-color: #0b5ed7; color: white; }
 .client-btn:hover { color: white; filter: brightness(1.05); }
 .ticket-qr svg { width: 140px; height: auto; }
-.client-nav { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; }
+.client-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .client-nav a { flex: none; padding: 8px 12px; border-radius: 999px; background: white; text-decoration: none; color: #10233f; font-weight: 650; font-size: 14px; }
 .client-nav a[aria-current="page"] { background: #0b5ed7; color: white; }

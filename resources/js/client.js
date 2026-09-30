@@ -1,3 +1,6 @@
+import './limete-ui.js';
+import './limete-background.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('form[data-wait]').forEach((form) => {
         form.addEventListener('submit', () => {

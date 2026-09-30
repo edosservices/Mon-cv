@@ -65,13 +65,17 @@ class ActiveUserController extends Controller
 
         $vouchers = $names === []
             ? collect()
-            : Voucher::with('plan:id,name')->whereIn('username', array_values(array_unique($names)))->get()->keyBy('username');
+            : Voucher::with(['plan:id,name,mikrotik_profile', 'customer:id,name'])->whereIn('username', array_values(array_unique($names)))->get()->keyBy('username');
         $vouchers->each->refreshExpiry();
 
         foreach ($groups as &$group) {
             foreach ($group['users'] as &$user) {
                 $voucher = $vouchers->get($user['user'] ?? '');
+                $snapshot = is_array($voucher?->profile_snapshot) ? $voucher->profile_snapshot : [];
                 $user['plan_name'] = $voucher?->plan?->name;
+                $user['client_name'] = $voucher?->customer?->name;
+                $user['profile_name'] = $user['profile'] ?? ($voucher?->plan?->mikrotik_profile ?: $voucher?->plan?->name);
+                $user['rate'] = $user['rate-limit'] ?? ($snapshot['rate_limit'] ?? null);
                 $user['commercial_start'] = $voucher?->activated_at;
                 $user['commercial_expires'] = $voucher?->expires_at;
             }

@@ -4,11 +4,13 @@ namespace App\Services\Mikrotik;
 
 use App\Models\Mikrotik;
 use App\Models\MikrotikProfile;
+use App\Models\Plan;
 use App\Models\PlanMikrotikProfile;
 use App\Models\Voucher;
 use App\Support\Correlation;
 use App\Support\TenantManager;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -144,8 +146,10 @@ class MikrotikService
                 'architecture' => $found['architecture'] ?: $router->architecture,
                 'board' => $found['board'] ?: $router->board,
                 'last_seen_at' => now(),
+                'last_synced_at' => now(),
                 'last_error' => null,
                 'details' => [
+                    'connection_mode' => $this->connectionMode($router->host),
                     'uptime' => $found['uptime'],
                     'cpu' => $found['cpu'],
                     'memory' => $found['memory'],
@@ -239,11 +243,12 @@ class MikrotikService
         return $profiles;
     }
 
-    public function createHotspotUser(Mikrotik $router, Voucher $voucher, bool $remember = true): Voucher
+    public function createHotspotUser(Mikrotik $router, Voucher $voucher, bool $remember = true, ?string $profile = null, ?string $server = null): Voucher
     {
         $this->assertPair($router, $voucher);
         $voucher->loadMissing('plan');
-        $profile = $this->profileNameFor($router, $voucher);
+        $explicit = filled($profile);
+        $profile = $explicit ? $profile : $this->profileNameFor($router, $voucher);
 
         if (! filled($profile)) {
             throw new RuntimeException('Profil non associé. Le forfait n’a pas de profil MikroTik. Le compte n’a pas été créé sur le routeur.');
@@ -259,14 +264,23 @@ class MikrotikService
             fn (array $row) => ($row['name'] ?? '') === $voucher->username,
         ));
         if ($existing === []) {
-            $this->command($router, [
+            $words = [
                 '/ip/hotspot/user/add',
                 '=name='.$voucher->username,
                 '=password='.$voucher->password,
                 '=profile='.$profile,
-                '=limit-uptime='.RouterOsProtocol::secondsToRouterTime((int) $voucher->plan->duration_seconds),
-                '=comment=limete-manager',
-            ], [$voucher->password]);
+            ];
+            if (filled($server) && $server !== 'all') {
+                if (! preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/', $server)) {
+                    throw new RuntimeException('Paramètres incompatibles.');
+                }
+                $words[] = '=server='.$server;
+            }
+            if (! $explicit) {
+                $words[] = '=limit-uptime='.RouterOsProtocol::secondsToRouterTime((int) $voucher->plan->duration_seconds);
+            }
+            $words[] = '=comment=limete-manager';
+            $this->command($router, $words, [$voucher->password]);
         }
 
         if ($remember) {
@@ -393,7 +407,7 @@ class MikrotikService
         ];
     }
 
-    public function provisionVoucher(Voucher $voucher): Voucher
+    public function provisionVoucher(Voucher $voucher, ?string $profile = null, ?string $server = null): Voucher
     {
         if ($voucher->sync_status === 'synced' && $voucher->mikrotik_id) {
             return $voucher;
@@ -413,7 +427,7 @@ class MikrotikService
 
         foreach ($targets as $router) {
             try {
-                $this->createHotspotUser($router, $voucher, ! $remembered);
+                $this->createHotspotUser($router, $voucher, ! $remembered, $profile, $server);
                 $remembered = true;
             } catch (Throwable $exception) {
                 $error = $this->redact($exception->getMessage(), [$router->password, $voucher->password]);
@@ -470,8 +484,140 @@ class MikrotikService
             ->all();
         $summary = $this->provisionMany($vouchers);
         $summary['online'] = true;
+        $router->forceFill(['last_synced_at' => now()])->save();
 
         return $summary;
+    }
+
+    /**
+     * Quelques essais bornés. On s'arrête dès que le routeur répond
+     * ou que l'erreur n'est pas un simple problème de réseau.
+     *
+     * @return array{synced: int, unsynced: int, error: ?string, online: bool, attempts: int}
+     */
+    public function retryPending(Mikrotik $router, int $limit = 3): array
+    {
+        $limit = max(1, min(3, $limit));
+        $summary = ['synced' => 0, 'unsynced' => 0, 'error' => null, 'online' => false, 'attempts' => 0];
+
+        for ($attempt = 1; $attempt <= $limit; $attempt++) {
+            $summary = $this->syncPending($router);
+            $summary['attempts'] = $attempt;
+
+            if (($summary['online'] ?? false) && (int) ($summary['unsynced'] ?? 0) === 0) {
+                break;
+            }
+
+            if (! $this->isTransient($summary['error'] ?? null)) {
+                break;
+            }
+        }
+
+        return $summary;
+    }
+
+    public function isDocumentationHost(string $host): bool
+    {
+        $host = strtolower(rtrim(trim($host), '.'));
+
+        if (in_array($host, [
+            'localhost', 'example.com', 'example.net', 'example.org', 'example.edu',
+            'invalid', 'test', 'metadata.google.internal',
+        ], true) || preg_match('/\.(example|invalid|localhost|test)$/', $host)) {
+            return true;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $long = ip2long($host);
+            foreach ([
+                ['0.0.0.0', '0.255.255.255'],
+                ['127.0.0.0', '127.255.255.255'],
+                ['169.254.0.0', '169.254.255.255'],
+                ['192.0.2.0', '192.0.2.255'],
+                ['198.51.100.0', '198.51.100.255'],
+                ['203.0.113.0', '203.0.113.255'],
+                ['224.0.0.0', '239.255.255.255'],
+            ] as [$start, $end]) {
+                if ($long >= ip2long($start) && $long <= ip2long($end)) {
+                    return true;
+                }
+            }
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $packed = inet_pton($host);
+            $loopback = inet_pton('::1');
+            $documentation = inet_pton('2001:db8::');
+            if ($packed === false) {
+                return true;
+            }
+            if ($packed === $loopback || substr($packed, 0, 4) === substr((string) $documentation, 0, 4)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function connectionMode(string $host): string
+    {
+        if ($this->isDocumentationHost($host) || $this->router::class !== RouterOsClient::class) {
+            return 'simulation';
+        }
+
+        return 'real';
+    }
+
+    public function explainFailure(string $message): string
+    {
+        $lower = strtolower($message);
+
+        if (str_contains($lower, 'password') || str_contains($lower, 'invalid user') || str_contains($lower, 'bad credentials')) {
+            return 'Le nom d’utilisateur ou le mot de passe est incorrect.';
+        }
+
+        if (str_contains($lower, 'timed out') || str_contains($lower, 'time out') || str_contains($lower, 'timeout')) {
+            return 'Le routeur ne répond pas à temps. Vérifiez qu’il est allumé et que l’adresse est la bonne.';
+        }
+
+        return 'Connexion impossible. Le routeur ne répond pas.';
+    }
+
+    /**
+     * @return array{name: string, session_timeout: string, duration_label: string, data_label: string, rate_label: string, shared_users: int}
+     */
+    public function profileBlueprint(Plan $plan): array
+    {
+        return [
+            'name' => $this->suggestProfileName($plan),
+            'session_timeout' => RouterOsProtocol::secondsToRouterTime(max(1, (int) $plan->duration_seconds)),
+            'duration_label' => $plan->durationLabel(),
+            'data_label' => $plan->unlimited_data ? 'Sans limite' : 'Selon le forfait',
+            'rate_label' => 'Non défini',
+            'shared_users' => 1,
+        ];
+    }
+
+    public function suggestProfileName(Plan $plan): string
+    {
+        $name = mb_strtolower($plan->name);
+
+        if (preg_match('/(\d+)\s*heure/', $name, $matches)) {
+            return $matches[1].'h';
+        }
+
+        if (preg_match('/(\d+)\s*jour/', $name, $matches)) {
+            return $matches[1].'j';
+        }
+
+        if (preg_match('/(\d+)\s*minute/', $name, $matches)) {
+            return $matches[1].'m';
+        }
+
+        $slug = strtolower((string) preg_replace('/[^a-z0-9]+/i', '', Str::ascii($plan->name)));
+        $slug = substr($slug !== '' ? $slug : 'forfait', 0, 20);
+
+        return $slug;
     }
 
     /**
@@ -580,6 +726,7 @@ class MikrotikService
             '/ip/address/print',
             '/ip/dns/print',
             '/ip/pool/print',
+            '/queue/simple/print',
         ];
         if (! in_array($path, $allowed, true)) {
             throw new RuntimeException('Lecture non autorisée.');
@@ -887,6 +1034,19 @@ class MikrotikService
 
         foreach (['connexion impossible', 'timed out', 'time out', 'connection refused', 'no route to host', 'network is unreachable', 'name or service not known'] as $needle) {
             if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isTransient(?string $message): bool
+    {
+        $message = strtolower((string) $message);
+
+        foreach (['connexion impossible', 'timed out', 'time out', 'timeout', 'connection refused', 'no route', 'unreachable', 'name or service not known'] as $needle) {
+            if ($message !== '' && str_contains($message, $needle)) {
                 return true;
             }
         }

@@ -4,11 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Mon business') — {{ auth()->user()->tenant?->name ?? 'LIMETE WIFI' }}</title>
+    <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
     @vite(['resources/css/business.css', 'resources/js/business.js'])
 </head>
 <body class="biz" style="--biz: {{ auth()->user()->tenant?->brandColor() ?? '#0b5ed7' }}; --biz-2: {{ auth()->user()->tenant?->secondaryColor() ?? '#071e3d' }}; --biz-btn: {{ auth()->user()->tenant?->buttonColor() ?? '#0b5ed7' }}">
+    <x-animated-background />
     <header class="biz-top no-print">
         <div class="biz-brand">
+            <x-brand-logo width="28" height="28" alt="" />
             @if(auth()->user()->tenant?->logoUrl())
                 <img src="{{ auth()->user()->tenant->logoUrl() }}" alt="">
             @else
@@ -39,6 +42,7 @@
             <a href="{{ route('customers.index') }}" @if(request()->routeIs('customers.*')) aria-current="page" @endif>Clients</a>
             <a href="{{ route('reports.index') }}" @if(request()->routeIs('reports.*')) aria-current="page" @endif>Rapports</a>
             <a href="{{ route('vouchers.index') }}">Tickets</a>
+            <a href="{{ route('mikrotiks.assistant') }}" @if(request()->routeIs('mikrotiks.assistant*')) aria-current="page" @endif>Mon MikroTik</a>
         </nav>
         <main class="biz-main">
             @include('partials.onboarding', ['onboardingTheme' => 'business'])

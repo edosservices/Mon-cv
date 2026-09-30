@@ -27,7 +27,7 @@
 <div class="row g-3">
     @foreach($vouchers as $voucher)
         <div class="col-12 col-md-6">
-            <article class="card border-0 shadow-sm">
+            <article class="card border-0 shadow-sm lm-success">
                 <div class="card-body">
                     <p class="mb-1">{{ $voucher->plan->name ?? 'Forfait' }}</p>
                     <p class="mb-1">Code <strong>{{ $voucher->username }}</strong></p>

@@ -11,8 +11,10 @@ use App\Models\Sale;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\Mikrotik\HotspotRouter;
+use App\Support\QrCodes;
 use App\Support\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Tests\Support\FakeHotspotRouter;
 use Tests\Support\Platform;
@@ -213,6 +215,246 @@ class PaymentTest extends TestCase
         $payment = new Payment(['status' => PaymentStatus::Success->value]);
         $this->expectException(RuntimeException::class);
         $payment->transitionTo(PaymentStatus::Pending);
+    }
+
+    public function test_a_payment_is_created_pending_and_processing_does_not_activate_a_ticket(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+        [, $zone] = $this->shop();
+        $sale = $this->order($zone, 'airtel_money');
+        $payment = $sale->payment;
+
+        Http::assertNothingSent();
+        $this->assertSame('pending', $payment->status);
+        $this->assertSame('pending', $sale->status);
+        $this->assertFalse($payment->metadata['official_api']);
+        $this->assertSame(1, AuditLog::withoutGlobalScope('tenant')->where('action', 'payment.created')->count());
+        $this->assertDatabaseCount('vouchers', 0);
+
+        $this->notify($payment, ['status' => 'processing', 'provider_reference' => 'OP-WAIT'])->assertOk();
+        $this->notify($payment, ['status' => 'processing', 'provider_reference' => 'OP-WAIT'])->assertOk();
+
+        $this->assertSame('processing', $payment->fresh()->status);
+        $this->assertSame('pending', $sale->fresh()->status);
+        $this->assertDatabaseCount('vouchers', 0);
+        $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'?payment_status=success')
+            ->assertOk()
+            ->assertSee('Paiement en cours...')
+            ->assertSee('Vérification')
+            ->assertDontSee('Votre ticket est prêt');
+    }
+
+    public function test_a_cancelled_webhook_does_not_create_a_ticket(): void
+    {
+        [, $zone] = $this->shop();
+        $sale = $this->order($zone, 'mpesa');
+        $payment = $sale->payment;
+
+        $this->notify($payment, ['status' => 'cancelled', 'provider_reference' => 'MP-CANCEL'], 'mpesa')->assertOk();
+
+        $this->assertSame('cancelled', $payment->fresh()->status);
+        $this->assertDatabaseCount('vouchers', 0);
+        $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
+            ->assertOk()
+            ->assertSee('Paiement annulé')
+            ->assertDontSee('Votre ticket est prêt');
+        $this->notify($payment, ['status' => 'success', 'provider_reference' => 'MP-CANCEL'], 'mpesa')->assertOk();
+        $this->assertSame('cancelled', $payment->fresh()->status);
+        $this->assertDatabaseCount('vouchers', 0);
+    }
+
+    public function test_a_webhook_for_the_wrong_provider_is_ignored(): void
+    {
+        [, $zone] = $this->shop();
+        config(['limete.payments.orange_money.webhook_secret' => 'whsec-test']);
+        $payment = $this->order($zone, 'airtel_money')->payment;
+
+        $this->notify($payment, ['status' => 'success', 'provider_reference' => 'OR-1'], 'orange_money')
+            ->assertNotFound();
+        $this->notify($payment, ['status' => 'success'], 'airtel_money', 'signature-invalide')
+            ->assertUnauthorized();
+
+        $this->assertSame('pending', $payment->fresh()->status);
+        $this->assertDatabaseCount('vouchers', 0);
+    }
+
+    public function test_confirmation_creates_one_ticket_with_a_public_qr_and_syncs_mikrotik(): void
+    {
+        $router = new FakeHotspotRouter;
+        $this->app->instance(HotspotRouter::class, $router);
+        [$user, $zone, $plan] = $this->shop();
+        $plan->update(['mikrotik_profile' => '24H']);
+        Platform::router($user, $zone);
+        $sale = $this->order($zone, 'card');
+        $payment = $sale->payment;
+
+        $this->assertDatabaseCount('vouchers', 0);
+        $this->notify($payment, ['status' => 'success', 'provider_reference' => 'CARD-OK'], 'card')->assertOk();
+        $this->notify($payment, ['status' => 'success', 'provider_reference' => 'CARD-OK'], 'card')->assertOk();
+
+        $voucher = Voucher::withoutGlobalScope('tenant')->first();
+        $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+        $this->assertSame(1, Sale::withoutGlobalScope('tenant')->count());
+        $this->assertSame('paid', $sale->fresh()->status);
+        $this->assertSame('success', $payment->fresh()->status);
+        $this->assertSame('synced', $voucher->sync_status);
+        $this->assertSame(1, collect($router->commands)->filter(fn ($command) => ($command['words'][0] ?? '') === '/ip/hotspot/user/add')->count());
+
+        $url = route('tickets.public', $voucher->public_token);
+        $svg = QrCodes::svg($url);
+        $this->assertStringNotContainsString($voucher->password, $svg);
+        $page = $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token);
+        $page->assertOk()
+            ->assertSee('Paiement confirmé')
+            ->assertSee('Votre ticket est prêt.')
+            ->assertSee('24 HEURES')
+            ->assertSee('24 heures')
+            ->assertSee('Identifiant')
+            ->assertSee($voucher->username)
+            ->assertSee('Utiliser')
+            ->assertSee('Imprimer')
+            ->assertSee('Télécharger')
+            ->assertSee('Partager')
+            ->assertSee('Succès')
+            ->assertDontSee('Synchronisation en attente');
+        $html = $page->getContent();
+        $this->assertStringContainsString($svg, $html);
+        $this->assertStringContainsString('data-ticket-url="'.$url.'"', $html);
+        $this->assertStringContainsString('data-share="'.$url.'"', $html);
+        $this->assertStringNotContainsString($voucher->password, $svg);
+
+        $this->post('/ticket/'.$voucher->public_token.'/synchroniser')->assertRedirect();
+        $this->assertSame(1, collect($router->commands)->filter(fn ($command) => ($command['words'][0] ?? '') === '/ip/hotspot/user/add')->count());
+        $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+    }
+
+    public function test_an_offline_router_leaves_sync_pending_until_retry(): void
+    {
+        $offline = new FakeHotspotRouter(new RuntimeException('Connection refused'));
+        $this->app->instance(HotspotRouter::class, $offline);
+        [$user, $zone, $plan] = $this->shop();
+        $plan->update(['mikrotik_profile' => '24H']);
+        Platform::router($user, $zone);
+        $sale = $this->order($zone, 'orange_money');
+
+        $this->notify($sale->payment, ['status' => 'success', 'provider_reference' => 'OR-OFF'], 'orange_money')->assertOk();
+
+        $voucher = Voucher::withoutGlobalScope('tenant')->first();
+        $this->assertNotNull($voucher);
+        $this->assertSame('active', $voucher->status);
+        $this->assertSame('failed', $voucher->sync_status);
+        $this->assertNull($voucher->mikrotik_id);
+
+        app(TenantManager::class)->forget();
+        $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
+            ->assertOk()
+            ->assertSee('Paiement confirmé')
+            ->assertSee('Votre ticket est prêt.')
+            ->assertSee('Synchronisation en attente')
+            ->assertSee('Réessayer')
+            ->assertSee($voucher->username);
+
+        $this->post('/ticket/'.$voucher->public_token.'/synchroniser')->assertRedirect();
+        $this->assertSame('failed', $voucher->fresh()->sync_status);
+        $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+
+        $online = new FakeHotspotRouter;
+        $this->app->instance(HotspotRouter::class, $online);
+        $this->post('/ticket/'.$voucher->public_token.'/synchroniser')->assertRedirect();
+        $this->post('/ticket/'.$voucher->public_token.'/synchroniser')->assertRedirect();
+
+        $this->assertSame('synced', $voucher->fresh()->sync_status);
+        $this->assertSame(1, collect($online->commands)->filter(fn ($command) => ($command['words'][0] ?? '') === '/ip/hotspot/user/add')->count());
+    }
+
+    public function test_a_public_guest_can_start_a_purchase_without_an_account(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake();
+        [, $zone, $plan] = $this->shop();
+
+        $this->assertGuest();
+        $this->get('/wifi/'.$zone->slug)->assertOk()->assertSee('Sélection du forfait', false);
+        $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
+            ->assertOk()
+            ->assertSee('Sélection du forfait');
+        $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [])->assertRedirect();
+        $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
+            ->assertOk()
+            ->assertSee('Paiement')
+            ->assertSee('Airtel Money')
+            ->assertSee('Orange Money')
+            ->assertSee('M-Pesa')
+            ->assertSee('UniPay')
+            ->assertSee('Carte');
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'provider' => 'airtel_money',
+        ])->assertRedirect();
+
+        $sale = Sale::withoutGlobalScope('tenant')->latest('id')->first();
+        Http::assertNothingSent();
+        $this->assertGuest();
+        $this->assertSame('pending', $sale->status);
+        $this->assertSame('pending', $sale->payment->status);
+        $this->assertDatabaseCount('vouchers', 0);
+        $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
+            ->assertOk()
+            ->assertSee('Paiement en attente')
+            ->assertSee('Paiement en cours...')
+            ->assertDontSee('Votre ticket est prêt');
+    }
+
+    public function test_a_signed_in_client_receives_the_ticket_only_after_confirmation(): void
+    {
+        [, $zone, $plan] = $this->shop();
+        $this->post('/client/register', [
+            'phone' => '0812000911',
+            'password' => 'secret-ok',
+            'password_confirmation' => 'secret-ok',
+        ])->assertRedirect(route('client.dashboard'));
+
+        $this->get('/client/acheter')->assertOk()->assertSee($zone->name);
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'phone' => '+243812000911',
+            'name' => 'Amina',
+            'provider' => 'airtel_money',
+        ])->assertRedirect();
+
+        $sale = Sale::withoutGlobalScope('tenant')->latest('id')->first()->load('payment');
+        $this->assertDatabaseCount('vouchers', 0);
+        $this->get('/client/dashboard')
+            ->assertOk()
+            ->assertSee('Aucun ticket actif.');
+
+        config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
+        app(TenantManager::class)->forget();
+        $this->notify($sale->payment, ['status' => 'success', 'provider_reference' => 'OP-CLIENT'])->assertOk();
+
+        $voucher = Voucher::withoutGlobalScope('tenant')->first();
+        $this->assertNotNull($voucher);
+        $svg = QrCodes::svg(route('tickets.public', $voucher->public_token));
+        $this->assertStringNotContainsString($voucher->password, $svg);
+        $this->get('/client/dashboard')
+            ->assertOk()
+            ->assertSee($voucher->username)
+            ->assertSee('24 HEURES');
+        $this->assertStringContainsString($svg, $this->get('/client/dashboard')->getContent());
+    }
+
+    public function test_a_confirmed_sale_is_not_visible_to_another_tenant(): void
+    {
+        [, $zone] = $this->shop();
+        $sale = $this->order($zone, 'manual', 'MM998877');
+        $reference = $sale->payment->internal_reference;
+
+        $bob = Platform::entrepreneur('Bob Wifi', 'bob-isolation@example.com');
+        $this->actingAs($bob)->get('/payments')->assertOk()->assertDontSee($reference);
+        $this->actingAs($bob)->get('/sales/'.$sale->id)->assertNotFound();
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertDatabaseCount('vouchers', 0);
     }
 
     private function shop(): array

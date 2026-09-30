@@ -13,6 +13,7 @@
         <p class="status-pill"><span class="dot" aria-hidden="true"></span> Paiement confirmé</p>
     @endif
     <p class="ready">Votre ticket est prêt</p>
+    <p class="ready">Votre connexion est prête</p>
 @endif
 
 @include('vouchers.ticket')
