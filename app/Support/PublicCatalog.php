@@ -20,10 +20,23 @@ class PublicCatalog
             return Plan::withoutGlobalScope('tenant')
                 ->where('status', 'active')
                 ->whereHas('tenant', fn ($query) => $query->where('status', 'active'))
-                ->with(['wifiZone' => fn ($query) => $query->withoutGlobalScope('tenant')])
+                ->where(function ($query) {
+                    $query->whereNull('wifi_zone_id')
+                        ->orWhereIn('wifi_zone_id', function ($sub) {
+                            $sub->select('id')
+                                ->from('wifi_zones')
+                                ->where('status', 'active')
+                                ->whereNull('deleted_at');
+                        });
+                })
+                ->with([
+                    'wifiZone' => fn ($query) => $query->withoutGlobalScope('tenant'),
+                    'tenant:id,name,status',
+                ])
+                ->orderBy('wifi_zone_id')
                 ->orderBy('duration_seconds')
                 ->orderBy('price')
-                ->limit(8)
+                ->limit(36)
                 ->get()
                 ->filter(function (Plan $plan): bool {
                     if (! $plan->wifi_zone_id) {
