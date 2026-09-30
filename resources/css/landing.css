@@ -3,6 +3,7 @@
 @import './limete-motion.css';
 @import './limete-background.css';
 @import './limete-finish.css';
+@import './landing-home.css';
 
 .lp {
     color: var(--lm-ink);
@@ -170,9 +171,12 @@
     .lp-header.open .lp-nav,
     .lp-header.open .lp-actions {
         display: flex;
-        max-height: 360px;
+        max-height: 640px;
         opacity: 1;
         transform: none;
         pointer-events: auto;
     }
+    .lp .lp-section { padding: 40px 0; }
+    .vh-live, .vh-chip { max-width: calc(100% - 24px); }
 }
+.lp-footer .vh-foot nav a { display: block; margin: 6px 0; }

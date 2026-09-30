@@ -1,0 +1,68 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Plan;
+use App\Services\Payments\PaymentManager;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
+
+class PublicCatalog
+{
+    /**
+     * Forfaits actifs des zones publiques. Aucun chiffre d’affaires n’est lu.
+     *
+     * @return Collection<int, Plan>
+     */
+    public static function offers(): Collection
+    {
+        try {
+            return Plan::withoutGlobalScope('tenant')
+                ->where('status', 'active')
+                ->whereHas('tenant', fn ($query) => $query->where('status', 'active'))
+                ->with(['wifiZone' => fn ($query) => $query->withoutGlobalScope('tenant')])
+                ->orderBy('duration_seconds')
+                ->orderBy('price')
+                ->limit(8)
+                ->get()
+                ->filter(function (Plan $plan): bool {
+                    if (! $plan->wifi_zone_id) {
+                        return true;
+                    }
+
+                    return $plan->wifiZone !== null && $plan->wifiZone->status === 'active';
+                })
+                ->values();
+        } catch (QueryException) {
+            return collect();
+        }
+    }
+
+    public static function buyUrl(Plan $plan): string
+    {
+        $zone = $plan->wifiZone;
+        if ($zone && $zone->status === 'active' && filled($zone->slug)) {
+            return route('shop.plan', [$zone->slug, $plan->id]);
+        }
+
+        return route('client.buy');
+    }
+
+    /**
+     * Moyens activés et configurés. Les marques sans contrat n’apparaissent pas.
+     *
+     * @return array<string, string>
+     */
+    public static function payments(): array
+    {
+        try {
+            $manager = app(PaymentManager::class);
+
+            return collect(config('limete.payment_providers'))
+                ->filter(fn ($label, $key) => $manager->enabled($key) && $manager->configured($key))
+                ->all();
+        } catch (QueryException) {
+            return [];
+        }
+    }
+}

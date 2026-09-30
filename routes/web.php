@@ -27,10 +27,14 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\WifiSessionController;
 use App\Http\Controllers\WifiShopController;
 use App\Http\Controllers\WifiZoneController;
+use App\Support\PublicCatalog;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('welcome', [
+        'offers' => PublicCatalog::offers(),
+        'payments' => PublicCatalog::payments(),
+    ]);
 })->name('home');
 
 Route::middleware('guest')->group(function () {
