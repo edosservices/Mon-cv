@@ -11,7 +11,7 @@ use App\Models\WifiZone;
 use App\Services\DashboardMetrics;
 use App\Services\Mikrotik\MikrotikService;
 use App\Services\PlanLimiter;
-use App\Services\VoucherGenerator;
+use App\Services\TicketBatch;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -134,14 +134,14 @@ class ApiController extends Controller
         return Voucher::with('plan:id,name')->latest()->paginate(50);
     }
 
-    public function storeVoucher(Request $request, VoucherGenerator $generator, MikrotikService $mikrotik)
+    public function storeVoucher(Request $request, TicketBatch $batch, MikrotikService $mikrotik)
     {
         $data = $request->validate([
             'wifi_zone_id' => ['required', 'integer'],
             'plan_id' => ['required', 'integer'],
             'count' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
-        $created = $generator->create(WifiZone::findOrFail($data['wifi_zone_id']), Plan::findOrFail($data['plan_id']), (int) ($data['count'] ?? 1));
+        $created = $batch->generate((int) $data['wifi_zone_id'], (int) $data['plan_id'], (int) ($data['count'] ?? 1));
         $summary = $mikrotik->provisionMany($created);
 
         return response()->json([
@@ -154,11 +154,11 @@ class ApiController extends Controller
         ], 201);
     }
 
-    public function bulkVouchers(Request $request, VoucherGenerator $generator)
+    public function bulkVouchers(Request $request, TicketBatch $batch, MikrotikService $mikrotik)
     {
         $request->merge(['count' => $request->input('count', 10)]);
 
-        return $this->storeVoucher($request, $generator);
+        return $this->storeVoucher($request, $batch, $mikrotik);
     }
 
     public function plans()

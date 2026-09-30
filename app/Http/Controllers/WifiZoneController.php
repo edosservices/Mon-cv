@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Services\AuditLogger;
 use App\Services\PlanLimiter;
@@ -14,12 +15,26 @@ class WifiZoneController extends Controller
 {
     public function index()
     {
-        return view('wifi-zones.index', ['zones' => WifiZone::latest()->get()]);
+        $zones = WifiZone::withCount('vouchers')->latest()->get();
+        $clients = Voucher::query()
+            ->whereNotNull('customer_id')
+            ->selectRaw('wifi_zone_id, count(distinct customer_id) as aggregate')
+            ->groupBy('wifi_zone_id')
+            ->pluck('aggregate', 'wifi_zone_id');
+
+        return view('wifi-zones.index', [
+            'zones' => $zones,
+            'clientCounts' => $clients,
+            'first' => $zones->isEmpty(),
+        ]);
     }
 
     public function create()
     {
-        return view('wifi-zones.form', ['zone' => new WifiZone]);
+        return view('wifi-zones.form', [
+            'zone' => new WifiZone(['status' => 'active']),
+            'first' => WifiZone::query()->doesntExist(),
+        ]);
     }
 
     public function store(Request $request, PlanLimiter $limits, AuditLogger $audit)
@@ -35,7 +50,15 @@ class WifiZoneController extends Controller
 
     public function edit(WifiZone $wifiZone)
     {
-        return view('wifi-zones.form', ['zone' => $wifiZone]);
+        return view('wifi-zones.form', ['zone' => $wifiZone, 'first' => false]);
+    }
+
+    public function status(WifiZone $wifiZone, AuditLogger $audit)
+    {
+        $wifiZone->update(['status' => $wifiZone->status === 'active' ? 'inactive' : 'active']);
+        $audit->record('wifi_zone.updated', $wifiZone, null, $wifiZone->only(['status']));
+
+        return back()->with('status', $wifiZone->status === 'active' ? 'WiFi Zone activée.' : 'WiFi Zone désactivée.');
     }
 
     public function update(Request $request, WifiZone $wifiZone, AuditLogger $audit)
@@ -61,6 +84,8 @@ class WifiZoneController extends Controller
             'name' => ['required', 'string', 'max:160'],
             'display_name' => ['nullable', 'string', 'max:160'],
             'location' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'description' => ['nullable', 'string', 'max:2000'],
             'slogan' => ['nullable', 'string', 'max:200'],
             'phone' => ['nullable', 'string', 'max:30'],

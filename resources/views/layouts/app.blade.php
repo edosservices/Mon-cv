@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'LIMETE WIFI MANAGER')</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @auth
+        @if(auth()->user()->tenant)
+            <style>
+                .bg-electric { background-color: {{ auth()->user()->tenant->buttonColor() }} !important; }
+                .text-electric { color: {{ auth()->user()->tenant->brandColor() }} !important; }
+                .border-electric { border-color: {{ auth()->user()->tenant->brandColor() }} !important; }
+            </style>
+        @endif
+    @endauth
 </head>
 <body class="min-h-screen bg-slate-100 text-ink">
     <div class="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
@@ -18,15 +27,26 @@
             </nav>
         </aside>
         <div class="min-w-0">
-            <header class="no-print flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
-                <div class="min-w-0">
-                    <p class="truncate text-sm text-slate-500">{{ auth()->user()->tenant?->name ?? 'Administration' }}</p>
-                    <h1 class="truncate text-lg font-semibold">@yield('heading')</h1>
+            <header class="no-print flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex min-w-0 items-center gap-3">
+                    @if(auth()->user()->tenant?->logoUrl())
+                        <img src="{{ auth()->user()->tenant->logoUrl() }}" alt="" class="h-10 w-10 shrink-0 rounded-xl object-cover">
+                    @endif
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold">{{ auth()->user()->tenant?->name ?? 'Administration' }}</p>
+                        <h1 class="truncate text-lg font-semibold">@yield('heading')</h1>
+                    </div>
                 </div>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Sortir</button>
-                </form>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a class="rounded-lg border border-slate-300 px-3 py-2 text-sm" href="{{ route('notifications.index') }}" aria-label="Notifications">Notifications</a>
+                    @if(auth()->user()->tenant && auth()->user()->hasPermission('settings.manage'))
+                        <a class="rounded-lg border border-slate-300 px-3 py-2 text-sm" href="{{ route('business.edit') }}">Profil</a>
+                    @endif
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button class="rounded-lg border border-slate-300 px-3 py-2 text-sm">Déconnexion</button>
+                    </form>
+                </div>
             </header>
             <main class="mx-auto w-full min-w-0 max-w-6xl overflow-x-clip px-4 py-5 pb-24 lg:pb-8">
                 @if(session('status'))
@@ -40,6 +60,7 @@
                         @foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach
                     </div>
                 @endif
+                @include('partials.onboarding')
                 @yield('content')
             </main>
         </div>
@@ -57,6 +78,7 @@
             });
         });
     </script>
+    @stack('scripts')
     <nav class="no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-slate-200 bg-white text-center text-[11px] lg:hidden">
         <a class="px-1 py-3" href="{{ route('dashboard') }}">Accueil</a>
         <a class="px-1 py-3" href="{{ route('wifi-zones.index') }}">Zones</a>

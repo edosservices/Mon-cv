@@ -1,18 +1,49 @@
-@extends('layouts.app')
-@section('heading', 'Forfaits')
+@extends('layouts.business')
+@section('heading', 'Mes forfaits')
 @section('content')
-<div class="mb-4"><a class="rounded-lg bg-electric px-4 py-2 text-sm text-white" href="{{ route('plans.create') }}">Nouveau forfait</a></div>
-<div class="grid gap-3 sm:grid-cols-2">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h2 class="h4 mb-0">Mes forfaits</h2>
+    <a class="btn biz-btn" href="{{ route('plans.create') }}">+ Créer un forfait</a>
+</div>
+<div class="row g-3">
     @forelse($plans as $plan)
-        <article class="rounded-2xl bg-white p-4 shadow-sm">
-            <h2 class="font-semibold">{{ $plan->name }}</h2>
-            <p class="text-sm text-slate-500">{{ $plan->durationLabel() }} · {{ $plan->unlimited_data ? 'Internet illimité' : 'Volume limité' }}</p>
-            <p class="mt-2 text-xl font-semibold">{{ \App\Support\Money::format($plan->price, $plan->currency) }}</p>
-            <p class="text-sm">{{ $plan->wifiZone->name ?? 'Toutes les zones' }} · {{ $plan->status === 'active' ? 'Actif' : 'Inactif' }}</p>
-            <a class="mt-2 inline-block text-sm text-electric" href="{{ route('plans.edit', $plan) }}">Modifier</a>
-        </article>
+        <div class="col-12 col-md-6">
+            <article class="card plan-card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between gap-2">
+                        <h3 class="h5 mb-1">{{ $plan->name }}</h3>
+                        <span class="badge {{ $plan->status === 'active' ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $plan->status === 'active' ? 'Actif' : 'Inactif' }}</span>
+                    </div>
+                    <p class="mb-1">{{ \App\Support\Money::format($plan->price, $plan->currency) }}</p>
+                    <p class="text-secondary mb-1">{{ $plan->validityLabel() }}</p>
+                    <p class="mb-1">{{ $plan->unlimited_data ? 'Internet illimité' : 'Données limitées' }}</p>
+                    <p class="mb-3">{{ $plan->sold_count }} tickets vendus</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ route('plans.edit', $plan) }}">Modifier</a>
+                        <form method="POST" action="{{ route('plans.duplicate', $plan) }}">
+                            @csrf
+                            <button class="btn btn-sm btn-outline-secondary">Dupliquer</button>
+                        </form>
+                        <form method="POST" action="{{ route('plans.status', $plan) }}">
+                            @csrf
+                            @method('PATCH')
+                            <button class="btn btn-sm btn-outline-secondary">{{ $plan->status === 'active' ? 'Désactiver' : 'Activer' }}</button>
+                        </form>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmDelete" data-delete-action="{{ route('plans.destroy', $plan) }}" data-delete-title="Supprimer ce forfait ?">Supprimer</button>
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ route('vouchers.generate', ['plan_id' => $plan->id, 'wifi_zone_id' => $plan->wifi_zone_id]) }}">Générer des tickets</a>
+                    </div>
+                </div>
+            </article>
+        </div>
     @empty
-        <p class="text-sm text-slate-500">Aucun forfait.</p>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="mb-2">Aucun forfait.</p>
+                    <a class="btn biz-btn" href="{{ route('plans.create') }}">Créer un forfait</a>
+                </div>
+            </div>
+        </div>
     @endforelse
 </div>
 @endsection

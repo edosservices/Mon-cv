@@ -15,7 +15,12 @@
 @endphp
 
 <header class="mb-4 min-w-0">
-    <p class="text-lg font-semibold">Bonjour, {{ auth()->user()->name }}</p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <p class="text-lg font-semibold">Bonjour, {{ auth()->user()->name }}</p>
+        @if(auth()->user()->hasPermission('vouchers.manage'))
+            <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
+        @endif
+    </div>
     <form method="GET" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label class="text-sm font-semibold">WiFi Zone
             <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3" name="zone" onchange="this.form.submit()">
@@ -44,6 +49,27 @@
         <input type="hidden" name="grain" value="{{ $filters['grain'] }}">
     </form>
 </header>
+
+<nav class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label="Actions rapides">
+    @if(auth()->user()->hasPermission('sales.confirm'))
+        <a class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white" href="{{ route('sales.quick') }}">+ Vendre un ticket</a>
+    @endif
+    @if(auth()->user()->hasPermission('vouchers.manage'))
+        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-electric shadow-sm" href="{{ route('vouchers.generate') }}">+ Générer des tickets</a>
+    @endif
+    @if(auth()->user()->hasPermission('plans.manage'))
+        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('plans.create') }}">+ Créer un forfait</a>
+    @endif
+    @if(auth()->user()->hasPermission('zones.manage'))
+        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('wifi-zones.create') }}">+ Ajouter une WiFi Zone</a>
+    @endif
+    @if(auth()->user()->hasPermission('settings.manage'))
+        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('business.edit') }}">Mon Business</a>
+    @endif
+    @if(auth()->user()->hasPermission('sales.view'))
+        <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm" href="{{ route('reports.index') }}">Mes Rapports</a>
+    @endif
+</nav>
 
 @if($notices->isNotEmpty())
 <section class="mb-4 space-y-2" aria-label="Notifications">
@@ -99,6 +125,22 @@
             @endif
         </article>
     @endforeach
+    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-sm text-slate-500">Chiffre d’affaires du mois</p>
+        <p class="mt-2 break-words text-2xl font-semibold">{{ \App\Support\Money::format($pulse['month']) }}</p>
+    </article>
+    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-sm text-slate-500">Tickets vendus</p>
+        <p class="mt-2 text-2xl font-semibold">{{ $pulse['sold'] }}</p>
+    </article>
+    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-sm text-slate-500">Tickets disponibles</p>
+        <p class="mt-2 text-2xl font-semibold">{{ $pulse['available'] }}</p>
+    </article>
+    <article class="min-w-0 rounded-2xl bg-white p-4 shadow-sm">
+        <p class="text-sm text-slate-500">Sessions actives</p>
+        <p class="mt-2 text-2xl font-semibold">{{ $pulse['sessions'] }}</p>
+    </article>
 </section>
 
 <section id="revenus" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">

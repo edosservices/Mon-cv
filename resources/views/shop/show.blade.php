@@ -4,8 +4,8 @@
 <section class="shop-hero">
     <p class="status-pill"><span class="dot" aria-hidden="true"></span> WiFi disponible</p>
     <h1>Internet rapide et accessible</h1>
-    @if($zone->slogan)
-        <p class="lede">{{ $zone->slogan }}</p>
+    @if($zone->sloganLine())
+        <p class="lede">{{ $zone->sloganLine() }}</p>
     @endif
     @if($zone->bannerUrl())
         <img class="shop-logo" src="{{ $zone->bannerUrl() }}" alt="">
