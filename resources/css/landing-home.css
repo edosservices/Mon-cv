@@ -63,7 +63,7 @@
 
 .vh-pays { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .vh-pay {
-    display: grid; place-items: center; min-width: 132px; min-height: 64px; padding: 10px 14px;
+    display: grid; place-items: center; min-width: 112px; min-height: 84px; padding: 12px 14px;
     background: white; border: 1px solid var(--lm-line); border-radius: 16px;
 }
 .vh-pay img { width: auto; max-width: 120px; max-height: 40px; object-fit: contain; }

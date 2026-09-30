@@ -49,7 +49,7 @@ class PublicCatalog
     }
 
     /**
-     * Moyens activés et configurés. Les marques sans contrat n’apparaissent pas.
+     * Moyens activés dans l’application. Le checkout reste limité aux moyens configurés.
      *
      * @return array<string, string>
      */
@@ -59,7 +59,7 @@ class PublicCatalog
             $manager = app(PaymentManager::class);
 
             return collect(config('limete.payment_providers'))
-                ->filter(fn ($label, $key) => $manager->enabled($key) && $manager->configured($key))
+                ->filter(fn ($label, $key) => $manager->enabled($key))
                 ->all();
         } catch (QueryException) {
             return [];

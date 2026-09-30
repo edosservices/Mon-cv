@@ -180,3 +180,4 @@
     .vh-live, .vh-chip { max-width: calc(100% - 24px); }
 }
 .lp-footer .vh-foot nav a { display: block; margin: 6px 0; }
+.lp .vh-pay img { width: auto; height: auto; max-width: 148px; max-height: 78px; object-fit: contain; }
