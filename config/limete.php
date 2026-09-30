@@ -54,4 +54,18 @@ return [
         ],
     ],
 
+    /*
+    | Liens publics. Vides tant qu’un compte officiel n’est pas publié.
+    | Aucun compte n’est inventé.
+    */
+    'social' => [
+        'facebook' => env('LIMETE_SOCIAL_FACEBOOK'),
+        'instagram' => env('LIMETE_SOCIAL_INSTAGRAM'),
+        'whatsapp' => env('LIMETE_SOCIAL_WHATSAPP'),
+        'tiktok' => env('LIMETE_SOCIAL_TIKTOK'),
+        'youtube' => env('LIMETE_SOCIAL_YOUTUBE'),
+    ],
+
+    'edos_url' => env('LIMETE_EDOS_URL'),
+
 ];

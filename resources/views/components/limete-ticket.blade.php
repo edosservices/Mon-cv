@@ -1,0 +1,94 @@
+@props([
+    'username',
+    'password',
+    'plan',
+    'price',
+    'qr' => null,
+    'number' => null,
+    'login' => null,
+    'ticketUrl' => null,
+    'logo' => null,
+])
+<style>
+.lt { position: relative; max-width: 680px; margin: 18px auto 0; background: #fff; color: #12315c; border-radius: 28px; overflow: hidden; box-shadow: 0 22px 48px rgba(11, 63, 134, .18); font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif; }
+.lt-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 108px; padding: 16px 16px 8px; background: linear-gradient(90deg, #fff 0 38%, rgba(255,255,255,.55) 58%, rgba(255,255,255,.05) 100%), url("{{ asset('images/landing/skyline.webp') }}") right center / cover no-repeat; }
+.lt-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lt-brand .lm-brand-logo, .lt-zone-logo { height: 46px; width: auto; max-width: 180px; object-fit: contain; }
+.lt-no { margin: 0; text-align: right; background: rgba(255,255,255,.92); border: 1px solid #d5e2f2; border-radius: 12px; padding: 6px 8px; }
+.lt-no strong { display: block; font-size: 18px; letter-spacing: .04em; }
+.lt-no span { font-size: 10px; letter-spacing: .12em; color: #5c6e86; }
+.lt-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(132px, .7fr); gap: 12px; padding: 8px 16px 14px; }
+.lt-fields { display: grid; gap: 8px; }
+.lt-field { display: grid; grid-template-columns: 36px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; background: #f3f8ff; border: 1px solid #d7e6f8; border-radius: 14px; padding: 8px 10px; }
+.lt-field .vh-ico { grid-column: 1; grid-row: 1 / span 2; color: #1463f3; }
+.lt-field span { font-size: 12px; color: #5c6e86; }
+.lt-field strong { font-size: 22px; letter-spacing: .04em; }
+.lt-qr { background: #fff; border: 1px solid #e1ebf6; border-radius: 16px; padding: 8px; text-align: center; box-shadow: 0 8px 20px rgba(18, 49, 92, .06); }
+.lt-qr svg { width: 100%; height: auto; display: block; }
+.lt-qr p { margin: 6px 0 0; font-size: 11px; color: #3d516b; }
+.lt-bar { display: flex; align-items: stretch; margin: 0 12px 12px; border-radius: 16px; overflow: hidden; background: linear-gradient(90deg, #0b4ea2, #1463f3); color: #fff; }
+.lt-bar div { flex: 1; padding: 10px 14px; }
+.lt-bar div + div { border-left: 1px solid rgba(255,255,255,.35); }
+.lt-bar span { display: block; font-size: 11px; letter-spacing: .08em; opacity: .85; }
+.lt-bar strong { font-size: clamp(1.15rem, 2vw, 1.7rem); }
+.lt-foot { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 0 16px 14px; color: #3d516b; font-size: 12px; }
+.lt-foot span { display: inline-flex; align-items: center; gap: 6px; }
+.lt-foot .vh-ico { color: #1463f3; }
+@media (max-width: 640px) {
+    .lt-body { grid-template-columns: 1fr; }
+    .lt-qr { max-width: 180px; }
+    .lt-field strong { font-size: 18px; }
+}
+</style>
+<article class="lt" aria-label="Ticket LIMETE WIFI">
+    <header class="lt-top">
+        <div class="lt-brand">
+            @if($logo)
+                <img class="lt-zone-logo" src="{{ $logo }}" alt="">
+            @else
+                <x-brand-logo height="46" alt="LIMETE WIFI MANAGER" />
+            @endif
+        </div>
+        @if($number)
+            <p class="lt-no"><strong>[{{ $number }}]</strong><span>TICKET N°</span></p>
+        @endif
+    </header>
+    <div class="lt-body">
+        <div class="lt-fields">
+            <div class="lt-field">
+                <x-icon name="person" :size="22" />
+                <span>Username</span>
+                <strong>{{ $username }}</strong>
+            </div>
+            <div class="lt-field">
+                <x-icon name="shield-lock" :size="22" />
+                <span>Password</span>
+                <strong>{{ $password }}</strong>
+            </div>
+        </div>
+        @if($qr)
+            <div class="lt-qr" @if($ticketUrl) data-ticket-url="{{ $ticketUrl }}" @endif aria-label="QR du ticket">
+                {!! $qr !!}
+                <p><x-icon name="phone" :size="14" /> Scannez pour vous connecter</p>
+            </div>
+        @endif
+    </div>
+    <div class="lt-bar">
+        <div>
+            <span><x-icon name="clock" :size="14" /> Forfait</span>
+            <strong>{{ $plan }}</strong>
+        </div>
+        <div>
+            <span>Prix</span>
+            <strong>{{ $price }}</strong>
+        </div>
+    </div>
+    <footer class="lt-foot">
+        @if($login)
+            <span><x-icon name="wifi" :size="14" /> Login: {{ $login }}</span>
+        @endif
+        <span><x-icon name="lightning-charge" :size="14" /> Connexion rapide</span>
+        <span><x-icon name="shield-lock" :size="14" /> Sécurisé et fiable</span>
+        <span><x-icon name="phone" :size="14" /> Utilisable sur tous vos appareils</span>
+    </footer>
+</article>
