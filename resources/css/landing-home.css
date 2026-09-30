@@ -39,10 +39,26 @@
 .vh-trust li { color: var(--lm-ink); font-size: 13px; font-weight: 700; padding: 0 16px; }
 .vh-trust li + li { border-left: 1px solid var(--lm-line); }
 
+.vh-rail { position: relative; }
+.vh-rail-track {
+    display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;
+    scroll-padding-inline: 4px; padding: 8px 2px 18px; scrollbar-width: thin;
+}
+.vh-rail-btn {
+    position: absolute; top: 38%; z-index: 2; width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--lm-line); background: #fff; color: var(--lm-deep); font-size: 28px; line-height: 1;
+    box-shadow: 0 8px 18px rgba(7, 20, 40, .08);
+}
+.vh-rail-btn[hidden] { display: none !important; }
+.vh-rail-btn.prev { left: 0; }
+.vh-rail-btn.next { right: 0; }
 .vh-offer {
-    position: relative; height: 100%; display: flex; flex-direction: column; gap: 6px;
+    position: relative; flex: 0 0 calc((100% - 48px) / 4); min-width: 220px; scroll-snap-align: start;
+    height: auto; display: flex; flex-direction: column; gap: 6px;
     background: #fff; border: 1px solid var(--lm-line); border-radius: 20px; padding: 22px 18px;
 }
+.vh-offer-zone { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--lm-blue); }
+.vh-offer-name, .vh-offer-seller { margin: 0; color: var(--lm-muted); font-size: 14px; }
 .vh-offer.is-featured { border-color: #b9d0f5; box-shadow: 0 16px 36px rgba(20, 99, 243, .12); }
 @media (min-width: 992px) {
     .vh-offer.is-featured { padding-top: 30px; padding-bottom: 30px; }
@@ -79,7 +95,16 @@
 .vh-timeline .vh-ico { color: var(--lm-blue); }
 .vh-timeline h3 { margin-top: 8px; }
 
-.lp .lt { margin: 0; max-width: 560px; }
+.lp .lt { margin: 0; max-width: 640px; }
+.vh-ticket-stage { perspective: 1200px; max-width: 640px; }
+.vh-video-frame {
+    max-width: 960px; margin: 0 auto; aspect-ratio: 16 / 9; border-radius: 28px; overflow: hidden;
+    background: #071428; box-shadow: 0 24px 48px rgba(7, 20, 40, .16);
+}
+.lp .vh-video-frame img, .lp .vh-video-frame video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lp a:focus-visible, .lp button:focus-visible, .lp summary:focus-visible {
+    outline: 2px solid var(--lm-blue); outline-offset: 3px;
+}
 .vh-demo-note { margin: 10px 0 0; color: var(--lm-muted); font-size: 13px; }
 .vh-scan { margin: 18px 0 0; font-size: 1.15rem; font-weight: 700; }
 .vh-models { margin-top: 28px; }
@@ -148,9 +173,14 @@
 
 @media (max-width: 991.98px) {
     .lp .lp-bar { display: flex; flex-wrap: wrap; }
+    .vh-offer { flex-basis: 78%; min-width: 0; }
     .vh-timeline { grid-template-columns: 1fr; gap: 16px; padding-top: 0; }
     .vh-timeline::before { display: none; }
     .vh-trust li { border: 0 !important; padding: 4px 10px; }
+}
+@media (max-width: 767.98px) {
+    .vh-rail-btn { display: none; }
+    .vh-offer { flex-basis: 84%; }
 }
 @media (max-width: 768px) {
     .lp main .lp-section { padding: 56px 0; }
@@ -161,12 +191,25 @@
     .lp .lp-burger { margin-left: auto; }
     .lp .lp-header.open .lp-nav, .lp .lp-header.open .lp-actions { max-height: 640px; }
 }
+@keyframes vh-ticket-in {
+    from { opacity: 0; transform: translateY(18px) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-    .vh-offer { transition: transform .25s ease, box-shadow .25s ease; }
+    .vh-offer, .lp .lp-btn { transition: transform .25s ease, box-shadow .25s ease; }
     .vh-offer:hover { transform: translateY(-4px); }
-    .vh-shot img { transition: transform .4s ease; }
-    .vh-shot:hover img { transform: scale(1.03); }
+    .lp .lp-btn:hover { transform: translateY(-1px); }
+    .vh-shot img, .vh-video-frame img { transition: transform .45s ease; }
+    .vh-shot:hover img, .vh-video-frame:hover img { transform: scale(1.03); }
+    .lp .vh-ticket-stage .lt {
+        animation: vh-ticket-in .7s ease both;
+        transition: transform .35s ease, box-shadow .35s ease;
+        transform-style: preserve-3d;
+    }
+    .lp .vh-ticket-stage .lt:hover {
+        transform: translateY(-10px) rotateX(3deg) rotateY(-5deg);
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-    .vh-offer, .vh-photo, .vh-shot img { transition: none; }
+    .vh-offer, .vh-photo, .vh-shot img, .lp .lp-btn, .lp .vh-ticket-stage .lt { transition: none; animation: none; }
 }

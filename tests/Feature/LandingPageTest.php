@@ -16,6 +16,11 @@ class LandingPageTest extends TestCase
             ->assertSee(route('client.buy'), false)
             ->assertSee('5 $', false)
             ->assertSee('Classique', false)
-            ->assertSee('Cette page n’encaisse aucun paiement.', false);
+            ->assertSee('Cette page n’encaisse aucun paiement.', false)
+            ->assertSee('https://whatsapp.com/channel/0029VaUWQydISTkMIlmbpy1E', false)
+            ->assertSee('https://www.tiktok.com/@limete.wifi', false)
+            ->assertDontSee('2,000 FC', false)
+            ->assertDontSee('http://limetewifi.cd', false)
+            ->assertDontSee('>akm<', false);
     }
 }

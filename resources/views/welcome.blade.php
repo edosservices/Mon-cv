@@ -1,10 +1,12 @@
 @extends('layouts.landing')
 @section('content')
 @php
+    $hasVideo = is_file(public_path('videos/limete-wifi.mp4'));
+    $sample = $offers->first(fn ($plan) => $plan->badge === 'populaire') ?? $offers->first();
     $demo = [
-        'plan' => '24H',
-        'price' => 'Aperçu',
-        'duration' => '24 h',
+        'plan' => $sample?->name ?: 'Aperçu',
+        'price' => $sample ? \App\Support\Money::shop($sample->price, $sample->currency) : 'Aperçu',
+        'duration' => $sample?->validityLabel() ?: 'Aperçu',
         'username' => '••••••••',
         'password' => '••••••••',
         'qr' => '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" fill="#fff"/><path fill="#122033" d="M4 4h20v20H4zm4 4v12h12V8zm24-4h20v20H32zm4 4v12h12V8zM4 32h20v20H4zm4 4v12h12V36zm28 0h4v4h-4zm8 0h8v4h-8zm-8 8h12v4H36zm16-8h4v12h-4z"/></svg>',
@@ -24,11 +26,6 @@
     if (! isset($payMarks['afrimoney'])) {
         $payMarks['afrimoney'] = 'Afrimoney';
     }
-    $featured = $offers->first(fn ($plan) => $plan->badge === 'populaire')
-        ?? ($offers->count() > 1 ? $offers->get(1) : $offers->first());
-    $visibleOffers = $featured
-        ? collect([$featured])->concat($offers->reject(fn ($plan) => $plan->is($featured)))->take(4)->values()
-        : $offers;
 @endphp
 <header class="lp-header">
     <div class="container lp-bar">
@@ -96,28 +93,38 @@
                 <h2>Choisissez votre forfait</h2>
                 <p class="lp-lead">Une connexion adaptée à vos besoins.</p>
             </div>
-            @if($visibleOffers->isEmpty())
+            @if($offers->isEmpty())
                 <div class="vh-empty">
                     <p>Aucun forfait n’est en vente pour le moment.</p>
                     <a class="lp-btn" href="{{ route('client.buy') }}">Voir les zones</a>
                 </div>
             @else
-                <div class="row g-3 justify-content-center">
-                    @foreach($visibleOffers as $plan)
-                        <div class="col-12 col-sm-6 col-lg-3">
-                            <article class="vh-offer {{ $featured && $plan->is($featured) ? 'is-featured' : '' }}">
-                                @if($plan->badgeLabel() || ($featured && $plan->is($featured)))
-                                    <span class="vh-popular">{{ $plan->badgeLabel() ?: 'Populaire' }}</span>
+                <div class="vh-rail" data-rail>
+                    <button class="vh-rail-btn prev" type="button" data-rail-prev aria-label="Forfaits précédents" hidden>‹</button>
+                    <div class="vh-rail-track" data-rail-track tabindex="0" role="region" aria-label="Forfaits disponibles">
+                        @foreach($offers as $plan)
+                            @php($zoneLabel = $plan->wifiZone?->displayLabel())
+                            <article class="vh-offer {{ $plan->badge === 'populaire' ? 'is-featured' : '' }}">
+                                @if($plan->badgeLabel())
+                                    <span class="vh-popular">{{ $plan->badgeLabel() }}</span>
                                 @endif
+                                <p class="vh-offer-zone">{{ $zoneLabel ?: 'LIMETE WIFI' }}</p>
                                 <p class="vh-offer-time">{{ mb_strtoupper($plan->validityLabel()) }}</p>
                                 <p class="vh-offer-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
-                                <p class="vh-offer-note">{{ $plan->internetLabel() }}</p>
+                                <p class="vh-offer-name">{{ $plan->name }}</p>
+                                @if($zoneLabel)
+                                    <p class="vh-offer-note">Zone : {{ $zoneLabel }}</p>
+                                @endif
+                                @if($plan->tenant && $zoneLabel && strcasecmp($plan->tenant->name, $zoneLabel) !== 0)
+                                    <p class="vh-offer-seller">{{ $plan->tenant->name }}</p>
+                                @endif
                                 <a class="lp-btn" href="{{ \App\Support\PublicCatalog::buyUrl($plan) }}">Acheter</a>
                             </article>
-                        </div>
-                    @endforeach
+                        @endforeach
+                    </div>
+                    <button class="vh-rail-btn next" type="button" data-rail-next aria-label="Forfaits suivants" hidden>›</button>
                 </div>
-                @if($offers->count() > 4)
+                @if($offers->count() >= 24)
                     <p class="vh-more"><a href="{{ route('client.buy') }}">Voir tous les forfaits</a></p>
                 @endif
             @endif
@@ -140,6 +147,23 @@
                     </ul>
                     <a class="lp-btn" href="{{ route('client.buy') }}">Acheter maintenant</a>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="lp-section lm-motion" id="quotidien">
+        <div class="container">
+            <div class="vh-head is-center">
+                <h2>Une connexion pensée pour votre quotidien.</h2>
+            </div>
+            <div class="vh-video-frame">
+                @if($hasVideo)
+                    <video data-vh-video controls preload="metadata" muted loop playsinline poster="{{ asset('images/landing/city.webp') }}">
+                        <source src="{{ asset('videos/limete-wifi.mp4') }}" type="video/mp4">
+                    </video>
+                @else
+                    <img class="vh-video-still" src="{{ asset('images/landing/city.webp') }}" alt="Skyline d’une grande ville africaine, en attendant la vidéo LIMETE WIFI" width="1920" height="1277" loading="lazy" decoding="async">
+                @endif
             </div>
         </div>
     </section>
@@ -179,19 +203,19 @@
         <div class="container">
             <div class="row align-items-center g-4">
                 <div class="col-lg-6">
-                    <x-limete-ticket
-                        username="akm"
-                        password="867"
-                        plan="2 JOURS"
-                        price="2,000 FC"
-                        number="29"
-                        login="http://limetewifi.cd"
-                        :qr="$demo['qr']"
-                    />
-                    <p class="vh-demo-note">Modèle visuel. Ce n’est pas un ticket client.</p>
+                    <div class="vh-ticket-stage">
+                        <x-limete-ticket
+                            username="••••••••"
+                            password="••••••••"
+                            :plan="$sample ? mb_strtoupper($sample->validityLabel()) : 'Selon le forfait'"
+                            :price="$sample ? \App\Support\Money::shop($sample->price, $sample->currency) : 'Au paiement'"
+                            :qr="$demo['qr']"
+                        />
+                    </div>
+                    <p class="vh-demo-note">Aperçu du ticket. Les identifiants arrivent après le paiement.</p>
                 </div>
                 <div class="col-lg-6">
-                    <h2>Votre ticket, immédiatement après le paiement</h2>
+                    <h2>Votre ticket, prêt à vous connecter.</h2>
                     <p class="lp-lead">Tout ce qu’il vous faut pour vous connecter.</p>
                     <ul class="vh-checks">
                         <li>Nom d’utilisateur</li>
