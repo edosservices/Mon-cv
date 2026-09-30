@@ -53,7 +53,7 @@
 <main>
     <section class="vh-hero">
         <div class="container">
-            <div class="row align-items-center g-4 g-lg-5">
+            <div class="row align-items-center g-4">
                 <div class="col-lg-6">
                     <p class="lp-kicker">Connexion WiFi rapide</p>
                     <h1>Votre connexion.<br>Simplement meilleure.</h1>
@@ -126,7 +126,7 @@
 
     <section class="lp-section lm-motion">
         <div class="container">
-            <div class="row align-items-center g-4 g-lg-5">
+            <div class="row align-items-center g-4">
                 <div class="col-lg-6">
                     <img class="vh-photo" src="{{ asset('images/landing/work.webp') }}" alt="Jeune professionnelle souriante avec un ordinateur portable, en ville" width="1400" height="2097" loading="lazy" decoding="async">
                 </div>
@@ -177,7 +177,7 @@
 
     <section class="lp-section lm-motion" id="tickets">
         <div class="container">
-            <div class="row align-items-center g-4 g-lg-5">
+            <div class="row align-items-center g-4">
                 <div class="col-lg-6">
                     <x-limete-ticket
                         username="akm"
