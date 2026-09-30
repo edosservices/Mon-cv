@@ -27,17 +27,12 @@
         $payMarks['afrimoney'] = 'Afrimoney';
     }
 @endphp
-<div class="vh-telecom" aria-hidden="true">
-    @foreach(['wifi', 'phone', 'lightning-charge', 'ticket-perforated', 'shield-lock', 'credit-card'] as $icon)
-        <span class="vh-tel"><x-icon :name="$icon" :size="32" /></span>
-    @endforeach
-</div>
 <header class="lp-header">
     <div class="container lp-bar">
         <a class="lp-logo" href="{{ route('home') }}">
             <x-brand-logo height="34" alt="LIMETE WIFI MANAGER" />
         </a>
-        <button class="lp-burger" type="button" aria-expanded="false" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
+        <button class="lp-burger" type="button" data-bs-toggle="offcanvas" data-bs-target="#lpSide" aria-controls="lpSide" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
         <nav class="lp-nav" aria-label="Navigation">
             <a href="{{ route('home') }}">Accueil</a>
             <a href="#forfaits">Forfaits</a>
@@ -51,6 +46,23 @@
         </div>
     </div>
 </header>
+<div class="offcanvas offcanvas-end lp-side" tabindex="-1" id="lpSide" aria-labelledby="lpSideLabel">
+    <div class="offcanvas-header">
+        <h2 class="offcanvas-title h5 mb-0" id="lpSideLabel">Navigation</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fermer le menu"></button>
+    </div>
+    <div class="offcanvas-body">
+        <nav class="d-grid gap-2" aria-label="Navigation rapide">
+            <a class="btn btn-outline-primary" href="{{ route('home') }}">Accueil</a>
+            <a class="btn btn-outline-primary" href="#forfaits">Forfaits</a>
+            <a class="btn btn-outline-primary" href="#comment">Comment ça marche</a>
+            <a class="btn btn-outline-primary" href="#paiement">Paiement</a>
+            <a class="btn btn-outline-primary" href="#faq">FAQ</a>
+            <a class="btn btn-outline-primary" href="{{ route('login') }}">Se connecter</a>
+            <a class="btn btn-primary" href="{{ route('client.buy') }}">Acheter</a>
+        </nav>
+    </div>
+</div>
 
 <main>
     <section class="vh-hero">
@@ -72,7 +84,7 @@
                 </div>
                 <div class="col-lg-6">
                     <figure class="vh-shot">
-                        <img src="{{ asset('images/landing/hero.webp') }}" alt="Jeune femme souriante en tenue africaine, smartphone en main" width="1800" height="1202" fetchpriority="high">
+                        <img src="{{ asset('images/landing/hero.webp') }}" alt="Femme souriante qui présente un téléphone et un ordinateur connectés au Wi-Fi" width="1129" height="1393" fetchpriority="high">
                         <span class="vh-live"><i></i> Connexion disponible</span>
                     </figure>
                 </div>

@@ -18,15 +18,16 @@
 .lp .lp-nav { justify-content: center; }
 .lp .lp-btn:not(.light):not(.line) { text-transform: uppercase; letter-spacing: .04em; }
 
-.vh-hero { padding: 72px 0 36px; }
+.vh-hero { padding: 28px 0 36px; }
+.vh-hero .lp-btn.line { background: #fff; color: #122033; border-color: #b7c6da; }
 .vh-checks, .vh-points { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 8px; }
 .vh-checks li, .vh-points li { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .vh-checks li::before { content: ""; width: 16px; height: 16px; border-radius: 50%; background: #e7f6ee url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%230f8a4b' d='M6.2 11.2 3.4 8.4l1-1 1.8 1.8 4.4-4.4 1 1z'/%3E%3C/svg%3E") center / 12px no-repeat; flex: none; }
-.vh-shot { position: relative; margin: 0; border-radius: 28px; overflow: hidden; aspect-ratio: 4 / 3; box-shadow: 0 24px 50px rgba(11, 63, 134, .16); }
+.vh-shot { position: relative; margin: 0; border-radius: 28px; overflow: hidden; aspect-ratio: 1129 / 1393; box-shadow: 0 24px 50px rgba(11, 63, 134, .16); }
 .lp .vh-shot img, .lp .vh-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .lp img.vh-photo { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
 .vh-live {
-    position: absolute; right: 16px; bottom: 16px; z-index: 1;
+    position: absolute; top: 16px; right: 16px; z-index: 1;
     display: inline-flex; align-items: center; gap: 6px;
     border-radius: 999px; background: #fff; color: var(--lm-deep);
     font-size: 13px; font-weight: 700; padding: 8px 12px;
@@ -106,17 +107,7 @@
 .vh-ticket-photo { margin: 0; }
 .lp .vh-ticket-photo img { width: 100%; height: auto; border-radius: 28px; box-shadow: 0 28px 56px rgba(11, 63, 134, .22); display: block; }
 .lp .vh-explain { width: 100%; height: 180px; object-fit: cover; display: block; }
-.lp-header, .lp main, .lp-footer { position: relative; z-index: 1; }
-.vh-telecom {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-}
-.vh-tel { position: absolute; opacity: .16; color: #1463f3; }
-.vh-tel:nth-child(1) { top: 12%; left: 6%; color: #1463f3; }
-.vh-tel:nth-child(2) { top: 28%; right: 8%; color: #0f8a4b; }
-.vh-tel:nth-child(3) { top: 58%; left: 10%; color: #d97706; }
-.vh-tel:nth-child(4) { bottom: 18%; right: 12%; color: #1463f3; }
-.vh-tel:nth-child(5) { bottom: 8%; left: 22%; color: #0f8a4b; }
-.vh-tel:nth-child(6) { top: 42%; left: 46%; color: #0b4ea2; }
+.lp main, .lp-footer { position: relative; z-index: 1; }
 .vh-ticket-stage { perspective: 1200px; max-width: 640px; }
 .vh-video-frame {
     max-width: 960px; margin: 0 auto; aspect-ratio: 16 / 9; border-radius: 28px; overflow: hidden;
@@ -204,7 +195,7 @@
 }
 @media (max-width: 768px) {
     .lp main .lp-section { padding: 56px 0; }
-    .vh-hero { padding: 36px 0 20px; }
+    .vh-hero { padding: 16px 0 20px; }
     .vh-hero .lp-cta .lp-btn, .vh-final .lp-btn, .col-lg-6 > .lp-btn { width: 100%; }
     .vh-banner, .vh-banner-copy { min-height: 320px; }
     .lp .lp-header .lp-nav, .lp .lp-header .lp-actions { flex: 1 0 100%; width: 100%; }
@@ -217,9 +208,6 @@
 }
 @keyframes vh-ico-float {
     50% { transform: translateY(-4px); }
-}
-@keyframes vh-tel-drift {
-    50% { transform: translateY(-16px); }
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .vh-offer, .lp .lp-btn { transition: transform .25s ease, box-shadow .25s ease; }
@@ -237,9 +225,7 @@
 }
 @media (prefers-reduced-motion: no-preference) {
     .vh-ico-bubble { animation: vh-ico-float 2.8s ease-in-out infinite; }
-    .vh-tel { animation: vh-tel-drift 7s ease-in-out infinite; }
-    .vh-tel:nth-child(2n) { animation-delay: -2s; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .vh-offer, .vh-photo, .vh-shot img, .lp .lp-btn, .lp .vh-ticket-photo img, .vh-ico-bubble, .vh-tel { transition: none; animation: none; }
+    .vh-offer, .vh-photo, .vh-shot img, .lp .lp-btn, .lp .vh-ticket-photo img, .vh-ico-bubble { transition: none; animation: none; }
 }
