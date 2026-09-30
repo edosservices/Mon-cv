@@ -27,10 +27,14 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\WifiSessionController;
 use App\Http\Controllers\WifiShopController;
 use App\Http\Controllers\WifiZoneController;
+use App\Support\PublicCatalog;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('welcome', [
+        'offers' => PublicCatalog::offers(),
+        'payments' => PublicCatalog::payments(),
+    ]);
 })->name('home');
 
 Route::middleware('guest')->group(function () {
@@ -170,6 +174,8 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
         Route::post('/vouchers/quick/plan', [VoucherController::class, 'quickPlan'])->middleware('permission:plans.manage')->name('vouchers.quick.plan');
         Route::post('/vouchers/quick/link', [VoucherController::class, 'quickLink'])->middleware('permission:plans.manage')->name('vouchers.quick.link');
         Route::post('/vouchers/quick', [VoucherController::class, 'quickStore'])->middleware('permission:vouchers.manage')->name('vouchers.quick.store');
+        Route::post('/vouchers/quick/express', [VoucherController::class, 'quickExpress'])->middleware('permission:vouchers.manage')->name('vouchers.quick.express');
+        Route::post('/vouchers/quick/user', [VoucherController::class, 'quickUser'])->middleware('permission:vouchers.manage')->name('vouchers.quick.user');
         Route::get('/vouchers/quick/username', [VoucherController::class, 'quickUsername'])->middleware('permission:vouchers.manage')->name('vouchers.quick.username');
         Route::post('/vouchers/assist/preview', [VoucherController::class, 'assistPreview'])->middleware('permission:vouchers.manage')->name('vouchers.assist.preview');
         Route::post('/vouchers/assist', [VoucherController::class, 'assistStore'])->middleware('permission:vouchers.manage')->name('vouchers.assist.store');

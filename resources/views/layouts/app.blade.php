@@ -54,33 +54,47 @@
                     <a class="lm-account-import" href="{{ route('business.edit') }}#logo">Importer le logo</a>
                 @endif
             </div>
+            <p class="lm-sign lm-side-sign">Développé par Edouard Bengehya</p>
         </aside>
         <div class="lm-main min-w-0">
             <header class="lm-top no-print">
-                <div class="flex min-w-0 items-center gap-2">
-                    <button class="lm-menu lg:hidden" type="button" data-lm-menu aria-expanded="false" aria-controls="lm-side">Menu</button>
+                <button class="lm-menu lm-icon-btn" type="button" data-lm-menu aria-expanded="false" aria-controls="lm-side">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+                    <span class="lm-sr">Menu</span>
+                </button>
+                <a class="lm-word" href="{{ route('dashboard') }}">
                     @if(auth()->user()->tenant?->logoUrl())
-                        <img class="lm-nav-logo" src="{{ auth()->user()->tenant->logoUrl() }}" alt="{{ auth()->user()->tenant->name }}">
+                        <img class="lm-nav-logo" src="{{ auth()->user()->tenant->logoUrl() }}" alt="">
                     @else
-                        <img class="lm-nav-logo" src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI MANAGER">
+                        <img class="lm-nav-logo" src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="">
                     @endif
-                    <div class="lm-top-title min-w-0">
-                        <p class="lm-kicker">{{ auth()->user()->tenant?->name ?? 'Administration' }}</p>
-                        <h1 class="truncate text-lg font-semibold">@yield('heading')</h1>
-                    </div>
+                    <span>{{ auth()->user()->tenant?->name ?: 'LIMETE WIFI' }}</span>
+                </a>
+                <div class="lm-top-title min-w-0">
+                    <h1 class="truncate">@yield('heading')</h1>
                 </div>
                 <div class="lm-actions">
-                    <a href="{{ route('notifications.index') }}" aria-label="Notifications">Notifications</a>
-                    @if(auth()->user()->tenant && auth()->user()->hasPermission('settings.manage'))
-                        <a href="{{ route('business.edit') }}">Profil</a>
-                    @endif
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button>Déconnexion</button>
-                    </form>
+                    <a class="lm-icon-btn" href="{{ route('notifications.index') }}" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 7 2 7 2 7H4s2 0 2-7Zm4 9a2 2 0 0 0 4 0"/></svg>
+                        <span class="lm-sr">Notifications</span>
+                    </a>
+                    <details class="lm-account-menu">
+                        <summary aria-label="Profil">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</summary>
+                        <div class="lm-account-panel">
+                            @if(auth()->user()->tenant && auth()->user()->hasPermission('settings.manage'))
+                                <a href="{{ route('business.edit') }}">Profil</a>
+                                <a href="{{ route('settings.edit') }}">Paramètres</a>
+                            @endif
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit">Déconnexion</button>
+                            </form>
+                        </div>
+                    </details>
                 </div>
             </header>
             <main class="lm-content">
+                <h1 class="lm-mobile-heading">@yield('heading')</h1>
                 @if(session('status'))
                     <p class="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{{ session('status') }}</p>
                 @endif
@@ -106,7 +120,7 @@
             </a>
             <a href="{{ route('wifi-zones.index') }}" @if(request()->routeIs('wifi-zones.*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm-4.6-3.2a7 7 0 0 1 9.2 0M4.9 12a11 11 0 0 1 14.2 0M2.2 8.6a15 15 0 0 1 19.6 0"/></svg>
-                <span>Zones</span>
+                <span>WiFi</span>
             </a>
             <a href="{{ route('vouchers.index') }}" @if(request()->routeIs('vouchers.*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/></svg>
@@ -116,10 +130,28 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12zM6 6 5 3H2M9 20a1 1 0 1 0 0.01 0M18 20a1 1 0 1 0 0.01 0"/></svg>
                 <span>Ventes</span>
             </a>
-            <a href="{{ route('settings.edit') }}" @if(request()->routeIs('settings.*', 'business.*')) aria-current="page" @endif>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 4-2.1.6a7 7 0 0 1-.7 1.6l1.2 1.8-1.6 1.6-1.8-1.2a7 7 0 0 1-1.6.7L12 20l-1.4-2.1a7 7 0 0 1-1.6-.7l-1.8 1.2-1.6-1.6 1.2-1.8a7 7 0 0 1-.7-1.6L4 12l2.1-.6a7 7 0 0 1 .7-1.6L5.6 8l1.6-1.6 1.8 1.2a7 7 0 0 1 1.6-.7L12 4l1.4 2.1a7 7 0 0 1 1.6.7l1.8-1.2L18.4 8l-1.2 1.8c.3.5.5 1 .7 1.6z"/></svg>
-                <span>Plus</span>
-            </a>
+            <details class="lm-more">
+                <summary>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h.01M12 12h.01M18 12h.01"/></svg>
+                    <span>Plus</span>
+                </summary>
+                <div class="lm-more-sheet">
+                    @if(auth()->user()->hasPermission('customers.manage'))
+                        <a href="{{ route('customers.index') }}">Clients</a>
+                    @endif
+                    @if(auth()->user()->hasPermission('mikrotiks.manage'))
+                        <a href="{{ route('mikrotiks.index') }}">Routeur</a>
+                    @endif
+                    @if(auth()->user()->hasPermission('sales.view'))
+                        <a href="{{ route('reports.index') }}">Rapports</a>
+                    @endif
+                    @if(auth()->user()->hasPermission('settings.manage'))
+                        <a href="{{ route('settings.edit') }}">Paramètres</a>
+                        <a href="{{ route('business.edit') }}">Profil</a>
+                    @endif
+                    <p class="lm-sign">Développé par Edouard Bengehya</p>
+                </div>
+            </details>
         </nav>
     </footer>
     @stack('scripts')

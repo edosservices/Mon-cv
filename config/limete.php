@@ -54,4 +54,18 @@ return [
         ],
     ],
 
+    /*
+    | Liens publics. Facebook, Instagram et YouTube restent vides
+    | tant qu’un compte officiel n’est pas configuré.
+    */
+    'social' => [
+        'facebook' => env('LIMETE_SOCIAL_FACEBOOK'),
+        'instagram' => env('LIMETE_SOCIAL_INSTAGRAM'),
+        'whatsapp' => env('LIMETE_SOCIAL_WHATSAPP') ?: 'https://whatsapp.com/channel/0029VaUWQydISTkMIlmbpy1E',
+        'tiktok' => env('LIMETE_SOCIAL_TIKTOK') ?: 'https://www.tiktok.com/@limete.wifi',
+        'youtube' => env('LIMETE_SOCIAL_YOUTUBE'),
+    ],
+
+    'edos_url' => env('LIMETE_EDOS_URL'),
+
 ];
