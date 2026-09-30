@@ -27,6 +27,11 @@
         $payMarks['afrimoney'] = 'Afrimoney';
     }
 @endphp
+<div class="vh-telecom" aria-hidden="true">
+    @foreach(['wifi', 'phone', 'lightning-charge', 'ticket-perforated', 'shield-lock', 'credit-card'] as $icon)
+        <span class="vh-tel"><x-icon :name="$icon" :size="32" /></span>
+    @endforeach
+</div>
 <header class="lp-header">
     <div class="container lp-bar">
         <a class="lp-logo" href="{{ route('home') }}">
@@ -101,30 +106,37 @@
             @else
                 <div class="vh-rail" data-rail>
                     <button class="vh-rail-btn prev" type="button" data-rail-prev aria-label="Forfaits précédents" hidden>‹</button>
-                    <div class="vh-rail-track" data-rail-track tabindex="0" role="region" aria-label="Forfaits disponibles">
+                    <div class="row flex-nowrap g-3 vh-rail-track" data-rail-track tabindex="0" role="region" aria-label="Forfaits disponibles">
                         @foreach($offers as $plan)
                             @php($zoneLabel = $plan->wifiZone?->displayLabel())
-                            <article class="vh-offer {{ $plan->badge === 'populaire' ? 'is-featured' : '' }}">
-                                @if($plan->badgeLabel())
-                                    <span class="vh-popular">{{ $plan->badgeLabel() }}</span>
-                                @endif
-                                <p class="vh-offer-zone">{{ $zoneLabel ?: 'LIMETE WIFI' }}</p>
-                                <p class="vh-offer-time">{{ mb_strtoupper($plan->validityLabel()) }}</p>
-                                <p class="vh-offer-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
-                                <p class="vh-offer-name">{{ $plan->name }}</p>
-                                @if($zoneLabel)
-                                    <p class="vh-offer-note">Zone : {{ $zoneLabel }}</p>
-                                @endif
-                                @if($plan->tenant && $zoneLabel && strcasecmp($plan->tenant->name, $zoneLabel) !== 0)
-                                    <p class="vh-offer-seller">{{ $plan->tenant->name }}</p>
-                                @endif
-                                <a class="lp-btn" href="{{ \App\Support\PublicCatalog::buyUrl($plan) }}">Acheter</a>
-                            </article>
+                            <div class="col-10 col-sm-6 col-lg-3">
+                                <article class="card h-100 vh-offer {{ $plan->badge === 'populaire' ? 'is-featured border-primary' : '' }}">
+                                    <div class="card-body d-flex flex-column">
+                                        <span class="vh-ico-bubble" aria-hidden="true">
+                                            <x-icon :name="['wifi', 'clock', 'phone', 'lightning-charge'][$loop->index % 4]" :size="22" />
+                                        </span>
+                                        @if($plan->badgeLabel())
+                                            <span class="vh-popular">{{ $plan->badgeLabel() }}</span>
+                                        @endif
+                                        <p class="vh-offer-zone card-subtitle">{{ $zoneLabel ?: 'LIMETE WIFI' }}</p>
+                                        <h3 class="card-title vh-offer-time">{{ mb_strtoupper($plan->validityLabel()) }}</h3>
+                                        <p class="vh-offer-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
+                                        <p class="vh-offer-name card-text">{{ $plan->name }}</p>
+                                        @if($zoneLabel)
+                                            <p class="vh-offer-note">Zone : {{ $zoneLabel }}</p>
+                                        @endif
+                                        @if($plan->tenant && $zoneLabel && strcasecmp($plan->tenant->name, $zoneLabel) !== 0)
+                                            <p class="vh-offer-seller">{{ $plan->tenant->name }}</p>
+                                        @endif
+                                        <a class="lp-btn" href="{{ \App\Support\PublicCatalog::buyUrl($plan) }}">Acheter</a>
+                                    </div>
+                                </article>
+                            </div>
                         @endforeach
                     </div>
                     <button class="vh-rail-btn next" type="button" data-rail-next aria-label="Forfaits suivants" hidden>›</button>
                 </div>
-                @if($offers->count() >= 24)
+                @if($offers->count() >= 36)
                     <p class="vh-more"><a href="{{ route('client.buy') }}">Voir tous les forfaits</a></p>
                 @endif
             @endif
@@ -174,6 +186,26 @@
                 <h2>Comment ça marche ?</h2>
                 <p class="lp-lead">En seulement quelques étapes.</p>
             </div>
+            <div class="row g-3 vh-explains">
+                <div class="col-md-4">
+                    <article class="card h-100 border-0 shadow-sm overflow-hidden">
+                        <img class="vh-explain" src="{{ asset('images/landing/phone.webp') }}" alt="Personne connectée, portrait en lumière tamisée" width="1400" height="1866" loading="lazy" decoding="async">
+                        <div class="card-body"><p class="card-text mb-0">Une connexion pour chaque moment.</p></div>
+                    </article>
+                </div>
+                <div class="col-md-4">
+                    <article class="card h-100 border-0 shadow-sm overflow-hidden">
+                        <img class="vh-explain" src="{{ asset('images/landing/cafe.webp') }}" alt="Téléphone et ordinateur sur une table de travail" width="1600" height="1067" loading="lazy" decoding="async">
+                        <div class="card-body"><p class="card-text mb-0">Pour travailler, étudier ou regarder.</p></div>
+                    </article>
+                </div>
+                <div class="col-md-4">
+                    <article class="card h-100 border-0 shadow-sm overflow-hidden">
+                        <img class="vh-explain" src="{{ asset('images/landing/group.webp') }}" alt="Trois personnes réunies autour d’ordinateurs" width="1600" height="1067" loading="lazy" decoding="async">
+                        <div class="card-body"><p class="card-text mb-0">Plusieurs appareils, une même connexion.</p></div>
+                    </article>
+                </div>
+            </div>
             <ol class="vh-timeline">
                 <li>
                     <span>01</span>
@@ -202,19 +234,12 @@
     <section class="lp-section lm-motion" id="tickets">
         <div class="container">
             <div class="row align-items-center g-4">
-                <div class="col-lg-6">
-                    <div class="vh-ticket-stage">
-                        <x-limete-ticket
-                            username="••••••••"
-                            password="••••••••"
-                            :plan="$sample ? mb_strtoupper($sample->validityLabel()) : 'Selon le forfait'"
-                            :price="$sample ? \App\Support\Money::shop($sample->price, $sample->currency) : 'Au paiement'"
-                            :qr="$demo['qr']"
-                        />
-                    </div>
-                    <p class="vh-demo-note">Aperçu du ticket. Les identifiants arrivent après le paiement.</p>
+                <div class="col-lg-7">
+                    <figure class="vh-ticket-photo">
+                        <img src="{{ asset('images/landing/ticket-limete.webp') }}" alt="Modèle du ticket LIMETE WIFI, avec identifiant, mot de passe et QR" width="1536" height="1024">
+                    </figure>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-5">
                     <h2>Votre ticket, prêt à vous connecter.</h2>
                     <p class="lp-lead">Tout ce qu’il vous faut pour vous connecter.</p>
                     <ul class="vh-checks">
@@ -305,12 +330,12 @@
 <footer class="lp-footer" id="contact">
     <div class="container">
         <div class="row g-4 vh-foot">
-            <div class="col-lg-4">
+            <div class="col-lg-5">
                 <x-brand-logo height="40" alt="LIMETE WIFI MANAGER" />
                 <p>Une solution moderne de gestion et de distribution de connexion WiFi.</p>
                 <p class="vh-business-note">Gérez votre WiFi comme un vrai business. L’offre est présentée à <strong>5 $</strong> / mois. Cette page n’encaisse aucun paiement. <a href="{{ route('register') }}">Créer mon compte</a></p>
             </div>
-            <div class="col-6 col-lg-2">
+            <div class="col-6 col-lg-3">
                 <p class="vh-col">Navigation</p>
                 <nav aria-label="Pied de page">
                     <a href="#forfaits">Forfaits</a>
@@ -319,11 +344,7 @@
                     <a href="#contact">Contact</a>
                 </nav>
             </div>
-            <div class="col-6 col-lg-3">
-                <p class="vh-col">Paiements</p>
-                <x-payment-marks :payments="$payMarks" />
-            </div>
-            <div class="col-lg-3">
+            <div class="col-6 col-lg-4">
                 <p class="vh-col">Suivez-nous</p>
                 <x-social-links />
             </div>

@@ -36,7 +36,7 @@ class PublicCatalog
                 ->orderBy('wifi_zone_id')
                 ->orderBy('duration_seconds')
                 ->orderBy('price')
-                ->limit(24)
+                ->limit(36)
                 ->get()
                 ->filter(function (Plan $plan): bool {
                     if (! $plan->wifi_zone_id) {
