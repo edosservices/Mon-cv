@@ -1,6 +1,7 @@
 import './limete-ui.js';
 import './limete-background.js';
 import { bootMotion } from './limete-motion.js';
+import 'bootstrap/js/dist/collapse';
 import Chart from 'chart.js/auto';
 
 document.addEventListener('DOMContentLoaded', () => {
