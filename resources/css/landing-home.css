@@ -106,7 +106,9 @@
 .lp .lt { margin: 0; max-width: 640px; }
 .vh-ticket-photo { margin: 0; }
 .lp .vh-ticket-photo img { width: 100%; height: auto; border-radius: 28px; box-shadow: 0 28px 56px rgba(11, 63, 134, .22); display: block; }
-.lp .vh-explain { width: 100%; height: 180px; object-fit: cover; display: block; }
+.lp .vh-explain { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; object-position: center; display: block; }
+.lp .vh-explain.is-poster { aspect-ratio: 3 / 4; object-position: center 18%; }
+.vh-explains .card-text { font-weight: 700; color: var(--lm-ink); }
 .lp main, .lp-footer { position: relative; z-index: 1; }
 .vh-ticket-stage { perspective: 1200px; max-width: 640px; }
 .vh-video-frame {
