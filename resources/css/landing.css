@@ -180,4 +180,7 @@
     .vh-live, .vh-chip { max-width: calc(100% - 24px); }
 }
 .lp-footer .vh-foot nav a { display: block; margin: 6px 0; }
+.lp .vh-copy { align-items: center; }
+.lp .vh-edos, .lp a.vh-edos { margin-left: auto; line-height: 0; }
+.lp .vh-edos, .lp a.vh-edos img { width: 112px; height: auto; display: block; }
 .lp .vh-pay img { width: auto; height: auto; max-width: 148px; max-height: 78px; object-fit: contain; }

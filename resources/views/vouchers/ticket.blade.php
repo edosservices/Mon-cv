@@ -23,31 +23,23 @@
 .st-ok { color: #0f6b3c; }
 .st-bad { color: #a11d1d; }
 </style>
+<x-limete-ticket
+    :username="$voucher->username"
+    :password="$voucher->password"
+    :plan="mb_strtoupper($voucher->plan->validityLabel())"
+    :price="\App\Support\Money::shop($voucher->price_amount ?? $voucher->plan->price, $voucher->currency ?: $voucher->plan->currency)"
+    :number="$voucher->id"
+    :qr="$qr ?? null"
+    :ticket-url="!empty($qr) ? route('tickets.public', $voucher->public_token) : null"
+    :logo="$voucher->wifiZone->logoUrl()"
+/>
 <article class="pass">
-    <header class="pass-head" style="background: {{ $voucher->wifiZone->brandColor() }}">
-        @if($voucher->wifiZone->logoUrl())
-            <img src="{{ $voucher->wifiZone->logoUrl() }}" alt="">
-        @else
-            <img src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI">
-        @endif
-        <p>{{ $voucher->wifiZone->displayLabel() }}</p>
-        <p class="fine">{{ $voucher->wifiZone->name }}</p>
+    <div class="pass-body">
+        <p class="fine">{{ $voucher->wifiZone->displayLabel() }} · {{ $voucher->wifiZone->name }}</p>
         @if($place = $voucher->wifiZone->addressLine())
             <p class="fine">{{ $place }}</p>
         @endif
-    </header>
-    <div class="pass-body">
         <p class="pass-plan">{{ $voucher->plan->name }}</p>
-        <p class="pass-price">{{ \App\Support\Money::shop($voucher->price_amount ?? $voucher->plan->price, $voucher->currency ?: $voucher->plan->currency) }}</p>
-        <div class="pass-cut"></div>
-        <div class="pass-code">
-            <span>Code</span>
-            <strong>{{ $voucher->username }}</strong>
-        </div>
-        <div class="pass-code" style="margin-top: 8px;">
-            <span>Mot de passe</span>
-            <strong>{{ $voucher->password }}</strong>
-        </div>
         <dl class="pass-meta">
             <div>
                 <dt>Internet</dt>
@@ -84,7 +76,6 @@
             </p>
         @endif
         @if(!empty($qr))
-            <div class="qr" data-ticket-url="{{ route('tickets.public', $voucher->public_token) }}" aria-label="QR du ticket">{!! $qr !!}</div>
             <p class="fine">Ce QR ouvre le ticket. Il ne contient pas le mot de passe.</p>
         @endif
     </div>

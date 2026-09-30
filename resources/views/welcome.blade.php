@@ -20,6 +20,10 @@
     ];
     $edos = config('limete.edos_url');
     $edosUrl = is_string($edos) && filter_var($edos, FILTER_VALIDATE_URL) ? $edos : null;
+    $payMarks = $payments;
+    if (! isset($payMarks['afrimoney'])) {
+        $payMarks['afrimoney'] = 'Afrimoney';
+    }
 @endphp
 <header class="lp-header">
     <div class="lp-wrap lp-bar">
@@ -129,7 +133,7 @@
         <div class="lp-wrap">
             <h2>Payez avec votre moyen préféré</h2>
             <p class="lp-lead">Vous payez à l’étape suivante, avec les moyens activés pour la zone.</p>
-            <x-payment-marks :payments="$payments" />
+            <x-payment-marks :payments="$payMarks" />
         </div>
     </section>
 
@@ -187,7 +191,7 @@
 
     <section class="lp-section lm-motion">
         <div class="lp-wrap vh-split">
-            <img class="vh-photo" src="{{ asset('images/landing/phone.webp') }}" alt="Jeune femme consultant son smartphone" width="1600" height="1068" loading="lazy" decoding="async">
+            <img class="vh-photo" src="{{ asset('images/landing/cafe.webp') }}" alt="Téléphone et ordinateur ouverts sur une table de travail" width="1600" height="1067" loading="lazy" decoding="async">
             <div>
                 <h2>Le téléphone suffit</h2>
                 <p class="lp-lead">Choisissez un forfait, payez, puis gardez le ticket sur l’écran. Aucune application à installer pour acheter.</p>
@@ -217,8 +221,19 @@
         </div>
     </section>
 
+    <section class="lp-section lm-motion">
+        <div class="lp-wrap vh-split vh-flip">
+            <img class="vh-photo" src="{{ asset('images/landing/smile.webp') }}" alt="Jeune homme souriant, portrait en lumière naturelle" width="1400" height="2100" loading="lazy" decoding="async">
+            <div>
+                <h2>Une connexion pour la journée</h2>
+                <p class="lp-lead">Le forfait se choisit en quelques secondes, puis le ticket reste sur le téléphone.</p>
+                <a class="lp-btn" href="{{ route('client.buy') }}">Acheter un forfait</a>
+            </div>
+        </div>
+    </section>
+
     <section class="vh-banner lm-motion">
-        <img src="{{ asset('images/landing/city.webp') }}" alt="Rue urbaine animée, symbole d’un réseau disponible en ville" width="1920" height="1280" loading="lazy" decoding="async">
+        <img src="{{ asset('images/landing/city.webp') }}" alt="Skyline d’une grande ville africaine au soleil" width="1920" height="1277" loading="lazy" decoding="async">
         <div class="vh-banner-copy">
             <h2>Le WiFi de la zone, là où vous êtes</h2>
             <a class="lp-btn" href="{{ route('client.buy') }}">Choisir une zone</a>
@@ -244,18 +259,16 @@
     <section class="lp-section lm-motion" id="tickets">
         <div class="lp-wrap">
             <h2>Le ticket, une fois le paiement confirmé</h2>
-            <p class="lp-lead">Démonstration visuelle. Ce n’est pas un ticket client. Aucun identifiant réel n’est affiché.</p>
-            <div class="vh-ticket-hero">
-                <x-brand-logo height="28" alt="" />
-                <p class="vh-pass-name">24H</p>
-                <p>Internet haut débit</p>
-                <dl>
-                    <div><dt>Username</dt><dd>••••••••</dd></div>
-                    <div><dt>Password</dt><dd>••••••••</dd></div>
-                </dl>
-                <div class="vh-qr" aria-hidden="true">{!! $demo['qr'] !!}</div>
-                <p>Scannez pour vous connecter</p>
-            </div>
+            <p class="lp-lead">Modèle visuel. Ce n’est pas un ticket client. Les codes affichés ici sont un exemple.</p>
+            <x-limete-ticket
+                username="akm"
+                password="867"
+                plan="2 JOURS"
+                price="2,000 FC"
+                number="29"
+                login="http://limetewifi.cd"
+                :qr="$demo['qr']"
+            />
             <div class="lp-tickets mt-4">
                 @foreach(['classique' => 'Classique', 'moderne' => 'Moderne', 'premium' => 'Premium'] as $key => $label)
                     <div>
@@ -275,7 +288,7 @@
                     ['Dois-je avoir un compte pour acheter un ticket ?', 'Non. Le parcours public permet de choisir une WiFi Zone et un forfait sans compte. Un espace client existe aussi pour retrouver ses tickets.'],
                     ['Comment je reçois le ticket ?', 'Après confirmation du paiement, le ticket affiche l’identifiant, le mot de passe et le QR de la zone.'],
                     ['Puis-je imprimer plusieurs tickets ?', 'Oui. L’entrepreneur peut générer un lot, l’imprimer et télécharger un PDF, avec les modèles Classique, Moderne, Compact et Premium.'],
-                    ['Quels paiements sont proposés ?', 'Ceux qui sont configurés pour la plateforme. Cette page ne liste pas un moyen qui n’est pas branché.'],
+                    ['Quels paiements sont proposés ?', 'La page présente les moyens de la plateforme. Le paiement se fait à l’étape suivante, avec ceux qui sont activés pour la zone.'],
                 ] as $item)
                     <article class="lp-faq-item">
                         <h3 class="m-0"><button type="button" aria-expanded="false">{{ $item[0] }}</button></h3>
@@ -317,7 +330,7 @@
         </nav>
         <div>
             <p class="vh-col">Paiements</p>
-            <x-payment-marks :payments="$payments" />
+            <x-payment-marks :payments="$payMarks" />
         </div>
         <div>
             <p class="vh-col">Nous suivre</p>
@@ -326,14 +339,14 @@
     </div>
     <div class="lp-wrap vh-copy">
         <p>© {{ now()->year }} LIMETE WIFI MANAGER. Tous droits réservés.</p>
-        <p>
-            @if($edosUrl)
-                <a href="{{ $edosUrl }}" target="_blank" rel="noopener noreferrer">Designed by EDOS SERVICES</a>
-            @else
-                Designed by EDOS SERVICES
-            @endif
-        </p>
         <p class="vh-muted">Photographies : Unsplash, licence Unsplash.</p>
+        @if($edosUrl)
+            <a class="vh-edos" href="{{ $edosUrl }}" target="_blank" rel="noopener noreferrer">
+                <img src="{{ asset('brand/edos-services.png') }}" alt="Design by EDOS SERVICES" width="220" height="74">
+            </a>
+        @else
+            <img class="vh-edos" src="{{ asset('brand/edos-services.png') }}" alt="Design by EDOS SERVICES" width="220" height="74">
+        @endif
     </div>
 </footer>
 @endsection
