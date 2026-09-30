@@ -23,6 +23,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    document.querySelectorAll('[data-rail]').forEach((rail) => {
+        const track = rail.querySelector('[data-rail-track]');
+        const prev = rail.querySelector('[data-rail-prev]');
+        const next = rail.querySelector('[data-rail-next]');
+        if (!track || !prev || !next) return;
+        const motion = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        const step = () => Math.max(220, track.clientWidth * 0.8);
+        const sync = () => {
+            const max = track.scrollWidth - track.clientWidth;
+            const overflow = max > 8;
+            prev.hidden = !overflow || track.scrollLeft <= 4;
+            next.hidden = !overflow || track.scrollLeft >= max - 4;
+        };
+        prev.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: motion }));
+        next.addEventListener('click', () => track.scrollBy({ left: step(), behavior: motion }));
+        track.addEventListener('scroll', sync, { passive: true });
+        track.addEventListener('keydown', (event) => {
+            if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+            track.scrollBy({ left: event.key === 'ArrowRight' ? step() : -step(), behavior: motion });
+            event.preventDefault();
+        });
+        sync();
+        window.addEventListener('resize', sync);
+    });
+
+    document.querySelectorAll('[data-vh-video]').forEach((video) => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            video.pause();
+            return;
+        }
+        video.play().catch(() => {});
+    });
+
     document.querySelectorAll('.lp-faq-item button').forEach((button) => {
         button.addEventListener('click', () => {
             const item = button.closest('.lp-faq-item');
