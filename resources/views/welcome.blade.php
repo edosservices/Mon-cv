@@ -27,17 +27,12 @@
         $payMarks['afrimoney'] = 'Afrimoney';
     }
 @endphp
-<div class="vh-telecom" aria-hidden="true">
-    @foreach(['wifi', 'phone', 'lightning-charge', 'ticket-perforated', 'shield-lock', 'credit-card'] as $icon)
-        <span class="vh-tel"><x-icon :name="$icon" :size="32" /></span>
-    @endforeach
-</div>
 <header class="lp-header">
     <div class="container lp-bar">
         <a class="lp-logo" href="{{ route('home') }}">
             <x-brand-logo height="34" alt="LIMETE WIFI MANAGER" />
         </a>
-        <button class="lp-burger" type="button" aria-expanded="false" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
+        <button class="lp-burger" type="button" data-bs-toggle="offcanvas" data-bs-target="#lpSide" aria-controls="lpSide" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
         <nav class="lp-nav" aria-label="Navigation">
             <a href="{{ route('home') }}">Accueil</a>
             <a href="#forfaits">Forfaits</a>
@@ -51,6 +46,23 @@
         </div>
     </div>
 </header>
+<div class="offcanvas offcanvas-end lp-side" tabindex="-1" id="lpSide" aria-labelledby="lpSideLabel">
+    <div class="offcanvas-header">
+        <h2 class="offcanvas-title h5 mb-0" id="lpSideLabel">Navigation</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fermer le menu"></button>
+    </div>
+    <div class="offcanvas-body">
+        <nav class="d-grid gap-2" aria-label="Navigation rapide">
+            <a class="btn btn-outline-primary" href="{{ route('home') }}">Accueil</a>
+            <a class="btn btn-outline-primary" href="#forfaits">Forfaits</a>
+            <a class="btn btn-outline-primary" href="#comment">Comment ça marche</a>
+            <a class="btn btn-outline-primary" href="#paiement">Paiement</a>
+            <a class="btn btn-outline-primary" href="#faq">FAQ</a>
+            <a class="btn btn-outline-primary" href="{{ route('login') }}">Se connecter</a>
+            <a class="btn btn-primary" href="{{ route('client.buy') }}">Acheter</a>
+        </nav>
+    </div>
+</div>
 
 <main>
     <section class="vh-hero">
@@ -72,7 +84,7 @@
                 </div>
                 <div class="col-lg-6">
                     <figure class="vh-shot">
-                        <img src="{{ asset('images/landing/hero.webp') }}" alt="Jeune femme souriante en tenue africaine, smartphone en main" width="1800" height="1202" fetchpriority="high">
+                        <img src="{{ asset('images/landing/hero.webp') }}" alt="Femme souriante qui présente un téléphone et un ordinateur connectés au Wi-Fi" width="1129" height="1393" fetchpriority="high">
                         <span class="vh-live"><i></i> Connexion disponible</span>
                     </figure>
                 </div>
@@ -170,11 +182,11 @@
             </div>
             <div class="vh-video-frame">
                 @if($hasVideo)
-                    <video data-vh-video controls preload="metadata" muted loop playsinline poster="{{ asset('images/landing/city.webp') }}">
+                    <video data-vh-video controls preload="metadata" muted loop playsinline poster="{{ asset('images/landing/kinshasa-wifi.webp') }}">
                         <source src="{{ asset('videos/limete-wifi.mp4') }}" type="video/mp4">
                     </video>
                 @else
-                    <img class="vh-video-still" src="{{ asset('images/landing/city.webp') }}" alt="Skyline d’une grande ville africaine, en attendant la vidéo LIMETE WIFI" width="1920" height="1277" loading="lazy" decoding="async">
+                    <img class="vh-video-still" src="{{ asset('images/landing/kinshasa-wifi.webp') }}" alt="Kinshasa et la tour de l’échangeur de Limete, reliées par le Wi-Fi" width="1672" height="941" loading="lazy" decoding="async">
                 @endif
             </div>
         </div>
@@ -189,20 +201,20 @@
             <div class="row g-3 vh-explains">
                 <div class="col-md-4">
                     <article class="card h-100 border-0 shadow-sm overflow-hidden">
-                        <img class="vh-explain" src="{{ asset('images/landing/phone.webp') }}" alt="Personne connectée, portrait en lumière tamisée" width="1400" height="1866" loading="lazy" decoding="async">
-                        <div class="card-body"><p class="card-text mb-0">Une connexion pour chaque moment.</p></div>
+                        <img class="vh-explain is-poster" src="{{ asset('images/landing/marketing-phone.webp') }}" alt="Plusieurs téléphones qui affichent l’achat d’une connexion Wi-Fi" width="1028" height="1530" loading="lazy" decoding="async">
+                        <div class="card-body"><p class="card-text mb-0">Achetez votre connexion depuis votre téléphone.</p></div>
                     </article>
                 </div>
                 <div class="col-md-4">
                     <article class="card h-100 border-0 shadow-sm overflow-hidden">
-                        <img class="vh-explain" src="{{ asset('images/landing/cafe.webp') }}" alt="Téléphone et ordinateur sur une table de travail" width="1600" height="1067" loading="lazy" decoding="async">
-                        <div class="card-body"><p class="card-text mb-0">Pour travailler, étudier ou regarder.</p></div>
+                        <img class="vh-explain" src="{{ asset('images/landing/marketing-apps.webp') }}" alt="Une connexion qui ouvre les applications du quotidien" width="1254" height="1254" loading="lazy" decoding="async">
+                        <div class="card-body"><p class="card-text mb-0">Vos applications, vos séries, votre travail. Une seule connexion.</p></div>
                     </article>
                 </div>
                 <div class="col-md-4">
                     <article class="card h-100 border-0 shadow-sm overflow-hidden">
-                        <img class="vh-explain" src="{{ asset('images/landing/group.webp') }}" alt="Trois personnes réunies autour d’ordinateurs" width="1600" height="1067" loading="lazy" decoding="async">
-                        <div class="card-body"><p class="card-text mb-0">Plusieurs appareils, une même connexion.</p></div>
+                        <img class="vh-explain" src="{{ asset('images/landing/marketing-partout.webp') }}" alt="Homme souriant qui montre un téléphone connecté devant la ville" width="1254" height="1254" loading="lazy" decoding="async">
+                        <div class="card-body"><p class="card-text mb-0">Restez connecté partout, avec une connexion rapide et stable.</p></div>
                     </article>
                 </div>
             </div>
@@ -277,7 +289,7 @@
     </section>
 
     <section class="vh-banner lm-motion">
-        <img src="{{ asset('images/landing/city.webp') }}" alt="Skyline d’une grande ville africaine au soleil" width="1920" height="1277" loading="lazy" decoding="async">
+        <img src="{{ asset('images/landing/kinshasa-wifi.webp') }}" alt="Kinshasa et la tour de l’échangeur de Limete, reliées par le Wi-Fi" width="1672" height="941" loading="lazy" decoding="async">
         <div class="vh-banner-copy">
             <h2>Restez connecté à ce qui compte.</h2>
             <p>Une connexion pensée pour votre quotidien.</p>

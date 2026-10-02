@@ -2,26 +2,29 @@ import './limete-ui.js';
 import './limete-background.js';
 import { bootMotion } from './limete-motion.js';
 import 'bootstrap/js/dist/collapse';
+import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import Chart from 'chart.js/auto';
 
 document.addEventListener('DOMContentLoaded', () => {
     bootMotion();
     demoCharts();
-    const header = document.querySelector('.lp-header');
-    const burger = document.querySelector('.lp-burger');
-    if (burger && header) {
-        burger.addEventListener('click', () => {
-            const open = header.classList.toggle('open');
-            burger.setAttribute('aria-expanded', open ? 'true' : 'false');
-            burger.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+    document.querySelectorAll('#lpSide a').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            const panel = document.getElementById('lpSide');
+            const instance = panel ? Offcanvas.getInstance(panel) : null;
+            const href = link.getAttribute('href') || '';
+            if (!href.startsWith('#') || !instance) {
+                instance?.hide();
+                return;
+            }
+            event.preventDefault();
+            const target = document.querySelector(href);
+            panel.addEventListener('hidden.bs.offcanvas', () => {
+                target?.scrollIntoView({ behavior: 'auto', block: 'start' });
+            }, { once: true });
+            instance.hide();
         });
-        header.querySelectorAll('a').forEach((link) => {
-            link.addEventListener('click', () => {
-                header.classList.remove('open');
-                burger.setAttribute('aria-expanded', 'false');
-            });
-        });
-    }
+    });
 
     document.querySelectorAll('[data-rail]').forEach((rail) => {
         const track = rail.querySelector('[data-rail-track]');
