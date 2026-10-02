@@ -7,7 +7,7 @@
     <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
     @vite(['resources/css/client.css', 'resources/js/client.js'])
 </head>
-<body class="client">
+<body class="client @yield('body-class')">
     <x-animated-background />
     <div class="client-wrap">
         <header class="client-top">
