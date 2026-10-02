@@ -1,8 +1,7 @@
 @php
     $brand = $zone->brandColor();
-    $brand2 = $zone->secondaryColor();
-@endphp
-<!DOCTYPE html>
+    $brand2 = $zone->tenant?->buttonColor() ?? $zone->secondaryColor();
+@endphp<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="utf-8">
