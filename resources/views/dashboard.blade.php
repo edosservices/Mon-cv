@@ -14,16 +14,32 @@
     $query = request()->except('page');
 @endphp
 
+@php
+    $tenant = auth()->user()->tenant;
+    $zoneStats = collect($report['zone_rows'])->keyBy('id');
+    $zoneNames = $report['zones']->pluck('name', 'id');
+    $routerCards = collect($report['routers']);
+    $offlineRouters = $routerCards->contains(fn ($card) => in_array($card['router']->status, ['offline', 'error'], true));
+    $allRoutersOnline = $routerCards->isNotEmpty() && $routerCards->every(fn ($card) => $card['router']->status === 'online');
+    $pendingPay = collect($report['payments'])->firstWhere('status', 'pending');
+    $unsyncedKpi = collect($report['kpis'])->firstWhere('label', 'Tickets non synchronisés');
+    $ticketStyles = \App\Support\TicketTemplates::options();
+    $ticketStyle = $ticketStyles[\App\Support\TicketTemplates::normalize($tenant?->ticket_style)] ?? null;
+    $place = trim(implode(' · ', array_filter([$tenant?->city, $tenant?->country])));
+@endphp
 <div class="lm-dash">
 <header class="lm-hero min-w-0">
-    <p class="lm-page-sub">Vue générale de votre activité</p>
+    <p class="lm-page-sub">Mon espace entrepreneur</p>
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <p class="lm-hello">Bonjour, {{ auth()->user()->name }}</p>
+        <div class="min-w-0">
+            <p class="lm-hello">Bonjour, {{ auth()->user()->name }}</p>
+            <p class="en-company"><strong>{{ $tenant?->name ?: 'Mon entreprise' }}</strong>@if($place !== '') · {{ $place }}@endif</p>
+        </div>
         @if(auth()->user()->hasPermission('vouchers.manage'))
             <a class="lm-cta" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
         @endif
     </div>
-    <form method="GET" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+    <form method="GET" class="en-filters">
         <label class="text-sm font-semibold">WiFi Zone
             <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3" name="zone" onchange="this.form.submit()">
                 <option value="">Toutes les zones</option>
@@ -60,6 +76,7 @@
     @endif
     @if(auth()->user()->hasPermission('vouchers.manage'))
         <a href="{{ route('vouchers.generate') }}">+ Générer des tickets</a>
+        <a class="en-quiet" href="{{ route('vouchers.index') }}">Voir les tickets</a>
     @endif
     @if(auth()->user()->hasPermission('plans.manage'))
         <a href="{{ route('plans.create') }}">+ Créer un forfait</a>
@@ -67,14 +84,15 @@
     @if(auth()->user()->hasPermission('zones.manage'))
         <a href="{{ route('wifi-zones.create') }}">+ Ajouter une WiFi Zone</a>
     @endif
-    @if(auth()->user()->hasPermission('settings.manage'))
-        <a href="{{ route('business.edit') }}">Mon Business</a>
-        @if(auth()->user()->hasPermission('mikrotiks.manage'))
-            <a href="{{ route('mikrotiks.assistant') }}">Connecter mon MikroTik</a>
-        @endif
+    @if(auth()->user()->hasPermission('mikrotiks.manage'))
+        <a class="en-quiet" href="{{ route('mikrotiks.assistant') }}">Connecter mon MikroTik</a>
     @endif
     @if(auth()->user()->hasPermission('sales.view'))
-        <a href="{{ route('reports.index') }}">Mes Rapports</a>
+        <a class="en-quiet" href="{{ route('sales.index') }}">Voir les ventes</a>
+        <a class="en-quiet" href="{{ route('reports.index') }}">Mes Rapports</a>
+    @endif
+    @if(auth()->user()->hasPermission('settings.manage'))
+        <a class="en-quiet" href="{{ route('business.edit') }}">Mon Business</a>
     @endif
 </nav>
 </details>
@@ -137,6 +155,89 @@
         <p class="lm-kpi-label">Sessions actives</p>
         <p class="lm-kpi-value" data-count="{{ (int) $pulse['sessions'] }}">{{ $pulse['sessions'] }}</p>
     </article>
+    @if($routerCards->isNotEmpty())
+        <article class="lm-kpi">
+            <p class="lm-kpi-label">Routeurs actifs</p>
+            <p class="lm-kpi-value">{{ $routerCards->filter(fn ($card) => $card['router']->status === 'online')->count() }}/{{ $routerCards->count() }}</p>
+        </article>
+    @endif
+</section>
+
+@if($offlineRouters || $allRoutersOnline || (int) ($unsyncedKpi['value'] ?? 0) > 0 || (int) ($pendingPay['total'] ?? 0) > 0)
+<section class="en-section" aria-label="À surveiller">
+    <h2 class="en-kicker">À surveiller</h2>
+    <div class="en-watch">
+        @if($offlineRouters)
+            <a class="is-bad" href="#mikrotik">Un routeur est hors ligne.</a>
+        @elseif($allRoutersOnline)
+            <a class="is-ok" href="#mikrotik">Tous les routeurs sont connectés.</a>
+        @endif
+        @if((int) ($unsyncedKpi['value'] ?? 0) > 0)
+            <a class="is-bad" href="#sync">{{ $unsyncedKpi['value'] }} ticket(s) à synchroniser.</a>
+        @endif
+        @if((int) ($pendingPay['total'] ?? 0) > 0)
+            <a class="is-bad" href="#paiements">Paiement à confirmer</a>
+        @endif
+    </div>
+</section>
+@endif
+
+<section id="zones" class="en-section" aria-label="Mes zones WiFi">
+    <div class="en-head">
+        <h2>Mes zones WiFi</h2>
+        @if(auth()->user()->hasPermission('zones.manage'))
+            <a class="en-link" href="{{ route('wifi-zones.index') }}">Gérer</a>
+        @endif
+    </div>
+    @if($report['zones']->isEmpty())
+        <p class="en-meta">Aucune zone pour le moment.</p>
+    @else
+        <div class="en-cards">
+            @foreach($report['zones'] as $zone)
+                @php
+                    $stat = $zoneStats->get($zone->id);
+                    $linked = $zone->mikrotiks->first();
+                    $visual = filled($zone->logo_path) ? $zone->logoUrl() : ($tenant?->logoUrl());
+                @endphp
+                <article class="en-zone">
+                    <div class="en-zone-visual">
+                        @if($visual)
+                            <img src="{{ $visual }}" alt="">
+                        @else
+                            <strong>{{ mb_substr($zone->name, 0, 1) }}</strong>
+                        @endif
+                    </div>
+                    <h3>{{ $zone->name }}</h3>
+                    @if(filled($zone->location))
+                        <p class="en-meta">{{ $zone->location }}</p>
+                    @endif
+                    <div class="en-row">
+                        <span class="en-badge">{{ $zone->status === 'active' ? 'Active' : $zone->status }}</span>
+                        @if($linked)
+                            <span class="en-badge">
+                                @if($linked->status === 'online') 🟢 Connecté
+                                @elseif($linked->status === 'offline') 🔴 Hors ligne
+                                @elseif($linked->status === 'error') 🟠 Erreur
+                                @else 🟠 En attente @endif
+                            </span>
+                        @endif
+                        @if($stat)
+                            <span class="en-badge">{{ $stat['sales'] }} ventes</span>
+                            <span class="en-badge">{{ \App\Support\Money::format($stat['revenue']) }}</span>
+                        @endif
+                    </div>
+                    <div class="en-row">
+                        @if(auth()->user()->hasPermission('zones.manage'))
+                            <a class="en-link" href="{{ route('wifi-zones.edit', $zone) }}">Ouvrir la zone</a>
+                        @endif
+                        @if($zone->status === 'active')
+                            <a class="en-link en-quiet" href="{{ route('shop.show', $zone->slug) }}">Boutique</a>
+                        @endif
+                    </div>
+                </article>
+            @endforeach
+        </div>
+    @endif
 </section>
 
 <article class="lm-panel lm-router-card {{ ($charts['router']['online'] ?? false) ? 'is-online' : 'is-down' }}">
@@ -204,7 +305,7 @@
 </section>
 
 @if($report['zone_rows'] !== [])
-<section id="zones" class="mt-6">
+<section id="zones-detail" class="mt-6">
     <h2 class="font-semibold">Zones</h2>
     <div class="lm-table-wrap mt-3 rounded-2xl bg-white shadow-sm">
         <table class="lm-table">
@@ -228,7 +329,38 @@
 @endif
 
 <section id="mikrotik" class="lm-panel">
-    <h2>État MikroTik</h2>
+    <h2>Mes routeurs</h2>
+    @if($routerCards->isNotEmpty())
+        <div class="en-routers">
+            @foreach($routerCards as $card)
+                @php $router = $card['router']; @endphp
+                <article class="en-router">
+                    <h3>{{ $router->name }}</h3>
+                    <p class="en-meta">
+                        @if($router->status === 'online') 🟢 Connecté
+                        @elseif($router->status === 'error') 🟠 Erreur
+                        @elseif($router->status === 'offline') 🔴 Hors ligne
+                        @else 🟠 En attente @endif
+                    </p>
+                    @if($zoneNames->has($router->wifi_zone_id))
+                        <p class="en-meta">Zone : {{ $zoneNames[$router->wifi_zone_id] }}</p>
+                    @endif
+                    @if(filled($router->identity))
+                        <p class="en-meta">{{ $router->identity }}</p>
+                    @endif
+                    <div class="en-row">
+                        @if(auth()->user()->hasPermission('mikrotiks.manage'))
+                            <a class="en-link" href="{{ route('mikrotiks.show', $router) }}">Gérer</a>
+                            @if(in_array($router->status, ['offline', 'error'], true))
+                                <a class="en-link en-quiet" href="{{ route('mikrotiks.show', $router) }}">Vérifier la connexion</a>
+                            @endif
+                        @endif
+                    </div>
+                </article>
+            @endforeach
+        </div>
+    @endif
+    <h2 class="mt-4">État MikroTik</h2>
     @if($report['routers'] === [])
         <p class="mt-3 text-sm text-slate-500">Aucun routeur relié.</p>
     @else
@@ -428,8 +560,18 @@
     </ul>
 </section>
 
-<section id="forfaits" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <h2 class="font-semibold">Forfaits</h2>
+<section id="forfaits" class="en-section">
+    <div class="en-head">
+        <h2>Mes forfaits</h2>
+        <div class="en-row">
+            @if(auth()->user()->hasPermission('plans.manage'))
+                <a class="en-link en-quiet" href="{{ route('plans.index') }}">Voir</a>
+            @endif
+            @if(auth()->user()->hasPermission('vouchers.manage'))
+                <a class="en-link" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
+            @endif
+        </div>
+    </div>
     @if($report['plans'] === [])
         <p class="mt-3 text-sm text-slate-500">Aucun forfait.</p>
     @else
@@ -535,6 +677,41 @@
     </div>
     @include('sales.cards', ['sales' => $sales])
 </section>
+
+@if($tenant && auth()->user()->hasPermission('settings.manage'))
+<section id="personnaliser" class="en-section" aria-label="Personnaliser mon espace">
+    <div class="en-head">
+        <h2>Personnaliser mon espace</h2>
+        <a class="en-link" href="{{ route('business.edit') }}">Modifier</a>
+    </div>
+    <article class="en-card">
+        <div class="en-row">
+            @if($tenant->logoUrl())
+                <img src="{{ $tenant->logoUrl() }}" alt="" width="48" height="48">
+            @endif
+            <div>
+                <h3>{{ $tenant->name }}</h3>
+                @if($ticketStyle)
+                    <p class="en-meta">Modèle de ticket : {{ $ticketStyle }}</p>
+                @endif
+                @if(filled($tenant->phone))
+                    <p class="en-meta">{{ $tenant->phone }}</p>
+                @endif
+            </div>
+        </div>
+        <div class="en-swatches" aria-hidden="true">
+            <i style="background: {{ $tenant->brandColor() }}"></i>
+            <i style="background: {{ $tenant->secondaryColor() }}"></i>
+            <i style="background: {{ $tenant->buttonColor() }}"></i>
+        </div>
+        <div class="en-row">
+            <a class="en-link en-quiet" href="{{ route('business.edit') }}#logo">Logo</a>
+            <a class="en-link en-quiet" href="{{ route('business.edit') }}#primary_color">Couleurs</a>
+            <a class="en-link en-quiet" href="{{ route('business.edit') }}#ticket_style">Modèle de ticket</a>
+        </div>
+    </article>
+</section>
+@endif
 
 <section id="activite" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
     <h2 class="font-semibold">Activité</h2>

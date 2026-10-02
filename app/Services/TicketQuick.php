@@ -459,7 +459,7 @@ class TicketQuick
     private function freePassword(WifiZone $zone, array $reserved = []): string
     {
         for ($attempt = 0; $attempt < self::ATTEMPTS; $attempt++) {
-            $password = (string) random_int($attempt < 8 ? 100 : 1000, $attempt < 8 ? 999 : 9999);
+            $password = (string) random_int(1000, 9999);
             if (! isset($reserved[$password]) && ! $this->passwordTaken($zone, $password)) {
                 return $password;
             }

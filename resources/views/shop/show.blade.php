@@ -23,6 +23,8 @@
     <div class="position-relative">
         <p class="status-pill"><span class="dot" aria-hidden="true"></span> WiFi disponible</p>
         <h1>Choisissez votre connexion</h1>
+	<p class="visually-hidden">Sélection du forfait</p>
+	<p class="visually-hidden">Toujours ouvert</p>
         <p class="lede">Internet rapide, stable et accessible.</p>
         <p class="visually-hidden">Internet rapide et accessible.</p>
         @if($zone->bannerUrl())
