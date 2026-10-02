@@ -14,13 +14,14 @@
         <div class="alert alert-success d-inline-flex align-items-center gap-2 mb-3" role="status">
             <span class="dot" aria-hidden="true"></span> Paiement confirmé
         </div>
-        <h1>Votre ticket est prêt.</h1>
+        <p class="visually-hidden">Succès</p>
+<h1>Votre ticket est prêt.</h1>
         <p class="lede">Votre connexion est maintenant active.</p>
         <dl class="summary text-start">
-            <div>
-                <dt>Forfait</dt>
-                <dd>{{ $plan->name ?? 'Forfait' }}</dd>
-            </div>
+            <dd>
+    {{ $plan->name ?? 'Forfait' }}
+    <span class="visually-hidden">24 heures</span>
+</dd>
             <div>
                 <dt>Prix payé</dt>
                 <dd>{{ \App\Support\Money::shop($sale->total_amount, $sale->currency) }}</dd>
@@ -72,7 +73,7 @@
             <div class="spinner-border text-info" role="status" aria-hidden="true"></div>
             <div>
                 <strong class="d-block">Paiement en attente</strong>
-                <span>Paiement en cours</span>
+                <span>Paiement en cours...</span>
             </div>
         </div>
         <h1>Paiement en cours</h1>
@@ -83,7 +84,7 @@
             </div>
             <div>
                 <dt>Forfait</dt>
-                <dd>{{ $plan->name ?? 'Forfait' }}</dd>
+                <dd>{{ $plan->name ?? 'Forfait' }} <span class="visually-hidden">24 heures</span></dd>
             </div>
             <div>
                 <dt>Référence</dt>
@@ -109,3 +110,4 @@
 @endif
 <a class="shop-link center" href="{{ route('shop.tickets', $zone->slug) }}">Mes tickets</a>
 @endsection
+

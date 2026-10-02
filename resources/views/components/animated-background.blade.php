@@ -20,6 +20,12 @@
     $photo = in_array($picked, ['network', 'dashboard', 'wifi', 'admin', 'mikrotik'], true);
 @endphp
 <div class="lm-net lm-net-{{ $picked }}" data-lm-net aria-hidden="true">
+    @if($picked === 'dashboard')
+        <span class="lm-orb lm-orb-a"></span>
+        <span class="lm-orb lm-orb-b"></span>
+        <span class="lm-orb lm-orb-c"></span>
+        <span class="lm-wave"></span>
+    @endif
     @if($photo)
         <img class="lm-net-photo" alt="" width="1280" height="853" decoding="async" data-lm-photo data-src="{{ asset('media/landing/network.webp') }}">
     @endif
