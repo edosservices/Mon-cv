@@ -24,6 +24,9 @@ class WifiShopController extends Controller
         return view('shop.show', [
             'zone' => $zone,
             'plans' => $this->plans($zone),
+            'providers' => app(PaymentManager::class)->enabledProviders(),
+            'knownPhone' => $this->rememberedPhone($zone),
+            'activeVoucher' => $this->rememberedVouchers($zone)->first(fn ($voucher) => $voucher->status === 'active'),
             'step' => 0,
         ]);
     }
@@ -108,6 +111,7 @@ class WifiShopController extends Controller
         }
 
         session()->forget($this->draftKey($zone, $plan));
+        session(['shop_phone.'.$zone->id => $data['phone']]);
         $this->remember($zone, 'customer_sales', $sale->public_token);
 
         return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
@@ -332,6 +336,22 @@ class WifiShopController extends Controller
         $key = $bucket.'.'.$zone->id;
         $tokens = array_values(array_unique([...session($key, []), $token]));
         session([$key => array_slice($tokens, -20)]);
+    }
+
+    private function rememberedPhone(WifiZone $zone): ?string
+    {
+        $saved = session('shop_phone.'.$zone->id);
+        if (is_string($saved) && $saved !== '') {
+            return $saved;
+        }
+
+        foreach (session()->all() as $key => $value) {
+            if (str_starts_with((string) $key, 'shop_draft.'.$zone->id.'.') && is_array($value) && filled($value['phone'] ?? null)) {
+                return (string) $value['phone'];
+            }
+        }
+
+        return null;
     }
 
     private function draftKey(WifiZone $zone, Plan $plan): string
