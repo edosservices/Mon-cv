@@ -28,3 +28,85 @@ body.client {
 .client-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .client-nav a { flex: none; padding: 8px 12px; border-radius: 999px; background: white; text-decoration: none; color: #10233f; font-weight: 650; font-size: 14px; }
 .client-nav a[aria-current="page"] { background: #0b5ed7; color: white; }
+
+body.client-buy { overflow-x: clip; }
+body.client-buy .client-wrap { width: min(100%, 68rem); }
+
+.buy-guide { margin: 0 0 1.25rem; min-width: 0; }
+.buy-guide-stage {
+    position: relative;
+    height: min(118vw, 520px);
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 18px;
+    background: white;
+    box-shadow: 0 8px 24px rgba(16, 35, 63, .06);
+}
+.buy-guide-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    opacity: 0;
+    transition: opacity .6s ease;
+}
+.buy-guide-slide.is-on { opacity: 1; }
+.buy-guide-slide img {
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+    object-fit: cover;
+    object-position: center 42%;
+}
+.buy-guide-slide figcaption {
+    flex: none;
+    padding: 12px 14px 14px;
+    background: white;
+    color: #10233f;
+}
+.buy-guide-slide figcaption strong { display: block; font-size: 1rem; }
+.buy-guide-slide figcaption span { display: block; margin-top: 2px; color: #5c6e86; font-size: .92rem; line-height: 1.35; }
+.buy-guide-dots { display: flex; gap: 8px; margin-top: 10px; min-width: 0; }
+.buy-guide-dots button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 6px;
+    border: 0;
+    border-radius: 999px;
+    background: white;
+    color: #10233f;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(16, 35, 63, .06);
+}
+.buy-guide-dots button[aria-current="true"] { background: #0b5ed7; color: white; }
+
+@media (min-width: 768px) {
+    .buy-guide-stage {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        height: auto;
+        overflow: visible;
+        background: transparent;
+        box-shadow: none;
+    }
+    .buy-guide-slide {
+        position: relative;
+        opacity: 1;
+        overflow: hidden;
+        border-radius: 18px;
+        background: white;
+        box-shadow: 0 8px 24px rgba(16, 35, 63, .06);
+        transition: transform .45s ease, box-shadow .45s ease;
+    }
+    .buy-guide-slide img { height: 280px; flex: none; }
+    .buy-guide-slide.is-on { transform: translateY(-6px); box-shadow: 0 16px 32px rgba(11, 94, 215, .16); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .buy-guide-slide,
+    .buy-guide-slide.is-on { transition: none; transform: none; }
+}
