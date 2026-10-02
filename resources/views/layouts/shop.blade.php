@@ -79,7 +79,8 @@
                 var button = form.querySelector('[type="submit"]');
                 if (!button || button.disabled) return;
                 button.disabled = true;
-                button.textContent = 'Patientez…';
+                button.setAttribute('aria-busy', 'true');
+                button.textContent = button.getAttribute('data-busy') || 'Patientez…';
             });
         });
         document.querySelectorAll('[data-copy]').forEach(function (button) {
@@ -92,6 +93,24 @@
                 }
                 window.prompt('Copiez le code', value);
             });
+        });
+        document.querySelectorAll('[data-buy]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var dialog = document.getElementById(button.getAttribute('data-buy'));
+                if (!dialog || !dialog.showModal) {
+                    window.location = button.getAttribute('data-fallback');
+                    return;
+                }
+                dialog.showModal();
+            });
+        });
+        document.querySelectorAll('[data-close]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                button.closest('dialog')?.close();
+            });
+        });
+        document.querySelectorAll('dialog[data-reopen]').forEach(function (dialog) {
+            dialog.showModal();
         });
         var poll = document.querySelector('[data-poll]');
         if (poll) {

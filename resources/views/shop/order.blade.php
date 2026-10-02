@@ -13,20 +13,35 @@
         <p class="celebrate" aria-hidden="true">🎉</p>
         <p class="status-pill"><span class="dot" aria-hidden="true"></span> Paiement confirmé</p>
         <h1>Votre ticket est prêt.</h1>
+        <p class="lede">Votre connexion est maintenant active.</p>
         <dl class="summary">
             <div>
                 <dt>Forfait</dt>
                 <dd>{{ $plan->name ?? 'Forfait' }}</dd>
             </div>
             <div>
-                <dt>Prix</dt>
+                <dt>Prix payé</dt>
                 <dd>{{ \App\Support\Money::shop($sale->total_amount, $sale->currency) }}</dd>
             </div>
+            @if($voucher->activated_at)
+                <div>
+                    <dt>Activation</dt>
+                    <dd>{{ $voucher->activated_at->timezone(config('app.timezone'))->format('d/m/Y à H:i') }}</dd>
+                </div>
+            @endif
+            @if($voucher->expires_at)
+                <div>
+                    <dt>Expiration</dt>
+                    <dd>{{ $voucher->expires_at->timezone(config('app.timezone'))->format('d/m/Y à H:i') }}</dd>
+                </div>
+            @endif
             <div>
-                <dt>Internet</dt>
-                <dd>{{ $plan?->unlimited_data ? 'Illimité' : 'Selon le forfait' }}</dd>
+                <dt>Identifiant</dt>
+                <dd>{{ $voucher->username }}</dd>
             </div>
         </dl>
+        <a class="btn btn-primary" href="{{ $zone->captiveLoginUrl() ?: '#connexion' }}">Se connecter maintenant</a>
+        <a class="btn btn-ghost" href="{{ route('tickets.public', $voucher->public_token) }}">Voir mon ticket</a>
     </section>
     @include('vouchers.ticket')
     @include('vouchers.network')
