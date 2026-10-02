@@ -3,64 +3,55 @@
     $groups = [
         [
             'label' => 'Ventes',
-            'icon' => '≡',
             'links' => array_values(array_filter([
-                $can('sales.view') ? ['sales.index', 'Ventes', ['sales.index', 'entrepreneur.sales']] : null,
-                $can('sales.confirm') ? ['sales.quick', 'Encaisser', ['sales.quick']] : null,
+                $can('sales.confirm') ? ['sales.quick', 'Nouvelle vente', ['sales.quick', 'sales.quick.done']] : null,
+                $can('sales.view') ? ['sales.index', 'Historique', ['sales.index', 'sales.show', 'entrepreneur.sales']] : null,
                 $can('sales.view') ? ['payments.index', 'Paiements', ['payments.index']] : null,
-                ['audit.index', 'Historique', ['audit.index']],
+                ['audit.index', 'Journal', ['audit.index']],
             ])),
         ],
         [
             'label' => 'Tickets',
-            'icon' => '▤',
             'links' => array_values(array_filter([
-                $can('vouchers.manage') ? ['vouchers.index', 'Tickets', ['vouchers.index', 'entrepreneur.tickets']] : null,
-                $can('vouchers.manage') ? ['vouchers.generate', 'Générer', ['vouchers.generate', 'entrepreneur.generate']] : null,
-            ])),
-        ],
-        [
-            'label' => 'Clients',
-            'icon' => '●',
-            'links' => array_values(array_filter([
-                $can('customers.manage') ? ['customers.index', 'Clients', ['customers.index', 'entrepreneur.customers']] : null,
-                $can('sessions.view') ? ['sessions.index', 'Sessions', ['sessions.index']] : null,
+                $can('vouchers.manage') ? ['vouchers.index', 'Mes tickets', ['vouchers.index', 'vouchers.show', 'entrepreneur.tickets']] : null,
+                $can('vouchers.manage') ? ['vouchers.generate', 'Générer', ['vouchers.generate', 'vouchers.generated', 'entrepreneur.generate']] : null,
             ])),
         ],
         [
             'label' => 'WiFi',
-            'icon' => '⌁',
             'links' => array_values(array_filter([
-                $can('zones.manage') ? ['wifi-zones.index', 'Zones', ['wifi-zones.index', 'entrepreneur.zones']] : null,
+                $can('zones.manage') ? ['wifi-zones.index', 'Mes zones', ['wifi-zones.index', 'wifi-zones.create', 'wifi-zones.edit', 'entrepreneur.zones']] : null,
+                $can('mikrotiks.manage') ? ['mikrotiks.index', 'Routeurs', ['mikrotiks.index', 'mikrotiks.show', 'mikrotiks.create', 'mikrotiks.edit', 'entrepreneur.mikrotik']] : null,
+                $can('mikrotiks.manage') ? ['mikrotiks.assistant', 'Connexion MikroTik', ['mikrotiks.assistant', 'mikrotiks.assistant.show']] : null,
+                $can('plans.manage') ? ['plans.index', 'Forfaits', ['plans.index', 'plans.create', 'plans.edit']] : null,
                 $can('plans.manage') ? ['entrepreneur.profiles', 'Profils', ['entrepreneur.profiles', 'entrepreneur.profiles.*']] : null,
-                $can('plans.manage') ? ['plans.index', 'Forfaits', ['plans.index', 'plans.*']] : null,
-                $can('sessions.view') ? ['active-users.index', 'Utilisateurs', ['active-users.index', 'entrepreneur.users']] : null,
+                $can('sessions.view') ? ['active-users.index', 'Connectés', ['active-users.index', 'entrepreneur.users']] : null,
             ])),
         ],
         [
-            'label' => 'Routeur',
-            'icon' => '⌂',
+            'label' => 'Clients',
             'links' => array_values(array_filter([
-                $can('mikrotiks.manage') ? ['mikrotiks.index', 'Vue', ['mikrotiks.index', 'mikrotiks.show', 'entrepreneur.mikrotik']] : null,
-                $can('mikrotiks.manage') ? ['mikrotiks.assistant', 'HotSpot', ['mikrotiks.assistant']] : null,
-                $can('sessions.view') ? ['active-users.index', 'Sessions', ['active-users.index']] : null,
-                $can('settings.manage') ? ['settings.edit', 'Paramètres', ['settings.edit', 'entrepreneur.settings']] : null,
+                $can('customers.manage') ? ['customers.index', 'Clients', ['customers.index', 'customers.show', 'entrepreneur.customers']] : null,
+                $can('sessions.view') ? ['sessions.index', 'Sessions', ['sessions.index']] : null,
             ])),
         ],
         [
-            'label' => 'Rapports',
-            'icon' => '▥',
+            'label' => 'Statistiques',
             'links' => array_values(array_filter([
-                $can('sales.view') ? ['reports.index', 'Résumé', ['reports.index', 'entrepreneur.reports']] : null,
-                $can('sales.view') ? ['sales.index', 'Ventes', ['sales.index']] : null,
-                $can('statistics.view') ? ['statistics', 'Utilisation', ['statistics', 'entrepreneur.statistics']] : null,
+                $can('sales.view') ? ['reports.index', 'Rapports', ['reports.index', 'entrepreneur.reports']] : null,
+                $can('statistics.view') ? ['statistics', 'Statistiques', ['statistics', 'entrepreneur.statistics']] : null,
             ])),
         ],
         [
-            'label' => 'Plus',
-            'icon' => '⋯',
+            'label' => 'Personnalisation',
             'links' => array_values(array_filter([
-                $can('settings.manage') ? ['business.edit', 'Business', ['business.edit', 'entrepreneur.business']] : null,
+                $can('settings.manage') ? ['business.edit', 'Mon entreprise', ['business.edit', 'entrepreneur.business']] : null,
+            ])),
+        ],
+        [
+            'label' => 'Paramètres',
+            'links' => array_values(array_filter([
+                $can('settings.manage') ? ['settings.edit', 'Configuration', ['settings.edit', 'entrepreneur.settings']] : null,
                 $can('staff.manage') ? ['staff.index', 'Équipe', ['staff.index']] : null,
                 $can('subscription.manage') ? ['subscription.show', 'Abonnement', ['subscription.show']] : null,
                 ['notifications.index', 'Alertes', ['notifications.index']],
@@ -79,9 +70,8 @@
 @endphp
 <div class="lm-nav">
     @php $exclusiveOpen = false; @endphp
-    <a class="lm-nav-link {{ request()->routeIs('dashboard', 'entrepreneur.dashboard') ? 'is-current' : '' }}" href="{{ route('dashboard') }}">
-        <span class="lm-ico" aria-hidden="true">▣</span>
-        <span class="lm-nav-label">Tableau</span>
+    <a class="lm-nav-link {{ request()->routeIs('dashboard', 'entrepreneur.dashboard') ? 'is-current' : '' }}" href="{{ route('dashboard') }}" @if(request()->routeIs('dashboard', 'entrepreneur.dashboard')) aria-current="page" @endif>
+        <span class="lm-nav-label">Accueil</span>
     </a>
     @foreach($groups as $group)
         @if($group['links'] !== [])
@@ -99,12 +89,11 @@
             @endphp
             <details class="lm-nav-group" @if($opened) open @endif>
                 <summary>
-                    <span class="lm-ico" aria-hidden="true">{{ $group['icon'] }}</span>
                     <span class="lm-nav-label">{{ $group['label'] }}</span>
                 </summary>
                 <div class="lm-nav-sub">
                     @foreach($group['links'] as [$route, $label, $names])
-                        <a class="{{ $current($names) ? 'is-current' : '' }}" href="{{ route($route) }}">{{ $label }}</a>
+                        <a class="{{ $current($names) ? 'is-current' : '' }}" href="{{ route($route) }}" @if($current($names)) aria-current="page" @endif>{{ $label }}</a>
                     @endforeach
                 </div>
             </details>

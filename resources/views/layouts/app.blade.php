@@ -3,42 +3,73 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'LIMETE WIFI MANAGER')</title>
-    <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
+    @php $shellTenant = auth()->user()?->tenant; @endphp
+    <title>@yield('title', $shellTenant?->name ?: 'Espace entrepreneur')</title>
+    <link rel="icon" href="{{ $shellTenant?->logoUrl() ?: asset('brand/logo-limete-wifi-manager.png') }}">
+    {{-- Coque visible même si le bundle Vite est absent ou périmé : le logo ne peut plus s’afficher en taille native. --}}
+    <style>
+        .lm-app { color: #122033; font-family: "Segoe UI", system-ui, sans-serif; background: #f3f6fb; }
+        .lm-brand-wordmark, .lm-brand-logo, .lm-nav-logo, .lm-account-logo { max-width: 180px; max-height: 52px; width: auto; height: auto; object-fit: contain; }
+        .lm-frame { min-height: 100vh; display: grid; }
+        .lm-side { display: flex; flex-direction: column; min-width: 0; background: #071428; color: #fff; }
+        .lm-side a, .lm-nav-link, .lm-nav summary { color: inherit; text-decoration: none; }
+        .lm-brand, .lm-account-card, .lm-word { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .lm-account-copy, .lm-brand-copy { display: grid; min-width: 0; }
+        .lm-account-copy strong, .lm-account-copy small, .lm-brand-copy strong, .lm-brand-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lm-collapse { display: none; }
+        .lm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+        @media (max-width: 1023px) {
+            .lm-side { position: fixed; inset: 0 auto 0 0; width: min(86vw, 300px); z-index: 40; transform: translateX(-105%); overflow: auto; }
+            .lm-side.is-open { transform: none; }
+        }
+        @media (min-width: 1024px) {
+            .lm-frame { grid-template-columns: 248px minmax(0, 1fr); }
+            .lm-side { position: sticky; top: 0; height: 100vh; overflow: auto; }
+            .lm-menu, .lm-tabbar { display: none; }
+        }
+    </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @auth
-        @if(auth()->user()->tenant)
+        @if($shellTenant)
             <style>
-                .bg-electric { background-color: {{ auth()->user()->tenant->buttonColor() }} !important; }
-                .text-electric { color: {{ auth()->user()->tenant->brandColor() }} !important; }
-                .border-electric { border-color: {{ auth()->user()->tenant->brandColor() }} !important; }
+                .bg-electric { background-color: {{ $shellTenant->buttonColor() }} !important; }
+                .text-electric { color: {{ $shellTenant->brandColor() }} !important; }
+                .border-electric { border-color: {{ $shellTenant->brandColor() }} !important; }
             </style>
         @endif
     @endauth
 </head>
-<body class="lm-app min-h-screen text-ink">
+<body class="lm-app min-h-screen text-ink" @auth style="--biz: {{ $shellTenant?->brandColor() ?? '#0b5ed7' }}; --biz-2: {{ $shellTenant?->secondaryColor() ?? '#071e3d' }}; --biz-btn: {{ $shellTenant?->buttonColor() ?? '#0b5ed7' }};" @endauth>
     <x-animated-background />
     <div class="lm-backdrop" data-lm-backdrop></div>
     <div class="lm-frame">
         <aside class="lm-side no-print" id="lm-side">
+            @php
+                $account = auth()->user();
+                $business = $account->tenant;
+                $place = trim(implode(' · ', array_filter([$business?->city, $business?->country])));
+            @endphp
             <div class="lm-side-head">
                 <a class="lm-brand" href="{{ route('dashboard') }}">
-                    <img class="lm-brand-wordmark" src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI MANAGER">
+                    @if($business?->logoUrl())
+                        <img class="lm-brand-logo" src="{{ $business->logoUrl() }}" alt="" width="36" height="36">
+                    @else
+                        <span class="lm-account-mark">{{ mb_substr($business?->name ?: $account->name, 0, 1) }}</span>
+                    @endif
+                    <span class="lm-brand-copy">
+                        <strong>{{ $business?->name ?: 'Mon espace' }}</strong>
+                        <small>Espace entrepreneur</small>
+                    </span>
                 </a>
                 <button class="lm-collapse" type="button" data-lm-collapse aria-pressed="false">Réduire</button>
             </div>
             <nav class="lm-side-nav" aria-label="Navigation">
                 @include('layouts.nav')
             </nav>
-            @php
-                $account = auth()->user();
-                $business = $account->tenant;
-                $place = trim(implode(' · ', array_filter([$business?->city, $business?->country])));
-            @endphp
             <div class="lm-account">
                 <a class="lm-account-card" href="{{ $account->hasPermission('settings.manage') ? route('business.edit') : route('dashboard') }}">
                     @if($business?->logoUrl())
-                        <img class="lm-account-logo" src="{{ $business->logoUrl() }}" alt="">
+                        <img class="lm-account-logo" src="{{ $business->logoUrl() }}" alt="" width="52" height="34">
                     @else
                         <span class="lm-account-mark">{{ mb_substr($business?->name ?: $account->name, 0, 1) }}</span>
                     @endif
@@ -63,17 +94,18 @@
                     <span class="lm-sr">Menu</span>
                 </button>
                 <a class="lm-word" href="{{ route('dashboard') }}">
-                    @if(auth()->user()->tenant?->logoUrl())
-                        <img class="lm-nav-logo" src="{{ auth()->user()->tenant->logoUrl() }}" alt="">
+                    @if($business?->logoUrl())
+                        <img class="lm-nav-logo" src="{{ $business->logoUrl() }}" alt="" width="36" height="36">
                     @else
-                        <img class="lm-nav-logo" src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="">
+                        <span class="lm-account-mark">{{ mb_substr($business?->name ?: $account->name, 0, 1) }}</span>
                     @endif
-                    <span>{{ auth()->user()->tenant?->name ?: 'LIMETE WIFI' }}</span>
+                    <span>{{ $business?->name ?: 'Mon espace' }}</span>
                 </a>
                 <div class="lm-top-title min-w-0">
                     <h1 class="truncate">@yield('heading')</h1>
                 </div>
                 <div class="lm-actions">
+                    <span class="lm-user-name">{{ $account->name }}</span>
                     <a class="lm-icon-btn" href="{{ route('notifications.index') }}" aria-label="Notifications">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 7 2 7 2 7H4s2 0 2-7Zm4 9a2 2 0 0 0 4 0"/></svg>
                         <span class="lm-sr">Notifications</span>
