@@ -5,7 +5,8 @@
                 $isCurrent = $subscription && (int) $subscription->saas_plan_id === (int) $plan->id;
                 $canUpgrade = $catalog->raisesZoneLimit($subscription?->saasPlan, $plan);
                 $period = $catalog->periodLabel($plan);
-                $tone = $loop->index % 4;
+                $tones = ['starter' => 0, 'business' => 1, 'pro' => 2];
+                $tone = $tones[$plan->code] ?? ($loop->index % 4);
             @endphp
             <article class="card offer-card h-100 rounded-4 {{ $isCurrent ? 'shadow' : 'shadow-sm' }}" @if($isCurrent) aria-current="true" @endif>
                 <div class="offer-band offer-tone-{{ $tone }}">
@@ -41,7 +42,7 @@
                         @if($isCurrent)
                             <button type="button" class="btn btn-outline-secondary w-100" disabled aria-current="true">Abonnement actuel</button>
                         @elseif($canUpgrade)
-                            <a class="btn btn-primary btn-lg w-100" href="{{ $catalog->checkoutUrl($plan) }}">Passer à cette formule</a>
+                            <a class="btn btn-primary btn-lg w-100" href="{{ $catalog->checkoutUrl($plan) }}">Passer aux avantages</a>
                         @else
                             <a class="btn btn-outline-primary w-100" href="{{ $catalog->checkoutUrl($plan) }}">Choisir cette formule</a>
                         @endif

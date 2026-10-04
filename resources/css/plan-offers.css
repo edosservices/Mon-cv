@@ -37,9 +37,10 @@
 
 .offer-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
     gap: 1rem;
     align-items: stretch;
+    width: 100%;
 }
 
 .offer-card {
@@ -216,13 +217,6 @@
     #zoneUpgradeModal .modal-dialog {
         max-width: min(1080px, calc(100vw - 1.5rem));
         margin: .5rem auto;
-    }
-}
-
-@media (max-width: 720px) {
-    .offer-grid,
-    #zoneUpgradeModal .offer-grid {
-        grid-template-columns: 1fr;
     }
 }
 

@@ -16,7 +16,77 @@ class SubscriptionCatalog
 {
     public function activePlans(): Collection
     {
+        $this->ensureCatalog();
+
         return SaasPlan::query()->where('is_active', true)->orderBy('id')->get();
+    }
+
+    public function ensureCatalog(): void
+    {
+        foreach ($this->defaultPlans() as $code => $attributes) {
+            $plan = SaasPlan::query()->firstOrCreate(['code' => $code], $attributes);
+
+            if (! $plan->is_active) {
+                $plan->forceFill(['is_active' => true])->save();
+            }
+        }
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function defaultPlans(): array
+    {
+        return [
+            'starter' => [
+                'name' => 'STARTER',
+                'price' => 0,
+                'currency' => 'USD',
+                'interval_days' => 30,
+                'max_zones' => 1,
+                'max_mikrotiks' => 1,
+                'features' => [
+                    'vouchers' => true,
+                    'basic_statistics' => true,
+                    'advanced_statistics' => false,
+                    'user_management' => false,
+                    'api' => false,
+                ],
+                'is_active' => true,
+            ],
+            'business' => [
+                'name' => 'BUSINESS',
+                'price' => 4.90,
+                'currency' => 'USD',
+                'interval_days' => 30,
+                'max_zones' => null,
+                'max_mikrotiks' => null,
+                'features' => [
+                    'vouchers' => true,
+                    'basic_statistics' => true,
+                    'advanced_statistics' => true,
+                    'user_management' => true,
+                    'api' => false,
+                ],
+                'is_active' => true,
+            ],
+            'pro' => [
+                'name' => 'PRO',
+                'price' => 8.90,
+                'currency' => 'USD',
+                'interval_days' => 30,
+                'max_zones' => null,
+                'max_mikrotiks' => null,
+                'features' => [
+                    'vouchers' => true,
+                    'basic_statistics' => true,
+                    'advanced_statistics' => true,
+                    'user_management' => true,
+                    'api' => true,
+                ],
+                'is_active' => true,
+            ],
+        ];
     }
 
     public function current(): ?Subscription

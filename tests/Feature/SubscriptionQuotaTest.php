@@ -95,21 +95,20 @@ class SubscriptionQuotaTest extends TestCase
 
         $modal = $this->actingAs($user)->get('/wifi-zones/create');
         $modal->assertOk()
-            ->assertSee('Votre abonnement STARTER a atteint sa limite de WiFi Zones.', false)
-            ->assertSee('Votre abonnement actuel a atteint sa limite de WiFi Zones.', false)
-            ->assertSee('Pour créer davantage de zones et développer votre activité, passez à une formule supérieure.', false)
-            ->assertSee('Choisissez la formule adaptée à votre activité et débloquez davantage de fonctionnalités.', false)
-            ->assertSee('Passez à une formule supérieure pour débloquer davantage de zones et profiter de nouvelles fonctionnalités.', false)
+            ->assertSee('Passez aux avantages', false)
+            ->assertSee('Votre formule actuelle a atteint la limite de WiFi Zones.', false)
+            ->assertSee('profiter de nouveaux avantages', false)
             ->assertSee('aria-labelledby="zoneUpgradeTitle"', false)
             ->assertSee('aria-describedby="zoneUpgradeText"', false)
-            ->assertSee('Abonnement actuel', false)
-            ->assertSee('ACTUEL', false)
+            ->assertSee('BUSINESS', false)
+            ->assertSee('PRO', false)
             ->assertSee('PREMIUM', false)
             ->assertSee('15 000 FC / mois', false)
             ->assertSee('25 000 FC / mois', false)
             ->assertSee('8.9 $ / mois', false)
-            ->assertSee('Passer à cette formule', false)
+            ->assertSee('Passer aux avantages', false)
             ->assertSee(route('subscription.show', ['plan' => $business->id]).'#paiement', false)
+            ->assertDontSee('Abonnement actuel', false)
             ->assertDontSee('ARCHIVE', false)
             ->assertDontSee('Paiement réussi', false);
 
@@ -147,16 +146,30 @@ class SubscriptionQuotaTest extends TestCase
             ->assertSee('Votre utilisation', false)
             ->assertSee('WiFi Zones', false)
             ->assertSee('1 / 1', false)
-            ->assertSee('Développez votre activité', false)
-            ->assertSee('Passez à une formule supérieure pour bénéficier de limites plus élevées et de nouvelles fonctionnalités.', false)
+            ->assertSee('Passez aux avantages', false)
+            ->assertSee('Votre formule actuelle est affichée à côté des formules supérieures.', false)
             ->assertSee('BUSINESS', false)
             ->assertSee('PRO', false)
             ->assertSee('15 000 FC / mois', false)
             ->assertSee('8.9 $ / mois', false)
-            ->assertSee('Passer à cette formule', false)
+            ->assertSee('Passer aux avantages', false)
             ->assertSee(route('subscription.checkout'), false)
             ->assertDontSee('Paiement réussi', false)
             ->assertDontSee('60 / 500', false);
+    }
+
+    public function test_missing_superior_plans_are_shown_again(): void
+    {
+        $user = Platform::entrepreneur('Alice Wifi', 'alice-restore@example.com');
+        SaasPlan::query()->whereIn('code', ['business', 'pro'])->delete();
+
+        $this->actingAs($user)->get('/subscription')
+            ->assertOk()
+            ->assertSee('BUSINESS', false)
+            ->assertSee('PRO', false)
+            ->assertSee('4.9 $ / mois', false)
+            ->assertSee('8.9 $ / mois', false)
+            ->assertSee('Passez aux avantages', false);
     }
 
     public function test_checkout_stays_pending_until_a_real_confirmation_then_the_new_quota_applies(): void

@@ -122,8 +122,8 @@
 
     <section class="mb-4" aria-labelledby="offers-title">
         <div class="text-center mb-4">
-            <h2 class="h4 fw-bold mb-2" id="offers-title">Développez votre activité</h2>
-            <p class="text-muted mb-0">Passez à une formule supérieure pour bénéficier de limites plus élevées et de nouvelles fonctionnalités.</p>
+            <h2 class="h4 fw-bold mb-2" id="offers-title">Passez aux avantages</h2>
+            <p class="text-muted mb-0">Votre formule actuelle est affichée à côté des formules supérieures. Choisissez celle qui vous donne plus de zones et plus d’avantages.</p>
         </div>
         @include('subscription.partials.plan-cards')
     </section>
