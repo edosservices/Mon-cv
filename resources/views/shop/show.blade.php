@@ -65,7 +65,13 @@
     <h2 id="plans-title">Choisissez votre forfait</h2>
     @if($plans->isEmpty())
         <div class="empty">
+            <p>Aucun forfait actif pour cette WiFi Zone.</p>
             <p>Aucun forfait n’est en vente pour le moment.</p>
+            @auth
+                @if((int) auth()->user()->tenant_id === (int) $zone->tenant_id)
+                    <a class="btn btn-primary btn-lg rounded-pill" href="{{ route('plans.index') }}">Créez ou activez un forfait dans Forfaits.</a>
+                @endif
+            @endauth
             @if($zone->whatsappDigits())
                 <a class="btn btn-outline-primary btn-lg rounded-pill" href="https://wa.me/{{ $zone->whatsappDigits() }}">Contacter la zone</a>
             @endif

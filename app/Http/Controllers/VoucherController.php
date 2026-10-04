@@ -440,6 +440,16 @@ class VoucherController extends Controller
         $data = $this->validatedBatch($request);
         $zone = WifiZone::findOrFail($data['wifi_zone_id']);
         $plan = Plan::findOrFail($data['plan_id']);
+        if ($plan->wifi_zone_id && (int) $plan->wifi_zone_id !== (int) $zone->id) {
+            throw ValidationException::withMessages([
+                'plan_id' => 'Ce forfait n’appartient pas à cette WiFi Zone.',
+            ]);
+        }
+        if ($plan->status !== 'active') {
+            throw ValidationException::withMessages([
+                'plan_id' => 'Ce forfait n’est pas actif.',
+            ]);
+        }
         $created = $batch->generate($zone->id, $plan->id, (int) $data['count']);
         $summary = $mikrotik->provisionMany($created);
         $audit->record('vouchers.created', $zone, null, [

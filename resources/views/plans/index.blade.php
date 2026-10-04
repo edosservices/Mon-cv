@@ -18,8 +18,16 @@
                     <p class="lm-price mb-1">{{ \App\Support\Money::format($plan->price, $plan->currency) }}</p>
                     <p class="text-secondary mb-1">{{ $plan->validityLabel() }}</p>
                     <p class="mb-1">{{ $plan->unlimited_data ? 'Internet illimité' : 'Données limitées' }}</p>
-                    @if($plan->mikrotik_profile)
-                        <p class="mb-1">Débit : profil {{ $plan->mikrotik_profile }}</p>
+                    @php
+                        $zoneProfiles = $syncedProfiles->filter(fn ($profile) => (int) $profile->mikrotik?->wifi_zone_id === (int) $plan->wifi_zone_id);
+                        $profileKnown = $zoneProfiles->contains(fn ($profile) => $profile->name === $plan->mikrotik_profile);
+                    @endphp
+                    @if($plan->mikrotik_profile && $zoneProfiles->isNotEmpty() && ! $profileKnown)
+                        <p class="mb-1">Profil MikroTik indisponible</p>
+                    @elseif($plan->mikrotik_profile)
+                        <p class="mb-1">Profil MikroTik : {{ $plan->mikrotik_profile }}</p>
+                    @else
+                        <p class="mb-1">Profil MikroTik : non associé</p>
                     @endif
                     <p class="mb-3">{{ $plan->sold_count }} tickets vendus</p>
                     <div class="d-flex flex-wrap gap-2">

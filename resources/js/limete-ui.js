@@ -531,6 +531,78 @@ ready(() => {
         });
     });
 
+    document.querySelectorAll('[data-sale-form]').forEach((form) => {
+        const qty = form.querySelector('[data-sale-qty]');
+        const total = form.querySelector('[data-sale-total]');
+        const unit = form.querySelector('[data-sale-unit]');
+        const math = form.querySelector('[data-sale-math]');
+        const idle = form.querySelector('.tg-cta-idle');
+        const max = Number(qty?.getAttribute('max') || 100);
+        const chosen = () => form.querySelector('[data-sale-plan]:checked');
+        const paint = () => {
+            const count = Math.min(max, Math.max(1, parseInt(qty?.value || '1', 10) || 1));
+            if (qty) {
+                qty.value = String(count);
+            }
+            const card = chosen();
+            const label = card?.getAttribute('data-price-label') || '—';
+            const raw = card?.getAttribute('data-unit-price');
+            if (unit) {
+                unit.textContent = label;
+            }
+            if (math) {
+                math.textContent = String(count);
+            }
+            if (idle) {
+                idle.textContent = 'GÉNÉRER ' + count + ' TICKETS';
+            }
+            form.querySelectorAll('[data-sale-preset]').forEach((button) => {
+                button.setAttribute('aria-pressed', button.getAttribute('data-sale-preset') === String(count) ? 'true' : 'false');
+            });
+            form.querySelectorAll('.tg-offer').forEach((offer) => {
+                offer.classList.toggle('is-selected', !!offer.querySelector('input')?.checked);
+            });
+            if (!total) {
+                return;
+            }
+            if (raw === null || raw === '' || raw === undefined) {
+                total.textContent = label;
+                return;
+            }
+            const rounded = Math.round(Number(raw) * count);
+            const suffix = String(label).replace(/^[\d\s\u00a0\u202f.,]+/, '').trim();
+            const digits = String(Math.abs(rounded)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            total.textContent = (rounded < 0 ? '-' : '') + digits + (suffix ? ' ' + suffix : '');
+        };
+        form.querySelector('[data-sale-minus]')?.addEventListener('click', () => {
+            if (qty) {
+                qty.value = String(Number(qty.value) - 1);
+            }
+            paint();
+        });
+        form.querySelector('[data-sale-plus]')?.addEventListener('click', () => {
+            if (qty) {
+                qty.value = String(Number(qty.value) + 1);
+            }
+            paint();
+        });
+        qty?.addEventListener('input', paint);
+        form.querySelectorAll('[data-sale-preset]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (qty) {
+                    qty.value = button.getAttribute('data-sale-preset') || '1';
+                }
+                paint();
+            });
+        });
+        form.querySelectorAll('[data-sale-plan]').forEach((input) => input.addEventListener('change', paint));
+        form.addEventListener('submit', () => {
+            form.classList.add('is-sending');
+            form.querySelector('[data-sale-go]')?.setAttribute('aria-busy', 'true');
+        });
+        paint();
+    });
+
     document.querySelectorAll('[data-tg-zone]').forEach((zoneForm) => {
         const wait = zoneForm.querySelector('[data-tg-zone-wait]');
         zoneForm.addEventListener('submit', () => {

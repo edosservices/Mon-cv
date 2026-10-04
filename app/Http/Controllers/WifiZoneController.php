@@ -15,7 +15,10 @@ class WifiZoneController extends Controller
 {
     public function index()
     {
-        $zones = WifiZone::withCount('vouchers')->latest()->get();
+        $zones = WifiZone::with('mikrotiks')->withCount([
+            'vouchers',
+            'plans as active_plans_count' => fn ($query) => $query->where('status', 'active'),
+        ])->latest()->get();
         $clients = Voucher::query()
             ->whereNotNull('customer_id')
             ->selectRaw('wifi_zone_id, count(distinct customer_id) as aggregate')

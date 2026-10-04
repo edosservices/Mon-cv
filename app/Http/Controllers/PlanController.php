@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MikrotikProfile;
 use App\Models\Plan;
+use App\Models\PlanMikrotikProfile;
 use App\Models\WifiZone;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
@@ -13,21 +15,29 @@ class PlanController extends Controller
 {
     public function index()
     {
+        $profiles = MikrotikProfile::query()->with('mikrotik:id,wifi_zone_id,name')->get();
+
         return view('plans.index', [
             'plans' => Plan::with('wifiZone')->withCount([
                 'vouchers as sold_count' => fn ($query) => $query->whereHas('saleItem'),
             ])->latest()->get(),
+            'syncedProfiles' => $profiles,
         ]);
     }
 
     public function create()
     {
-        return view('plans.form', ['plan' => new Plan(['unlimited_data' => true, 'currency' => config('limete.currency'), 'status' => 'active']), 'zones' => WifiZone::orderBy('name')->get()]);
+        return view('plans.form', [
+            'plan' => new Plan(['unlimited_data' => true, 'currency' => config('limete.currency'), 'status' => 'active']),
+            'zones' => WifiZone::orderBy('name')->get(),
+            'profiles' => $this->profiles(),
+        ]);
     }
 
     public function store(Request $request, AuditLogger $audit)
     {
         $plan = Plan::create($this->validated($request));
+        $this->rememberProfile($plan);
         $audit->record('plan.created', $plan, null, $plan->only(['name', 'price', 'duration_seconds']));
 
         return redirect()->route('plans.index')->with('status', 'Forfait créé.');
@@ -35,7 +45,11 @@ class PlanController extends Controller
 
     public function edit(Plan $plan)
     {
-        return view('plans.form', ['plan' => $plan, 'zones' => WifiZone::orderBy('name')->get()]);
+        return view('plans.form', [
+            'plan' => $plan,
+            'zones' => WifiZone::orderBy('name')->get(),
+            'profiles' => $this->profiles(),
+        ]);
     }
 
     public function duplicate(Plan $plan, AuditLogger $audit)
@@ -60,6 +74,7 @@ class PlanController extends Controller
     {
         $old = $plan->only(['name', 'price', 'duration_seconds', 'status']);
         $plan->update($this->validated($request));
+        $this->rememberProfile($plan);
         $audit->record('plan.updated', $plan, $old, $plan->only(['name', 'price', 'duration_seconds', 'status']));
 
         return redirect()->route('plans.index')->with('status', 'Forfait mis à jour.');
@@ -103,6 +118,8 @@ class PlanController extends Controller
             'duration_seconds' => ['required', 'integer', 'min:60', 'max:31536000'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'currency' => ['required', 'string', 'size:3'],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
+            'selling_currency' => ['nullable', 'string', 'size:3'],
             'mikrotik_profile' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:1000'],
             'badge' => ['nullable', Rule::in(['populaire', 'meilleure_offre'])],
@@ -112,7 +129,58 @@ class PlanController extends Controller
 
         $data['unlimited_data'] = $request->boolean('unlimited_data');
         $data['badge'] = ($data['badge'] ?? null) ?: null;
+        $data['selling_price'] = $request->filled('selling_price') ? $data['selling_price'] : null;
+        $data['selling_currency'] = $request->filled('selling_currency') ? $data['selling_currency'] : ($data['currency'] ?? null);
+        $this->assertKnownProfile($request, $data['mikrotik_profile'] ?? null, $data['wifi_zone_id'] ?? null);
 
         return $data;
+    }
+
+    private function profiles()
+    {
+        return MikrotikProfile::query()->with('mikrotik:id,name,wifi_zone_id')->orderBy('name')->get();
+    }
+
+    private function assertKnownProfile(Request $request, ?string $name, mixed $zoneId): void
+    {
+        if (! filled($name) || ! filled($zoneId)) {
+            return;
+        }
+
+        $known = MikrotikProfile::query()
+            ->whereHas('mikrotik', fn ($query) => $query->where('wifi_zone_id', $zoneId))
+            ->pluck('name');
+        if ($known->isEmpty() || $known->contains($name)) {
+            return;
+        }
+
+        $current = $request->route('plan');
+        if ($current instanceof Plan && $current->mikrotik_profile === $name) {
+            return;
+        }
+
+        throw \Illuminate\Validation\ValidationException::withMessages([
+            'mikrotik_profile' => 'Choisissez un profil lu sur le routeur de cette WiFi Zone.',
+        ]);
+    }
+
+    private function rememberProfile(Plan $plan): void
+    {
+        if (! filled($plan->mikrotik_profile) || ! $plan->wifi_zone_id) {
+            return;
+        }
+
+        $profile = MikrotikProfile::query()
+            ->where('name', $plan->mikrotik_profile)
+            ->whereHas('mikrotik', fn ($query) => $query->where('wifi_zone_id', $plan->wifi_zone_id))
+            ->first();
+        if (! $profile) {
+            return;
+        }
+
+        PlanMikrotikProfile::updateOrCreate(
+            ['plan_id' => $plan->id, 'mikrotik_id' => $profile->mikrotik_id],
+            ['mikrotik_profile_id' => $profile->id],
+        );
     }
 }
