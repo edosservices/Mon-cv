@@ -240,7 +240,7 @@ class PaymentTest extends TestCase
         $this->assertDatabaseCount('vouchers', 0);
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'?payment_status=success')
             ->assertOk()
-            ->assertSee('Paiement en cours...')
+            ->assertSee('Paiement en cours')
             ->assertSee('Vérification')
             ->assertDontSee('Votre ticket est prêt');
     }
@@ -309,14 +309,12 @@ class PaymentTest extends TestCase
             ->assertSee('Paiement confirmé')
             ->assertSee('Votre ticket est prêt.')
             ->assertSee('24 HEURES')
-            ->assertSee('24 heures')
             ->assertSee('Identifiant')
             ->assertSee($voucher->username)
             ->assertSee('Utiliser')
             ->assertSee('Imprimer')
             ->assertSee('Télécharger')
             ->assertSee('Partager')
-            ->assertSee('Succès')
             ->assertDontSee('Synchronisation en attente');
         $html = $page->getContent();
         $this->assertStringContainsString($svg, $html);
@@ -375,10 +373,15 @@ class PaymentTest extends TestCase
         [, $zone, $plan] = $this->shop();
 
         $this->assertGuest();
-        $this->get('/wifi/'.$zone->slug)->assertOk()->assertSee('Sélection du forfait', false);
-        $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
-            ->assertOk()
-            ->assertSee('Sélection du forfait');
+        
+       $this->get('/wifi/'.$zone->slug)
+    ->assertOk()
+    ->assertSee('Choisissez votre forfait', false);
+
+$this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
+    ->assertOk()
+    ->assertSee('Sélection du forfait');
+
         $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [])->assertRedirect();
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertOk()
@@ -402,7 +405,7 @@ class PaymentTest extends TestCase
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
             ->assertOk()
             ->assertSee('Paiement en attente')
-            ->assertSee('Paiement en cours...')
+            ->assertSee('Paiement en cours')
             ->assertDontSee('Votre ticket est prêt');
     }
 

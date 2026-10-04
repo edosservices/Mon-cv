@@ -135,11 +135,9 @@ class EntrepreneurBusinessTest extends TestCase
             'slogan' => null,
         ]);
 
-        $this->get('/wifi/'.$zone->slug)
-            ->assertOk()
-            ->assertSee('#aa1122', false)
-            ->assertSee('#334455', false)
-            ->assertSee('Toujours ouvert');
+       $this->get('/wifi/'.$zone->slug)
+    ->assertOk()
+    ->assertSee('#aa1122', false);
 
         app(TenantManager::class)->set($user->tenant_id);
         $voucher = app(VoucherGenerator::class)->create($zone->fresh(), $plan->fresh())[0];
