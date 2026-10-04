@@ -16,6 +16,11 @@ use Throwable;
 
 class MikrotikService
 {
+    /** @var array<string, string> */
+    private array $unreachable = [];
+
+    private bool $batching = false;
+
     public function __construct(private HotspotRouter $router) {}
 
     public function connect(Mikrotik $router): array
@@ -449,14 +454,33 @@ class MikrotikService
     {
         $synced = 0;
         $error = null;
+        $stopped = false;
+        $this->batching = true;
+        $this->unreachable = [];
+        $this->openBatchSessions($vouchers);
 
-        foreach ($vouchers as $voucher) {
-            $result = $this->provisionVoucher($voucher);
-            if ($result->sync_status === 'synced') {
-                $synced++;
-            } else {
+        try {
+            foreach ($vouchers as $voucher) {
+                if ($stopped) {
+                    $this->markUnsynced($voucher, 'failed', (string) $error);
+                    continue;
+                }
+
+                $result = $this->provisionVoucher($voucher);
+                if ($result->sync_status === 'synced') {
+                    $synced++;
+                    continue;
+                }
+
                 $error = $result->sync_error;
+                if ($this->isTransient($error)) {
+                    $stopped = true;
+                }
             }
+        } finally {
+            $this->closeBatchSessions();
+            $this->unreachable = [];
+            $this->batching = false;
         }
 
         return [
@@ -798,10 +822,76 @@ class MikrotikService
         return $id;
     }
 
+    /**
+     * @param  array<int, Voucher>  $vouchers
+     */
+    private function openBatchSessions(array $vouchers): void
+    {
+        if (! method_exists($this->router, 'open')) {
+            return;
+        }
+
+        foreach ($this->batchTargets($vouchers) as $router) {
+            try {
+                $this->router->open(
+                    $router->host,
+                    $router->connectionPort(),
+                    $router->username,
+                    (string) $router->password,
+                    (int) ($router->timeout ?: 5),
+                    $router->usesSecureApi(),
+                );
+            } catch (Throwable $exception) {
+                $message = $this->redact($exception->getMessage(), [$router->password]);
+                $this->unreachable[$this->routerKey($router)] = $message !== ''
+                    ? $message
+                    : 'Connexion impossible au routeur.';
+            }
+        }
+    }
+
+    private function closeBatchSessions(): void
+    {
+        if (method_exists($this->router, 'close')) {
+            $this->router->close();
+        }
+    }
+
+    /**
+     * @param  array<int, Voucher>  $vouchers
+     * @return array<int, Mikrotik>
+     */
+    private function batchTargets(array $vouchers): array
+    {
+        $voucher = $vouchers[0] ?? null;
+        if (! $voucher instanceof Voucher) {
+            return [];
+        }
+
+        $voucher->loadMissing('wifiZone.mikrotiks');
+        $routers = $this->authorizedRouters($voucher);
+        if ($routers->isEmpty()) {
+            return [];
+        }
+
+        $online = $routers->filter(fn (Mikrotik $router) => $router->status === 'online')->values();
+
+        return ($online->isNotEmpty() ? $online : collect([$routers->first()]))->all();
+    }
+
+    private function routerKey(Mikrotik $router): string
+    {
+        return strtolower((string) $router->host).'|'.$router->connectionPort().'|'.($router->usesSecureApi() ? '1' : '0');
+    }
+
     private function command(Mikrotik $router, array $words, array $secrets = []): array
     {
         $path = $words[0] ?? 'inconnue';
         $secrets[] = $router->password;
+        $key = $this->routerKey($router);
+        if ($this->batching && isset($this->unreachable[$key])) {
+            throw new RuntimeException($this->unreachable[$key]);
+        }
         $started = microtime(true);
 
         try {
@@ -816,6 +906,9 @@ class MikrotikService
             );
         } catch (RuntimeException $exception) {
             $message = $this->redact($exception->getMessage(), $secrets);
+            if ($this->batching && ($this->isOffline($exception) || $this->isTransient($message))) {
+                $this->unreachable[$key] = $message;
+            }
             Log::warning('mikrotik.command_failed', array_merge($this->trace($router, $path, $started), [
                 'success' => false,
                 'message' => $message,
@@ -1032,7 +1125,7 @@ class MikrotikService
     {
         $message = strtolower($exception->getMessage());
 
-        foreach (['connexion impossible', 'timed out', 'time out', 'connection refused', 'no route to host', 'network is unreachable', 'name or service not known'] as $needle) {
+        foreach (['connexion impossible', 'timed out', 'time out', 'connection refused', 'no route to host', 'network is unreachable', 'name or service not known', 'failed to respond', 'connection attempt failed', 'n’a pas répondu', 'tentative de connexion'] as $needle) {
             if (str_contains($message, $needle)) {
                 return true;
             }
@@ -1045,7 +1138,7 @@ class MikrotikService
     {
         $message = strtolower((string) $message);
 
-        foreach (['connexion impossible', 'timed out', 'time out', 'timeout', 'connection refused', 'no route', 'unreachable', 'name or service not known'] as $needle) {
+        foreach (['connexion impossible', 'timed out', 'time out', 'timeout', 'connection refused', 'no route', 'unreachable', 'name or service not known', 'failed to respond', 'connection attempt failed', 'n’a pas répondu', 'tentative de connexion'] as $needle) {
             if ($message !== '' && str_contains($message, $needle)) {
                 return true;
             }

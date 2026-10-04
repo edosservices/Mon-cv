@@ -155,6 +155,106 @@ class MikrotikSyncTest extends TestCase
         );
     }
 
+    public function test_a_batch_does_not_retry_a_router_that_does_not_answer(): void
+    {
+        [, $zone, $plan] = $this->workspace();
+        $plan->update(['mikrotik_profile' => '24H']);
+        $fake = new class extends FakeHotspotRouter
+        {
+            public int $opens = 0;
+
+            public function open(string $host, int $port, string $username, string $password, int $timeout = 5, bool $secure = false): void
+            {
+                $this->opens++;
+                throw new \RuntimeException('A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.');
+            }
+
+            public function close(): void {}
+        };
+        $this->app->instance(HotspotRouter::class, $fake);
+        $vouchers = app(VoucherGenerator::class)->create($zone, $plan->fresh(), 8);
+
+        $started = microtime(true);
+        $summary = app(MikrotikService::class)->provisionMany($vouchers);
+
+        $this->assertLessThan(5, microtime(true) - $started);
+        $this->assertSame(1, $fake->opens);
+        $this->assertSame([], $fake->commands);
+        $this->assertSame(0, $summary['synced']);
+        $this->assertSame(8, $summary['unsynced']);
+        $this->assertSame(8, Voucher::query()->where('sync_status', 'failed')->count());
+        $this->assertStringContainsString('failed to respond', (string) $summary['error']);
+    }
+
+    public function test_a_batch_reuses_one_router_session_for_every_ticket(): void
+    {
+        [, $zone, $plan] = $this->workspace();
+        $plan->update(['mikrotik_profile' => '24H']);
+        $fake = new class extends FakeHotspotRouter
+        {
+            public int $opens = 0;
+
+            public int $closes = 0;
+
+            public function open(string $host, int $port, string $username, string $password, int $timeout = 5, bool $secure = false): void
+            {
+                $this->opens++;
+            }
+
+            public function close(): void
+            {
+                $this->closes++;
+            }
+        };
+        $this->app->instance(HotspotRouter::class, $fake);
+        $vouchers = app(VoucherGenerator::class)->create($zone, $plan->fresh(), 4);
+
+        $summary = app(MikrotikService::class)->provisionMany($vouchers);
+
+        $this->assertSame(4, $summary['synced']);
+        $this->assertSame(0, $summary['unsynced']);
+        $this->assertSame(1, $fake->opens);
+        $this->assertSame(1, $fake->closes);
+        $adds = array_values(array_filter(
+            $fake->commands,
+            fn (array $call) => ($call['words'][0] ?? '') === '/ip/hotspot/user/add',
+        ));
+        $this->assertCount(4, $adds);
+        $this->assertSame(4, Voucher::query()->where('sync_status', 'synced')->count());
+    }
+
+    public function test_generating_many_tickets_returns_when_the_router_does_not_answer(): void
+    {
+        [$user, $zone, $plan] = $this->workspace();
+        $plan->update(['mikrotik_profile' => '24H']);
+        $fake = new class extends FakeHotspotRouter
+        {
+            public int $opens = 0;
+
+            public function open(string $host, int $port, string $username, string $password, int $timeout = 5, bool $secure = false): void
+            {
+                $this->opens++;
+                throw new \RuntimeException('failed to respond');
+            }
+
+            public function close(): void {}
+        };
+        $this->app->instance(HotspotRouter::class, $fake);
+
+        $this->actingAs($user)->post('/vouchers', [
+            'wifi_zone_id' => $zone->id,
+            'plan_id' => $plan->id,
+            'count' => 20,
+            'template' => 'moderne',
+            'per_page' => 15,
+        ])->assertRedirect('/vouchers/generated');
+
+        $this->assertSame(1, $fake->opens);
+        $this->assertSame([], $fake->commands);
+        $this->assertSame(20, Voucher::query()->count());
+        $this->assertSame(20, Voucher::query()->where('sync_status', 'failed')->count());
+    }
+
     public function test_the_voucher_screen_does_not_claim_a_router_account_when_sync_fails(): void
     {
         [$user, $zone, $plan] = $this->workspace();
