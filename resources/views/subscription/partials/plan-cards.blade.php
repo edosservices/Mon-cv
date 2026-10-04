@@ -42,9 +42,9 @@
                         @if($isCurrent)
                             <button type="button" class="btn btn-outline-secondary w-100" disabled aria-current="true">Abonnement actuel</button>
                         @elseif($canUpgrade)
-                            <a class="btn btn-primary btn-lg w-100" href="{{ $catalog->checkoutUrl($plan) }}">Passer aux avantages</a>
+                            <a class="btn btn-primary btn-lg w-100" href="{{ $catalog->checkoutUrl($plan) }}" data-pay-plan="{{ $plan->id }}" data-pay-name="{{ $plan->name }}" data-pay-price="{{ $catalog->priceLabel($plan) }}">Passer aux avantages</a>
                         @else
-                            <a class="btn btn-outline-primary w-100" href="{{ $catalog->checkoutUrl($plan) }}">Choisir cette formule</a>
+                            <a class="btn btn-outline-primary w-100" href="{{ $catalog->checkoutUrl($plan) }}" data-pay-plan="{{ $plan->id }}" data-pay-name="{{ $plan->name }}" data-pay-price="{{ $catalog->priceLabel($plan) }}">Choisir cette formule</a>
                         @endif
                     </div>
                 </div>

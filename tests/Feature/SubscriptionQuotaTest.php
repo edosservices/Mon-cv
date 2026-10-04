@@ -108,6 +108,12 @@ class SubscriptionQuotaTest extends TestCase
             ->assertSee('8.9 $ / mois', false)
             ->assertSee('Passer aux avantages', false)
             ->assertSee(route('subscription.show', ['plan' => $business->id]).'#paiement', false)
+            ->assertSee('Choisissez votre moyen de paiement', false)
+            ->assertSee('Airtel Money', false)
+            ->assertSee('Orange Money', false)
+            ->assertSee('M-Pesa', false)
+            ->assertSee(route('subscription.checkout'), false)
+            ->assertDontSee('Changer ou renouveler', false)
             ->assertDontSee('Abonnement actuel', false)
             ->assertDontSee('ARCHIVE', false)
             ->assertDontSee('Paiement réussi', false);
@@ -153,7 +159,11 @@ class SubscriptionQuotaTest extends TestCase
             ->assertSee('15 000 FC / mois', false)
             ->assertSee('8.9 $ / mois', false)
             ->assertSee('Passer aux avantages', false)
+            ->assertSee('Choisissez votre moyen de paiement', false)
+            ->assertSee('Airtel Money', false)
             ->assertSee(route('subscription.checkout'), false)
+            ->assertDontSee('Changer ou renouveler', false)
+            ->assertDontSee('Enregistrer le paiement', false)
             ->assertDontSee('Paiement réussi', false)
             ->assertDontSee('60 / 500', false);
     }
@@ -269,7 +279,9 @@ class SubscriptionQuotaTest extends TestCase
             ->assertSee('04/09/2026', false)
             ->assertSee('4.9 $ / mois', false)
             ->assertSee('8.9 $ / mois', false)
+            ->assertSee('Choisissez votre moyen de paiement', false)
             ->assertSee(route('subscription.checkout'), false)
+            ->assertDontSee('Changer ou renouveler', false)
             ->assertDontSee('Paiement réussi', false);
     }
 

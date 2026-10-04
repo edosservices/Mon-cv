@@ -1,11 +1,15 @@
+import * as bootstrap from 'bootstrap';
+
+window.bootstrap = bootstrap;
+
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('paiement');
+    const form = document.getElementById('paiement-form');
     if (!form) {
         return;
     }
 
-    form.addEventListener('submit', () => {
-        const button = form.querySelector('[type="submit"]');
+    form.addEventListener('submit', (event) => {
+        const button = event.submitter;
         if (!button) {
             return;
         }

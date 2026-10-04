@@ -69,6 +69,7 @@
 </form>
 @if(($zoneLimitReached ?? false) || $errors->has('subscription_limit_reached'))
     @include('subscription.upgrade-modal')
+    @include('subscription.partials.pay-modal')
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {

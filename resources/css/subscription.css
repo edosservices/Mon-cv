@@ -30,7 +30,8 @@
 
 .sub-page .btn.w-100,
 .sub-page .card-footer .btn,
-.sub-page .card-body .btn {
+.sub-page .card-body .btn,
+.sub-page .pay-method {
     width: 100%;
 }
 

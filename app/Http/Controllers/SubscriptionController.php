@@ -12,16 +12,12 @@ class SubscriptionController extends Controller
     public function show(SubscriptionCatalog $catalog)
     {
         $subscription = $catalog->current();
-        $plans = $catalog->activePlans();
-        $requested = $plans->firstWhere('id', (int) request('plan'));
 
         return view('subscription.show', [
             'subscription' => $subscription,
-            'plans' => $plans,
-            'providers' => config('limete.payment_providers'),
+            'plans' => $catalog->activePlans(),
             'catalog' => $catalog,
             'usage' => $catalog->usage(),
-            'selectedPlanId' => $requested?->id ?? $subscription?->saas_plan_id,
             'expired' => $catalog->isExpired($subscription),
             'daysRemaining' => $catalog->daysRemaining($subscription),
         ]);
@@ -44,6 +40,10 @@ class SubscriptionController extends Controller
             return back()->with('warning', $exception->getMessage());
         }
 
-        return redirect()->route('subscription.show')->with('status', 'Paiement '.$payment->transaction_reference.' enregistré. Il sera confirmé après réception.');
+        $provider = config('limete.payment_providers.'.$payment->provider, $payment->provider);
+        $reference = trim((string) $payment->transaction_reference);
+        $detail = $reference !== '' ? $reference : $provider;
+
+        return redirect()->route('subscription.show')->with('status', 'Paiement '.$detail.' enregistré. Il sera confirmé après réception.');
     }
 }

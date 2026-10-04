@@ -80,5 +80,6 @@
 @endif
 @if($zoneLimitReached)
     @include('subscription.upgrade-modal')
+    @include('subscription.partials.pay-modal')
 @endif
 @endsection

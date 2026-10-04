@@ -16,7 +16,9 @@
             <div class="card-body p-4">
                 <h2 class="h5 fw-bold mb-2">Votre abonnement a expiré.</h2>
                 <p class="text-muted mb-3">Renouvelez votre abonnement pour continuer à utiliser toutes les fonctionnalités.</p>
-                <a class="btn btn-primary btn-lg" href="#paiement">Renouveler mon abonnement</a>
+                @if($plan)
+                    <button type="button" class="btn btn-primary btn-lg" data-pay-plan="{{ $plan->id }}" data-pay-name="{{ $plan->name }}" data-pay-price="{{ $catalog->priceLabel($plan) }}">Renouveler mon abonnement</button>
+                @endif
             </div>
         </section>
     @endif
@@ -127,41 +129,6 @@
         </div>
         @include('subscription.partials.plan-cards')
     </section>
-
-    <form method="POST" action="{{ route('subscription.checkout') }}" id="paiement" class="card border-0 shadow-sm rounded-4">
-        @csrf
-        <div class="card-header bg-transparent border-0 pt-4 px-4">
-            <h2 class="h5 fw-bold mb-1">Changer ou renouveler</h2>
-            <p class="text-muted small mb-0">Le paiement reste en attente jusqu’à confirmation réelle. L’abonnement mensuel n’est pas modifié avant cette confirmation.</p>
-        </div>
-        <div class="card-body px-4">
-            <div class="row g-3">
-                <div class="col-12 col-md-6">
-                    <label class="form-label" for="saas-plan">Plan</label>
-                    <select class="form-select" id="saas-plan" name="saas_plan_id">
-                        @foreach($plans as $offer)
-                            <option value="{{ $offer->id }}" @selected((int) $selectedPlanId === (int) $offer->id)>{{ $offer->name }} — {{ $catalog->priceLabel($offer) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-12 col-md-6">
-                    <label class="form-label" for="provider">Moyen</label>
-                    <select class="form-select" id="provider" name="provider">
-                        @foreach($providers as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label class="form-label" for="transaction-reference">Référence de transaction</label>
-                    <input class="form-control" id="transaction-reference" name="transaction_reference" maxlength="80" value="{{ old('transaction_reference') }}">
-                </div>
-            </div>
-            <p class="text-muted small mt-3 mb-0">Les clés des opérateurs restent dans le fichier .env du serveur. Sans clé, seul le paiement manuel est disponible.</p>
-        </div>
-        <div class="card-footer bg-transparent border-0 px-4 pb-4">
-            <button class="btn btn-primary btn-lg" type="submit">Enregistrer le paiement</button>
-        </div>
-    </form>
 </div>
+@include('subscription.partials.pay-modal')
 @endsection
