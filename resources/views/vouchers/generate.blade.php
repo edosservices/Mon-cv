@@ -9,8 +9,8 @@
 <header class="tg-hero">
     <div>
         <p class="tg-kicker">Limete WiFi</p>
-        <h2>Génération de tickets</h2>
-        <p class="tg-lead">Créer rapidement des tickets WiFi pour vos clients.</p>
+        <h2>Générer des tickets</h2>
+        <p class="tg-lead">Créez plusieurs tickets WiFi en quelques secondes.</p>
     </div>
     @if($quickZone)
         <div class="tg-pills">
@@ -53,6 +53,18 @@
             <p class="tg-hint" data-tg-zone-wait hidden>Chargement du catalogue…</p>
         </form>
     </section>
+    @include('vouchers.sale')
+@endif
+
+@php
+    $askedProfile = (string) request('profile', '');
+    $openPlan = $askedProfile !== '' && collect($quick['profiles'] ?? [])->contains(
+        fn ($profile) => ($profile['name'] ?? '') === $askedProfile && empty($profile['ready'])
+    );
+@endphp
+<details class="tg-advanced" @if($openPlan) open @endif>
+    <summary>Options avancées</summary>
+@if($quickZone)
     @include('vouchers.express')
     @include('vouchers.quick')
 @endif
@@ -149,6 +161,7 @@
     </fieldset>
     <button class="tg-cta" @disabled($zones->isEmpty() || $plans->isEmpty() || $limit < 1)>Générer les tickets</button>
 </form>
+</details>
 </div>
 @endsection
 @push('scripts')

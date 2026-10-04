@@ -982,6 +982,42 @@ class TicketQuickTest extends TestCase
         $this->assertSame('10M/10M', Plan::query()->where('mikrotik_profile', '1Jours')->first()->hotspot['rate_limit']);
     }
 
+    public function test_express_without_a_plan_redirects_away_from_the_post_only_route(): void
+    {
+        [$user, $zone] = $this->shop();
+        $this->bindRouter([
+            '15J' => $this->profileRow('15d', '5M/5M'),
+        ]);
+
+        $this->actingAs($user)->get('/vouchers/quick/express')->assertStatus(405);
+
+        $this->actingAs($user)->post('/vouchers/quick/express', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+            'qty' => 1,
+        ])->assertRedirect(route('vouchers.generate', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+        ]))->assertSessionHas('warning', TicketQuick::MISSING_PLAN);
+
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+
+        $page = $this->actingAs($user)->get(route('vouchers.generate', [
+            'wifi_zone_id' => $zone->id,
+            'profile' => '15J',
+        ]));
+        $page->assertOk()
+            ->assertSee('Créer le forfait LIMETE')
+            ->assertSee('name="profile" value="15J"', false)
+            ->assertSee('id="quick-detailed"  open', false);
+        $html = $page->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<form[^>]*method="POST"[^>]*action="'.preg_quote(route('vouchers.quick.express'), '/').'"/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression('/<form[^>]*method="GET"[^>]*vouchers\/quick\/express/i', $html);
+    }
+
     public function test_one_click_generation_writes_the_profile_users_on_the_router(): void
     {
         [$user, $zone] = $this->shop();
