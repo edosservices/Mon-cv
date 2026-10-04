@@ -8,12 +8,18 @@ use Illuminate\Validation\ValidationException;
 
 class PlanLimiter
 {
-    public function assertZone(): void
+    public function zoneLimitReached(): bool
     {
         $max = auth()->user()?->tenant?->currentSubscription?->saasPlan?->max_zones;
-        if ($max !== null && WifiZone::count() >= $max) {
+
+        return $max !== null && WifiZone::count() >= $max;
+    }
+
+    public function assertZone(): void
+    {
+        if ($this->zoneLimitReached()) {
             throw ValidationException::withMessages([
-                'name' => 'Votre abonnement limite le nombre de WiFi Zones.',
+                'subscription_limit_reached' => 'Votre abonnement actuel a atteint sa limite de WiFi Zones.',
             ]);
         }
     }
