@@ -23,10 +23,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body" id="zoneUpgradeText">
-                <p class="mb-2">Pour créer davantage de zones et développer votre activité, passez à une formule supérieure.</p>
-                <p class="mb-2">Passez à une formule supérieure pour débloquer davantage de zones et profiter de nouvelles fonctionnalités.</p>
-                <p class="text-muted mb-4">Choisissez la formule adaptée à votre activité et débloquez davantage de fonctionnalités.</p>
-                <h3 class="h6 text-center text-uppercase fw-semibold text-muted mb-3">Formules disponibles</h3>
+                <div class="offer-intro mb-3">
+                    <p class="mb-1">Pour créer davantage de zones et développer votre activité, passez à une formule supérieure.</p>
+                    <p class="mb-1">Passez à une formule supérieure pour débloquer davantage de zones et profiter de nouvelles fonctionnalités.</p>
+                    <p class="text-muted mb-0">Choisissez la formule adaptée à votre activité et débloquez davantage de fonctionnalités.</p>
+                </div>
+                <h3 class="h6 text-center fw-bold mb-3">Formules disponibles</h3>
                 @include('subscription.partials.plan-cards')
             </div>
             <div class="modal-footer border-0 pt-0">

@@ -1,58 +1,53 @@
-@php
-    $offerCount = $plans->count();
-    $offerColumn = match (true) {
-        $offerCount <= 1 => 'col-12',
-        $offerCount === 2 => 'col-12 col-md-6',
-        $offerCount === 3 => 'col-12 col-md-6 col-lg-4',
-        default => 'col-12 col-md-6 col-lg-4 col-xl-3',
-    };
-@endphp
-<div class="row g-3 g-lg-4">
-    @foreach($plans as $plan)
-        @php
-            $isCurrent = $subscription && (int) $subscription->saas_plan_id === (int) $plan->id;
-            $canUpgrade = $catalog->raisesZoneLimit($subscription?->saasPlan, $plan);
-            $period = $catalog->periodLabel($plan);
-        @endphp
-        <div class="{{ $offerColumn }}">
-            <article class="card plan-offer h-100 d-flex flex-column shadow-sm border rounded-4 {{ $isCurrent ? 'border-primary shadow' : '' }}" @if($isCurrent) aria-current="true" @endif>
-                <div class="card-header bg-transparent border-0 pt-3 pb-0">
+<div class="offer-shell">
+    <div class="offer-grid" data-offers="{{ $plans->count() }}">
+        @foreach($plans as $plan)
+            @php
+                $isCurrent = $subscription && (int) $subscription->saas_plan_id === (int) $plan->id;
+                $canUpgrade = $catalog->raisesZoneLimit($subscription?->saasPlan, $plan);
+                $period = $catalog->periodLabel($plan);
+                $tone = $loop->index % 4;
+            @endphp
+            <article class="card offer-card h-100 rounded-4 {{ $isCurrent ? 'shadow' : 'shadow-sm' }}" @if($isCurrent) aria-current="true" @endif>
+                <div class="offer-band offer-tone-{{ $tone }}">
                     <div class="d-flex align-items-start justify-content-between gap-2">
-                        <h3 class="h5 fw-bold mb-0 text-break">{{ $plan->name }}</h3>
+                        <div class="min-w-0">
+                            @if($period)
+                                <p class="offer-kicker">{{ $period }}</p>
+                            @endif
+                            <h3 class="offer-name text-break">{{ $plan->name }}</h3>
+                        </div>
                         @if($isCurrent)
-                            <span class="badge text-bg-primary">ACTUEL</span>
+                            <span class="badge rounded-pill offer-badge">ACTUEL</span>
                         @endif
                     </div>
                     @if($isCurrent)
-                        <p class="small fw-semibold text-primary mb-0 mt-2">Votre plan actuel</p>
-                    @elseif($period)
-                        <p class="small text-muted mb-0 mt-2">{{ $period }}</p>
+                        <p class="offer-kicker mt-2 mb-0">Votre plan actuel</p>
                     @endif
+                    <p class="offer-price text-break">{{ $catalog->priceLabel($plan) }}</p>
                 </div>
-                <div class="card-body d-flex flex-column pt-3">
-                    <p class="h4 fw-bold mb-1 text-break">{{ $catalog->priceLabel($plan) }}</p>
+                <div class="card-body">
                     @if($plan->currency)
                         <p class="small text-muted mb-3">Devise : {{ $plan->currency }}</p>
                     @endif
-                    <ul class="list-unstyled mb-0">
+                    <ul class="list-unstyled mb-3">
                         @foreach($catalog->advantages($plan) as $line)
                             <li class="d-flex align-items-start gap-2 mb-2">
-                                <span class="text-success fw-bold" aria-hidden="true">✓</span>
+                                <span class="offer-check" aria-hidden="true">✓</span>
                                 <span>{{ $line }}</span>
                             </li>
                         @endforeach
                     </ul>
-                </div>
-                <div class="card-footer bg-transparent border-0 mt-auto pt-0 pb-3">
-                    @if($isCurrent)
-                        <button type="button" class="btn btn-outline-secondary w-100" disabled aria-current="true">Abonnement actuel</button>
-                    @elseif($canUpgrade)
-                        <a class="btn btn-primary btn-lg w-100" href="{{ $catalog->checkoutUrl($plan) }}">Passer à cette formule</a>
-                    @else
-                        <a class="btn btn-outline-primary w-100" href="{{ $catalog->checkoutUrl($plan) }}">Choisir cette formule</a>
-                    @endif
+                    <div class="mt-auto">
+                        @if($isCurrent)
+                            <button type="button" class="btn btn-outline-secondary w-100" disabled aria-current="true">Abonnement actuel</button>
+                        @elseif($canUpgrade)
+                            <a class="btn btn-primary btn-lg w-100" href="{{ $catalog->checkoutUrl($plan) }}">Passer à cette formule</a>
+                        @else
+                            <a class="btn btn-outline-primary w-100" href="{{ $catalog->checkoutUrl($plan) }}">Choisir cette formule</a>
+                        @endif
+                    </div>
                 </div>
             </article>
-        </div>
-    @endforeach
+        @endforeach
+    </div>
 </div>
