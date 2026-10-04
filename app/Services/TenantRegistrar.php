@@ -29,7 +29,10 @@ class TenantRegistrar
                 'primary_color' => '#0b5ed7',
             ]);
 
-            $role = Role::where('slug', UserRole::Entrepreneur->value)->firstOrFail();
+            $role = Role::firstOrCreate(
+                ['slug' => UserRole::Entrepreneur->value],
+                ['name' => 'Entrepreneur'],
+            );
 
             $user = User::create([
                 'tenant_id' => $tenant->id,
@@ -42,7 +45,23 @@ class TenantRegistrar
             ]);
 
             $plan = SaasPlan::where('code', 'starter')->where('is_active', true)->first()
-                ?? SaasPlan::where('is_active', true)->orderBy('id')->firstOrFail();
+                ?? SaasPlan::where('is_active', true)->orderBy('id')->first()
+                ?? SaasPlan::create([
+                    'code' => 'starter',
+                    'name' => 'STARTER',
+                    'currency' => 'CDF',
+                    'interval_days' => 30,
+                    'max_zones' => 1,
+                    'max_mikrotiks' => 1,
+                    'features' => [
+                        'vouchers' => true,
+                        'basic_statistics' => true,
+                        'advanced_statistics' => false,
+                        'user_management' => false,
+                        'api' => false,
+                    ],
+                    'is_active' => true,
+                ]);
 
             Subscription::create([
                 'tenant_id' => $tenant->id,

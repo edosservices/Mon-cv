@@ -20,6 +20,35 @@ class PlatformTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_the_business_registration_page_is_reachable(): void
+    {
+        $this->get('/register')
+            ->assertOk()
+            ->assertSee('Créer mon entreprise')
+            ->assertSee('method="POST"', false)
+            ->assertSee('action="'.route('register').'"', false);
+    }
+
+    public function test_registration_creates_the_catalog_when_it_is_missing(): void
+    {
+        $this->assertSame(0, Role::query()->count());
+
+        $this->post('/register', [
+            'name' => 'Aline Kabila',
+            'company' => 'Aline Wifi',
+            'phone' => '+243810000077',
+            'email' => 'aline@example.com',
+            'password' => 'motdepasse',
+            'password_confirmation' => 'motdepasse',
+            'city' => 'Kinshasa',
+            'country' => 'RDC',
+        ])->assertRedirect('/dashboard');
+
+        $this->assertAuthenticated();
+        $this->assertNotNull(Role::query()->where('slug', 'entrepreneur')->first());
+        $this->assertDatabaseHas('tenants', ['name' => 'Aline Wifi']);
+    }
+
     public function test_registration_creates_tenant_user_and_trial(): void
     {
         Platform::seed();
