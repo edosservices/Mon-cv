@@ -39,7 +39,7 @@
         <p>Entreprise : <strong data-step-summary="company"></strong></p>
         <div class="mt-3 flex gap-2">
             <button class="lm-btn" type="button" data-step-prev>Retour</button>
-            <button class="lm-btn primary">Créer le compte</button>
+            <button class="lm-btn primary" type="submit">Créer le compte</button>
         </div>
     </section>
 </form>
