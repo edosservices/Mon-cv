@@ -3,7 +3,7 @@
 @section('content')
 @php
     $template = $batch['template'] ?? 'moderne';
-    $perPage = (int) ($batch['per_page'] ?? 6);
+    $perPage = (int) ($batch['per_page'] ?? \App\Services\TicketSheet::ECONOMICAL);
 @endphp
 <div class="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-slate-600">{{ $vouchers->count() }} ticket(s). Cochez ceux à imprimer ensemble.</p>
@@ -21,7 +21,7 @@
     </label>
     <label class="text-sm font-semibold">Nombre de tickets par page
         <select class="mt-1 w-full rounded-xl border px-3 py-3" name="per_page">
-            @foreach([4 => '4 tickets / page', 6 => '6 tickets / page', 8 => '8 tickets / page'] as $value => $label)
+            @foreach(\App\Services\TicketSheet::layoutOptions() as $value => $label)
                 <option value="{{ $value }}" @selected($perPage === $value)>{{ $label }}</option>
             @endforeach
         </select>

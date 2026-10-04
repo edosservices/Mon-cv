@@ -93,7 +93,7 @@ class VoucherController extends Controller
                         ? request()->string('template')->toString()
                         : (string) request()->user()?->tenant?->ticket_style
                 ),
-                'per_page' => in_array(request()->integer('per_page'), [4, 6, 8], true) ? request()->integer('per_page') : 6,
+                'per_page' => TicketSheet::normalizePerPage(request()->integer('per_page')),
             ],
         ]);
     }
@@ -145,7 +145,7 @@ class VoucherController extends Controller
                 'wifi_zone_id' => $zone->id,
                 'plan_id' => $created[0]->plan_id,
                 'template' => 'moderne',
-                'per_page' => 6,
+                'per_page' => TicketSheet::ECONOMICAL,
                 'count' => count($created),
             ],
         ]);
@@ -216,7 +216,7 @@ class VoucherController extends Controller
                 'wifi_zone_id' => $zone->id,
                 'plan_id' => $created[0]->plan_id,
                 'template' => 'moderne',
-                'per_page' => 6,
+                'per_page' => TicketSheet::ECONOMICAL,
                 'count' => count($created),
             ],
         ]);
@@ -629,7 +629,7 @@ class VoucherController extends Controller
             'ids' => ['required', 'array', 'min:1', 'max:100'],
             'ids.*' => ['integer'],
             'template' => ['required', Rule::in(TicketTemplates::keys())],
-            'per_page' => ['required', Rule::in([4, 6, 8])],
+            'per_page' => ['required', Rule::in(array_keys(TicketSheet::layoutOptions()))],
             'templates' => ['nullable', 'array'],
             'templates.*' => ['nullable', Rule::in(TicketTemplates::keys())],
         ]);
@@ -832,7 +832,7 @@ class VoucherController extends Controller
     {
         $request->merge([
             'template' => $request->input('template', TicketTemplates::MODERN),
-            'per_page' => $request->input('per_page', 6),
+            'per_page' => $request->input('per_page', TicketSheet::ECONOMICAL),
         ]);
 
         return $request->validate([
@@ -840,7 +840,7 @@ class VoucherController extends Controller
             'plan_id' => ['required', 'integer'],
             'count' => ['required', 'integer', 'min:1', 'max:100'],
             'template' => ['required', Rule::in(TicketTemplates::keys())],
-            'per_page' => ['required', Rule::in([4, 6, 8])],
+            'per_page' => ['required', Rule::in(array_keys(TicketSheet::layoutOptions()))],
         ], [
             'count.max' => 'La quantité maximale est de :max tickets par génération.',
             'count.min' => 'Indiquez au moins un ticket.',

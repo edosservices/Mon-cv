@@ -105,7 +105,7 @@
     $planId = old('plan_id', $prefill['plan_id']);
     $count = old('count', $prefill['count'] ?: ($limit > 0 ? min(20, $limit) : 1));
     $template = old('template', $prefill['template'] ?: 'moderne');
-    $perPage = (int) old('per_page', $prefill['per_page'] ?: 6);
+    $perPage = (int) old('per_page', $prefill['per_page'] ?: \App\Services\TicketSheet::ECONOMICAL);
 @endphp
 
 @if($limit < 1)
@@ -154,10 +154,11 @@
     <fieldset class="text-sm font-semibold">
         <legend>Nombre de tickets par page</legend>
         <div class="mt-2 flex flex-wrap gap-3 font-normal">
-            @foreach([4, 6, 8] as $layout)
-                <label class="inline-flex items-center gap-2"><input type="radio" name="per_page" value="{{ $layout }}" @checked($perPage === $layout)> {{ $layout }} tickets / page</label>
+            @foreach(\App\Services\TicketSheet::layoutOptions() as $layout => $label)
+                <label class="inline-flex items-center gap-2"><input type="radio" name="per_page" value="{{ $layout }}" @checked($perPage === (int) $layout)> {{ $label }}</label>
             @endforeach
         </div>
+        <p class="mt-2 text-xs font-normal text-slate-600">15 tickets tiennent sur une page A4. Le logo se règle dans <a href="{{ route('business.edit') }}">Mon business</a>. Le QR ouvre directement l’accès internet.</p>
     </fieldset>
     <button class="tg-cta" @disabled($zones->isEmpty() || $plans->isEmpty() || $limit < 1)>Générer les tickets</button>
 </form>

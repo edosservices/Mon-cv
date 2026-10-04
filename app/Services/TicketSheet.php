@@ -12,6 +12,26 @@ use Illuminate\Support\Facades\Storage;
 
 class TicketSheet
 {
+    public const ECONOMICAL = 15;
+
+    /**
+     * @return array<int, string>
+     */
+    public static function layoutOptions(): array
+    {
+        return [
+            self::ECONOMICAL => '15 tickets / page',
+            4 => '4 tickets / page',
+            6 => '6 tickets / page',
+            8 => '8 tickets / page',
+        ];
+    }
+
+    public static function normalizePerPage(int $perPage): int
+    {
+        return array_key_exists($perPage, self::layoutOptions()) ? $perPage : self::ECONOMICAL;
+    }
+
     /**
      * Un modèle par ticket est possible via $templatesById.
      * Sans entrée pour un identifiant, le modèle commun est utilisé.
@@ -23,11 +43,13 @@ class TicketSheet
     public function pages(Collection $vouchers, string $template, int $perPage, array $templatesById = []): array
     {
         $shared = TicketTemplates::normalize($template);
-        $perPage = in_array($perPage, [4, 6, 8], true) ? $perPage : 6;
-        $tickets = $vouchers->map(function (Voucher $voucher) use ($shared, $templatesById) {
+        $perPage = self::normalizePerPage($perPage);
+        $tickets = $vouchers->values()->map(function (Voucher $voucher, int $index) use ($shared, $templatesById) {
             $chosen = TicketTemplates::normalize($templatesById[$voucher->id] ?? $shared);
+            $payload = $this->payload($voucher, $chosen);
+            $payload['number'] = $index + 1;
 
-            return $this->payload($voucher, $chosen);
+            return $payload;
         })->all();
 
         return [
@@ -66,9 +88,12 @@ class TicketSheet
         $zone?->loadMissing('tenant');
         $plan = $voucher->plan;
         $publicUrl = route('tickets.public', $voucher->public_token);
+        $accessUrl = $zone?->hotspotAccessUrl((string) $voucher->username, (string) $voucher->password);
+        $host = $zone?->hotspotLoginHost();
 
         return [
             'id' => $voucher->id,
+            'number' => 0,
             'template' => $template,
             'business' => $zone?->tenant?->name ?: $zone?->displayLabel() ?: 'WiFi',
             'zone' => $zone?->name ?: '',
@@ -77,9 +102,13 @@ class TicketSheet
             'plan' => $plan?->name ?: 'Forfait',
             'price' => Money::format($voucher->price_amount ?? $plan?->price, $voucher->currency ?: $plan?->currency),
             'duration' => $plan?->validityLabel() ?: '',
+            'offer' => $this->compactOffer($voucher),
             'username' => $voucher->username,
             'password' => $voucher->password,
             'qr' => QrCodes::svg($publicUrl),
+            'access' => $accessUrl ? 'hotspot' : 'ticket',
+            'access_qr' => QrCodes::svg($accessUrl ?: $publicUrl),
+            'login' => $host ? 'http://'.$host : null,
             'public_url' => $publicUrl,
             'created' => $voucher->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i'),
             'expires' => $voucher->expires_at?->timezone(config('app.timezone'))->format('d/m/Y H:i'),
@@ -88,6 +117,31 @@ class TicketSheet
             'address' => $zone?->addressLine(),
             'status' => $voucher->statusLabel(),
         ];
+    }
+
+    private function compactOffer(Voucher $voucher): string
+    {
+        $plan = $voucher->plan;
+        $seconds = (int) ($plan?->duration_seconds ?? 0);
+        if ($seconds > 0 && $seconds % 86400 === 0) {
+            $span = ((int) ($seconds / 86400)).'d';
+        } elseif ($seconds > 0 && $seconds % 3600 === 0) {
+            $span = ((int) ($seconds / 3600)).'h';
+        } elseif ($seconds > 0 && $seconds % 60 === 0) {
+            $span = ((int) ($seconds / 60)).'m';
+        } else {
+            $span = $plan?->validityLabel() ?: '';
+        }
+
+        $amount = $voucher->price_amount ?? $plan?->price;
+        if ($amount === null || $amount === '') {
+            return trim($span);
+        }
+
+        $currency = $voucher->currency ?: $plan?->currency ?: 'CDF';
+        $code = $currency === 'CDF' ? 'FC' : $currency;
+
+        return trim($span.' '.$code.' '.number_format((float) $amount, 2, '.', ','));
     }
 
     private function logo(WifiZone $zone): ?string
@@ -102,7 +156,20 @@ class TicketSheet
         }
 
         $full = Storage::disk('public')->path($path);
+        if (! is_file($full)) {
+            return null;
+        }
 
-        return is_file($full) ? $full : $zone->logoUrl();
+        $mime = mime_content_type($full) ?: '';
+        if (! in_array($mime, ['image/png', 'image/jpeg', 'image/webp', 'image/gif'], true)) {
+            return null;
+        }
+
+        $bytes = file_get_contents($full);
+        if ($bytes === false || $bytes === '') {
+            return null;
+        }
+
+        return 'data:'.$mime.';base64,'.base64_encode($bytes);
     }
 }
