@@ -53,7 +53,7 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ([
-            ['code' => 'starter', 'name' => 'STARTER', 'price' => null, 'currency' => 'CDF', 'max_zones' => 1, 'max_mikrotiks' => 1, 'features' => ['vouchers' => true, 'basic_statistics' => true, 'advanced_statistics' => false, 'user_management' => false, 'api' => false]],
+            ['code' => 'starter', 'name' => 'STARTER', 'price' => 0, 'currency' => 'USD', 'max_zones' => 1, 'max_mikrotiks' => 1, 'features' => ['vouchers' => true, 'basic_statistics' => true, 'advanced_statistics' => false, 'user_management' => false, 'api' => false]],
             ['code' => 'business', 'name' => 'BUSINESS', 'price' => 4.90, 'currency' => 'USD', 'max_zones' => null, 'max_mikrotiks' => null, 'features' => ['vouchers' => true, 'basic_statistics' => true, 'advanced_statistics' => true, 'user_management' => true, 'api' => false]],
             ['code' => 'pro', 'name' => 'PRO', 'price' => 8.90, 'currency' => 'USD', 'max_zones' => null, 'max_mikrotiks' => null, 'features' => ['vouchers' => true, 'basic_statistics' => true, 'advanced_statistics' => true, 'user_management' => true, 'api' => true]],
         ] as $plan) {

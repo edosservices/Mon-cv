@@ -72,7 +72,10 @@ class SubscriptionCatalog
         $currency = $plan->currency ?: config('limete.currency');
 
         if ($currency === 'USD') {
-            return number_format((float) $plan->price, 1, '.', '').' $';
+            $amount = (float) $plan->price;
+            $decimals = $amount == 0.0 ? 2 : 1;
+
+            return number_format($amount, $decimals, '.', '').' $';
         }
 
         return Money::shop($plan->price, $currency);

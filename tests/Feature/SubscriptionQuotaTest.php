@@ -138,7 +138,7 @@ class SubscriptionQuotaTest extends TestCase
             ->assertOk()
             ->assertSee('Votre abonnement', false)
             ->assertSee('STARTER', false)
-            ->assertSee('À définir / mois', false)
+            ->assertSee('0.00 $ / mois', false)
             ->assertSee('Période d’essai', false)
             ->assertSee('Essai', false)
             ->assertSee('04/10/2026', false)
