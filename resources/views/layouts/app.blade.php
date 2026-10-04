@@ -5,6 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'LIMETE WIFI MANAGER')</title>
     <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
+    {{-- La coque reste lisible même si le bundle Vite est absent ou périmé. --}}
+    <style>
+        .lm-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        .lm-app { color: #122033; font-family: "Segoe UI", system-ui, sans-serif; background: #f3f6fb; }
+        .lm-brand-wordmark, .lm-brand-logo, .lm-nav-logo, .lm-account-logo { display: block; width: auto; max-width: min(100%, 180px); max-height: 52px; height: auto; object-fit: contain; }
+        .lm-frame { min-height: 100vh; display: grid; }
+        .lm-side { display: flex; flex-direction: column; min-width: 0; background: #071428; color: #fff; }
+        .lm-side a, .lm-nav-link, .lm-nav summary, .lm-word { color: inherit; text-decoration: none; }
+        .lm-side-head, .lm-side-nav, .lm-account { padding: 10px 12px; }
+        .lm-account { margin-top: auto; display: grid; gap: 6px; }
+        .lm-brand, .lm-account-card, .lm-word, .lm-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .lm-account-copy { display: grid; min-width: 0; }
+        .lm-account-copy strong, .lm-account-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lm-account-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #1463f3; color: #fff; font-weight: 800; }
+        .lm-nav-link, .lm-nav summary { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 8px; border-radius: 10px; }
+        .lm-top { justify-content: space-between; min-height: 64px; padding: 8px 16px; background: #fff; border-bottom: 1px solid rgba(18, 32, 51, .08); }
+        .lm-main, .lm-content { min-width: 0; }
+        .lm-content { padding: 16px; }
+        .lm-collapse { color: inherit; background: transparent; border: 1px solid rgba(255, 255, 255, .2); border-radius: 999px; }
+        @media (max-width: 1023px) {
+            .lm-side { position: fixed; inset: 0 auto 0 0; width: min(86vw, 300px); z-index: 40; transform: translateX(-105%); overflow: auto; }
+            .lm-side.is-open { transform: none; }
+        }
+        @media (min-width: 1024px) {
+            .lm-frame { grid-template-columns: 248px minmax(0, 1fr); }
+            .lm-side { position: sticky; top: 0; height: 100vh; overflow: auto; }
+            .lm-menu, .lm-tabbar { display: none; }
+        }
+    </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
     @auth

@@ -2,7 +2,16 @@
 @section('heading', 'Tableau de bord')
 @section('body-class', 'en-dash')
 @push('head')
-    @vite(['resources/css/dashboard.css', 'resources/js/dashboard.js'])
+    @php
+        try {
+            echo app(\Illuminate\Foundation\Vite::class)([
+                'resources/css/dashboard.css',
+                'resources/js/dashboard.js',
+            ]);
+        } catch (\Throwable $exception) {
+            // Les cartes restent lisibles si le bundle des graphiques n’est pas encore compilé.
+        }
+    @endphp
 @endpush
 @section('content')
 @php
