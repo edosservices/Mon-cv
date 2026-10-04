@@ -10,7 +10,7 @@
             <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
         @endforeach
         <input type="hidden" name="template" value="{{ $template }}">
-        <input type="hidden" name="per_page" value="6">
+        <input type="hidden" name="per_page" value="{{ \App\Services\TicketSheet::ECONOMICAL }}">
         <button class="btn biz-btn">Imprimer</button>
     </form>
     <form method="POST" action="{{ route('vouchers.sheet-pdf') }}">
@@ -19,7 +19,7 @@
             <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
         @endforeach
         <input type="hidden" name="template" value="{{ $template }}">
-        <input type="hidden" name="per_page" value="6">
+        <input type="hidden" name="per_page" value="{{ \App\Services\TicketSheet::ECONOMICAL }}">
         <button class="btn btn-outline-secondary">PDF</button>
     </form>
     <a class="btn btn-outline-secondary" href="{{ route('sales.quick') }}">Nouvelle vente</a>

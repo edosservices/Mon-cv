@@ -30,7 +30,7 @@
             @csrf
             <input type="hidden" name="wifi_zone_id" value="{{ $quickZone->id }}">
             <input type="hidden" name="template" value="moderne">
-            <input type="hidden" name="per_page" value="6">
+            <input type="hidden" name="per_page" value="{{ \App\Services\TicketSheet::ECONOMICAL }}">
             <div class="tg-offers">
                 @foreach($salePlans as $plan)
                     @php
