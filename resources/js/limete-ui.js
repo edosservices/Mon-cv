@@ -372,11 +372,56 @@ ready(() => {
             comment.value = parts.join(' · ');
         };
         const summaries = root.querySelectorAll('[data-summary-for]');
+        const previews = root.querySelectorAll('[data-profile-preview]');
+        const qtyInput = form.querySelector('[data-tg-qty]');
+        const countNode = form.querySelector('[data-tg-count]');
+        const totalNode = form.querySelector('[data-tg-total]');
+        const formatTotal = (amount, label) => {
+            const rounded = Math.round(Number(amount));
+            if (!Number.isFinite(rounded)) {
+                return label || '—';
+            }
+            const suffix = String(label || '').replace(/^[\d\s\u00a0\u202f.,]+/, '').trim();
+            const digits = String(Math.abs(rounded)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            const signed = rounded < 0 ? '-' + digits : digits;
+            return suffix ? signed + ' ' + suffix : signed;
+        };
+        const refreshTotal = () => {
+            const qty = Math.max(1, parseInt(qtyInput?.value || '1', 10) || 1);
+            if (countNode) {
+                countNode.textContent = String(qty);
+            }
+            if (!totalNode) {
+                return;
+            }
+            const visible = [...summaries].find((node) => !node.hidden);
+            if (!visible) {
+                return;
+            }
+            const unit = visible.getAttribute('data-unit-price');
+            const label = visible.getAttribute('data-price-label') || '';
+            if (unit === null || unit === '') {
+                totalNode.textContent = label || '—';
+                return;
+            }
+            totalNode.textContent = formatTotal(Number(unit) * qty, label);
+        };
+        let summaryReady = false;
         const showSummary = () => {
             const selected = profile?.value || '';
             summaries.forEach((node) => {
-                node.hidden = node.getAttribute('data-summary-for') !== selected;
+                const on = node.getAttribute('data-summary-for') === selected;
+                node.hidden = !on;
+                node.classList.remove('tg-in');
+                if (on && summaryReady && !reduce) {
+                    node.classList.add('tg-in');
+                }
             });
+            previews.forEach((node) => {
+                node.hidden = node.getAttribute('data-profile-preview') !== selected;
+            });
+            refreshTotal();
+            summaryReady = true;
         };
         profile?.addEventListener('change', () => {
             showSummary();
@@ -403,6 +448,35 @@ ready(() => {
         }
         if (comment && comment.value.trim() !== '') {
             comment.dataset.touched = '1';
+        }
+        const markPreset = () => {
+            form.querySelectorAll('[data-tg-preset]').forEach((button) => {
+                button.setAttribute('aria-pressed', qtyInput && button.getAttribute('data-tg-preset') === String(qtyInput.value) ? 'true' : 'false');
+            });
+        };
+        form.querySelectorAll('[data-tg-preset]').forEach((button) => {
+            button.addEventListener('click', () => {
+                if (!qtyInput) {
+                    return;
+                }
+                qtyInput.value = button.getAttribute('data-tg-preset') || '1';
+                markPreset();
+                refreshTotal();
+            });
+        });
+        qtyInput?.addEventListener('input', () => {
+            markPreset();
+            refreshTotal();
+        });
+        markPreset();
+        if (form.hasAttribute('data-tg-generate-form')) {
+            form.addEventListener('submit', (event) => {
+                const submitter = event.submitter;
+                if (submitter && submitter.hasAttribute('data-tg-generate')) {
+                    form.classList.add('is-sending');
+                    submitter.setAttribute('aria-busy', 'true');
+                }
+            });
         }
         profile?.dispatchEvent(new Event('change'));
     });
@@ -453,6 +527,15 @@ ready(() => {
                 if (option) {
                     pool.value = poolValue;
                 }
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-tg-zone]').forEach((zoneForm) => {
+        const wait = zoneForm.querySelector('[data-tg-zone-wait]');
+        zoneForm.addEventListener('submit', () => {
+            if (wait) {
+                wait.hidden = false;
             }
         });
     });

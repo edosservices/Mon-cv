@@ -28,7 +28,7 @@
     }
 @endphp
 
-<section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
+<section class="tg-card tg-advanced">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="text-lg font-semibold">Générer depuis un profil</h2>
