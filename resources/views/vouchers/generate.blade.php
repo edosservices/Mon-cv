@@ -56,7 +56,13 @@
     @include('vouchers.sale')
 @endif
 
-<details class="tg-advanced">
+@php
+    $askedProfile = (string) request('profile', '');
+    $openPlan = $askedProfile !== '' && collect($quick['profiles'] ?? [])->contains(
+        fn ($profile) => ($profile['name'] ?? '') === $askedProfile && empty($profile['ready'])
+    );
+@endphp
+<details class="tg-advanced" @if($openPlan) open @endif>
     <summary>Options avancées</summary>
 @if($quickZone)
     @include('vouchers.express')

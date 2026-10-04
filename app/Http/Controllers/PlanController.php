@@ -17,11 +17,15 @@ class PlanController extends Controller
     {
         $profiles = MikrotikProfile::query()->with('mikrotik:id,wifi_zone_id,name')->get();
 
+        $zones = WifiZone::orderBy('name')->get();
+        $createZoneId = $zones->count() === 1 ? $zones->first()->id : null;
+
         return view('plans.index', [
             'plans' => Plan::with('wifiZone')->withCount([
                 'vouchers as sold_count' => fn ($query) => $query->whereHas('saleItem'),
             ])->latest()->get(),
             'syncedProfiles' => $profiles,
+            'createZoneId' => $createZoneId,
         ]);
     }
 

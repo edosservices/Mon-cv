@@ -195,10 +195,7 @@ class VoucherController extends Controller
         }
 
         if (! empty($result['needs_plan'])) {
-            return view('vouchers.quick-link', [
-                'zone' => $zone,
-                'preview' => $result,
-            ]);
+            return $this->redirectToPlan($zone, $data['profile']);
         }
 
         $created = $result['vouchers'];
@@ -273,10 +270,7 @@ class VoucherController extends Controller
         }
 
         if (! empty($result['needs_plan'])) {
-            return view('vouchers.quick-link', [
-                'zone' => $zone,
-                'preview' => $result,
-            ]);
+            return $this->redirectToPlan($zone, $data['profile']);
         }
 
         /** @var Voucher $voucher */
@@ -857,6 +851,16 @@ class VoucherController extends Controller
             'template' => 'modèle',
             'per_page' => 'disposition',
         ]);
+    }
+
+    private function redirectToPlan(WifiZone $zone, string $profile)
+    {
+        return redirect()
+            ->route('vouchers.generate', [
+                'wifi_zone_id' => $zone->id,
+                'profile' => $profile,
+            ])
+            ->with('warning', TicketQuick::MISSING_PLAN);
     }
 
     private function provisionMessage(int $count, array $summary): string

@@ -3,7 +3,7 @@
 @section('content')
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h2 class="h4 mb-0">Mes forfaits</h2>
-    <a class="btn biz-btn" href="{{ route('plans.create') }}">+ Créer un forfait</a>
+    <a class="btn biz-btn" href="{{ route('plans.create', array_filter(['wifi_zone_id' => $createZoneId])) }}">+ Créer un forfait</a>
 </div>
 <div class="row g-3">
     @forelse($plans as $plan)
@@ -52,7 +52,7 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <p class="mb-2">Aucun forfait.</p>
-                    <a class="btn biz-btn" href="{{ route('plans.create') }}">Créer un forfait</a>
+                    <a class="btn biz-btn" href="{{ route('plans.create', array_filter(['wifi_zone_id' => $createZoneId])) }}">Créer un forfait</a>
                 </div>
             </div>
         </div>

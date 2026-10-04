@@ -74,6 +74,33 @@ class JourneyCoherenceTest extends TestCase
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$foreign->id)->assertNotFound();
     }
 
+    public function test_plan_creation_links_stay_on_the_plan_form(): void
+    {
+        $user = Platform::entrepreneur('Alice Wifi', 'alice-plan-link@example.com');
+        $zone = Platform::zone($user, 'Limete lien');
+
+        $plans = $this->actingAs($user)->get('/plans');
+        $plans->assertOk()->assertSee(route('plans.create', ['wifi_zone_id' => $zone->id]), false);
+        $this->assertStringNotContainsString('/vouchers/quick/express', $plans->getContent());
+
+        $generate = $this->actingAs($user)->get('/vouchers/generate?wifi_zone_id='.$zone->id);
+        $generate->assertOk()->assertSee(route('plans.create', ['wifi_zone_id' => $zone->id]), false);
+        $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $generate->getContent());
+        $this->assertStringNotContainsString('href="'.route('vouchers.quick.express').'"', $html);
+        $depth = 0;
+        preg_match_all('/<\/?form\b[^>]*>/i', $html, $tags);
+        foreach ($tags[0] as $tag) {
+            if (preg_match('/^<\s*\/\s*form/i', $tag) === 1) {
+                $this->assertGreaterThan(0, $depth);
+                $depth--;
+                continue;
+            }
+            $this->assertSame(0, $depth, $tag);
+            $depth++;
+        }
+        $this->assertSame(0, $depth);
+    }
+
     public function test_generation_uses_the_plan_and_paginates_twenty_four_tickets(): void
     {
         $user = Platform::entrepreneur('Alice Wifi', 'alice-gen@example.com', 'business');
