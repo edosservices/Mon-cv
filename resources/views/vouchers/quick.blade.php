@@ -32,7 +32,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="text-lg font-semibold">Générer depuis un profil</h2>
-            <p class="mt-1 text-sm text-slate-600">Le profil remplit la durée, le prix et le débit. Il reste la data à indiquer.</p>
+            <p class="mt-1 text-sm text-slate-600">Recherche dans le catalogue du routeur sélectionné. Le prix et le débit viennent du serveur, pas du navigateur.</p>
         </div>
         @if($quick['last'])
             <button class="min-h-14 rounded-xl border px-4 py-3 font-semibold" type="button" data-use-profile="{{ $quick['last'] }}">Utiliser {{ $quick['last'] }}</button>

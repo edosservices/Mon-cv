@@ -1124,7 +1124,7 @@ class MikrotikService
         if ($path === '/ip/hotspot/add' && (array_diff($keys, ['name', 'interface', 'address-pool', 'profile']) !== [] || ! in_array('name', $keys, true) || ! in_array('interface', $keys, true))) {
             throw new RuntimeException('Commande refusée.');
         }
-        if ($path === '/ip/hotspot/user/profile/add' && array_diff($keys, ['name', 'session-timeout', 'rate-limit', 'idle-timeout', 'shared-users']) !== []) {
+        if ($path === '/ip/hotspot/user/profile/add' && array_diff($keys, ['name', 'session-timeout', 'rate-limit', 'idle-timeout', 'shared-users', 'address-pool', 'parent-queue']) !== []) {
             throw new RuntimeException('Commande refusée.');
         }
         if ($path === '/ip/hotspot/user/add') {

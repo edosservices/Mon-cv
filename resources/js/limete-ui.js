@@ -371,7 +371,15 @@ ready(() => {
             ].filter(Boolean);
             comment.value = parts.join(' · ');
         };
+        const summaries = root.querySelectorAll('[data-summary-for]');
+        const showSummary = () => {
+            const selected = profile?.value || '';
+            summaries.forEach((node) => {
+                node.hidden = node.getAttribute('data-summary-for') !== selected;
+            });
+        };
         profile?.addEventListener('change', () => {
+            showSummary();
             const option = profile.selectedOptions[0];
             const time = option?.getAttribute('data-time') || '';
             if (limit && limit.dataset.touched !== '1' && time) {

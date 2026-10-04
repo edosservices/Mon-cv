@@ -3,6 +3,27 @@
 @section('content')
 @include('vouchers.assist-steps', ['step' => 1])
 @if($quickZone)
+    <section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
+        <h2 class="text-lg font-semibold">1. Routeur</h2>
+        <p class="mt-1 text-sm text-slate-600">Le catalogue est relu sur le routeur de la zone choisie.</p>
+        <form class="mt-4 grid gap-3" method="GET" action="{{ url()->current() }}">
+            <label class="text-sm font-semibold" for="catalog-zone">WiFi Zone / routeur
+                <select class="mt-1 w-full rounded-xl border px-3 py-3 text-base" id="catalog-zone" name="wifi_zone_id" onchange="this.form.submit()">
+                    @foreach($zones as $zone)
+                        <option value="{{ $zone->id }}" @selected((int) $quickZone->id === (int) $zone->id)>{{ $zone->name }}</option>
+                    @endforeach
+                </select>
+            </label>
+            @if($quickRouter)
+                <p class="text-sm text-slate-700">Routeur sélectionné : <strong>{{ $quickRouter->name }}</strong> · {{ $quickRouter->host }}</p>
+            @else
+                <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Aucun routeur actif sur cette zone. Le catalogue local est utilisé s’il existe.</p>
+            @endif
+            @if($quick['notice'])
+                <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{{ $quick['notice'] }}</p>
+            @endif
+        </form>
+    </section>
     @include('vouchers.express')
     @include('vouchers.quick')
 @endif

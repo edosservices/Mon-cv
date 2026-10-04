@@ -414,20 +414,39 @@ class MikrotikPreparation
     /**
      * @param  array<string, mixed>  $input
      */
+    /**
+     * Relecture après écriture : une propriété absente de la réponse ne contredit pas la demande.
+     * Une propriété renvoyée doit correspondre. Expired Mode et Lock User ne sont pas des champs RouterOS.
+     *
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>  $input
+     */
+    public function echoedProfileMatches(array $row, array $input): bool
+    {
+        return $this->profileFieldsAgree($row, $this->profileSpec($input), false);
+    }
+
     private function applyProfile(Mikrotik $router, array $input): string
     {
         $name = $this->token((string) ($input['profile_name'] ?? ''));
+        $spec = $this->profileSpec($input);
         $existing = $this->mikrotik->readPrint($router, '/ip/hotspot/user/profile/print');
         foreach ($existing as $profile) {
-            if (($profile['name'] ?? '') === $name) {
-                throw new RuntimeException('Un profil porte déjà ce nom. Il n’est pas écrasé.');
+            if (($profile['name'] ?? '') !== $name) {
+                continue;
             }
+            if ($this->profileFieldsAgree($profile, $spec, true)) {
+                return 'Profil '.$name.' déjà présent. Il est réutilisé.';
+            }
+
+            throw new RuntimeException('Un profil portant ce nom existe déjà avec des paramètres différents.');
         }
+
         $words = ['/ip/hotspot/user/profile/add', '=name='.$name];
-        $session = $this->routerTime($input['session_timeout'] ?? null);
+        $session = $spec['session-timeout'];
         $idle = $this->routerTime($input['idle_timeout'] ?? null);
-        $rate = $this->rateLimit($input['rate_limit'] ?? null);
-        $shared = $input['shared_users'] ?? null;
+        $rate = $spec['rate-limit'];
+        $shared = $spec['shared-users'];
         if ($session) {
             $words[] = '=session-timeout='.$session;
         }
@@ -437,13 +456,158 @@ class MikrotikPreparation
         if ($rate) {
             $words[] = '=rate-limit='.$rate;
         }
-        if ($shared !== null && $shared !== '') {
-            $words[] = '=shared-users='.(int) $shared;
+        if ($shared !== null) {
+            $words[] = '=shared-users='.$shared;
         }
-        $this->snapshot($router, 'profile', ['existed' => false, 'name' => $name], ['name' => $name]);
+        if ($spec['address-pool']) {
+            $words[] = '=address-pool='.$spec['address-pool'];
+        }
+        if ($spec['parent-queue']) {
+            $words[] = '=parent-queue='.$spec['parent-queue'];
+        }
+        $this->snapshot($router, 'profile', ['existed' => false, 'name' => $name], [
+            'name' => $name,
+            'address-pool' => $spec['address-pool'],
+            'parent-queue' => $spec['parent-queue'],
+        ]);
         $this->mikrotik->guardedCommand($router, $words);
 
         return 'Profil '.$name.' créé.';
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array{session-timeout: ?string, rate-limit: ?string, shared-users: ?int, address-pool: ?string, parent-queue: ?string}
+     */
+    private function profileSpec(array $input): array
+    {
+        $shared = $input['shared_users'] ?? null;
+
+        return [
+            'session-timeout' => $this->routerTime($input['session_timeout'] ?? null),
+            'rate-limit' => $this->rateLimit($input['rate_limit'] ?? null),
+            'shared-users' => ($shared === null || $shared === '') ? null : (int) $shared,
+            'address-pool' => $this->optionalProfileName($input['address_pool'] ?? null),
+            'parent-queue' => $this->optionalProfileName($input['parent_queue'] ?? null),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array{session-timeout: ?string, rate-limit: ?string, shared-users: ?int, address-pool: ?string, parent-queue: ?string}  $spec
+     */
+    private function profileFieldsAgree(array $row, array $spec, bool $strict): bool
+    {
+        $shared = $row['shared-users'] ?? null;
+        $actual = [
+            'session-timeout' => $this->storedTime($row['session-timeout'] ?? null),
+            'rate-limit' => $this->storedRate($row['rate-limit'] ?? null),
+            'shared-users' => ($shared === null || $shared === '') ? null : (int) $shared,
+            'address-pool' => $this->storedName($row['address-pool'] ?? null),
+            'parent-queue' => $this->storedName($row['parent-queue'] ?? null),
+        ];
+
+        foreach ($spec as $key => $wanted) {
+            $seen = $actual[$key];
+            if ($seen === null && $wanted === null) {
+                continue;
+            }
+            if ($seen === null) {
+                if ($strict) {
+                    return false;
+                }
+
+                continue;
+            }
+            if ($wanted === null || ! $this->sameProfileValue($key, $seen, $wanted)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function sameProfileValue(string $key, mixed $seen, mixed $wanted): bool
+    {
+        if ($key === 'session-timeout') {
+            $left = RouterOsProtocol::routerTimeToSeconds((string) $seen);
+            $right = RouterOsProtocol::routerTimeToSeconds((string) $wanted);
+
+            return $left !== null && $right !== null && $left === $right;
+        }
+        if ($key === 'rate-limit') {
+            return $this->sameProfileRate((string) $seen, (string) $wanted);
+        }
+        if ($key === 'shared-users') {
+            return (int) $seen === (int) $wanted;
+        }
+
+        return strcasecmp((string) $seen, (string) $wanted) === 0;
+    }
+
+    private function sameProfileRate(string $existing, string $wanted): bool
+    {
+        $left = array_values(array_filter(explode('/', strtoupper($existing)), fn ($part) => $part !== ''));
+        $right = array_values(array_filter(explode('/', strtoupper($wanted)), fn ($part) => $part !== ''));
+        if ($left === [] || $right === []) {
+            return false;
+        }
+        if (count($left) === 1) {
+            $left = [$left[0], $left[0]];
+        }
+        if (count($right) === 1) {
+            $right = [$right[0], $right[0]];
+        }
+
+        return $left[0] === $right[0] && $left[1] === $right[1];
+    }
+
+    private function optionalProfileName(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || strcasecmp($value, 'none') === 0) {
+            return null;
+        }
+
+        return $this->token($value);
+    }
+
+    private function storedTime(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return $this->routerTime($value);
+        } catch (RuntimeException) {
+            return $value;
+        }
+    }
+
+    private function storedRate(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return $this->rateLimit($value);
+        } catch (RuntimeException) {
+            return $value;
+        }
+    }
+
+    private function storedName(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || strcasecmp($value, 'none') === 0) {
+            return null;
+        }
+
+        return $value;
     }
 
     private function restoreDns(Mikrotik $router, MikrotikSnapshot $snapshot): string

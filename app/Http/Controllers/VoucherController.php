@@ -80,6 +80,7 @@ class VoucherController extends Controller
             'zones' => $zones,
             'durations' => $zones->mapWithKeys(fn (WifiZone $zone) => [$zone->id => $assist->durations($zone)]),
             'quickZone' => $zone,
+            'quickRouter' => $zone?->mikrotiks()->where('is_active', true)->orderBy('id')->first(),
             'quick' => $catalog,
             'templates' => TicketTemplates::options(),
             'limit' => $limits->voucherBatchLimit(),
@@ -152,27 +153,39 @@ class VoucherController extends Controller
         return redirect()->route('vouchers.generated')->with('status', count($created).' tickets créés.');
     }
 
-    public function quickExpress(Request $request, TicketQuick $quick, TicketAssist $assist)
+    public function quickExpress(Request $request, TicketQuick $quick, TicketAssist $assist, MikrotikPreparation $preparation, MikrotikService $mikrotik)
     {
         $data = $request->validate([
             'wifi_zone_id' => ['required', 'integer'],
             'profile' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
             'qty' => ['required', 'integer', 'min:1', 'max:100'],
+            'server' => ['nullable', 'string', 'max:32'],
+            'time_limit' => ['nullable', 'string', 'max:32'],
+            'data_mb' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'comment' => ['nullable', 'string', 'max:120'],
         ], [
             'profile.regex' => 'Paramètres incompatibles.',
         ]);
         $zone = WifiZone::findOrFail($data['wifi_zone_id']);
+        try {
+            $time = $preparation->normalizedTime($data['time_limit'] ?? null);
+        } catch (RuntimeException) {
+            throw ValidationException::withMessages(['time_limit' => 'Paramètres incompatibles.']);
+        }
+        $unlimited = ! filled($data['data_mb'] ?? null);
         $input = [
             'wifi_zone_id' => $zone->id,
             'profile' => $data['profile'],
-            'server' => 'all',
+            'server' => filled($data['server'] ?? null) ? $data['server'] : 'all',
             'mode' => 'generate',
             'qty' => (int) $data['qty'],
             'prefix' => 'LM',
             'length' => 4,
             'charset' => 'mixed',
             'draft' => (string) Str::uuid(),
-            'data_unlimited' => true,
+            'data_unlimited' => $unlimited,
+            'data_value' => $unlimited ? null : (int) $data['data_mb'],
+            'data_unit' => 'MB',
         ];
 
         try {
@@ -189,6 +202,13 @@ class VoucherController extends Controller
         }
 
         $created = $result['vouchers'];
+        $comment = $this->userComment($data, '', $time);
+        if (filled($time) || trim((string) ($data['comment'] ?? '')) !== '') {
+            foreach ($created as $index => $voucher) {
+                $this->applyUserFields($mikrotik, $assist, $zone, $voucher, $time, $comment);
+                $created[$index] = $voucher->refresh();
+            }
+        }
         if (count($created) === 1) {
             return redirect()->route('vouchers.assist.show', $created[0])->with('status', 'Ticket créé et enregistré.');
         }
