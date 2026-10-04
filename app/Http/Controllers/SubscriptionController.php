@@ -3,19 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Models\SaasPlan;
+use App\Services\SubscriptionCatalog;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
-    public function show()
+    public function show(SubscriptionCatalog $catalog)
     {
-        $subscription = auth()->user()->tenant->currentSubscription()->with('saasPlan')->first();
+        $subscription = $catalog->current();
+        $plans = $catalog->activePlans();
+        $requested = $plans->firstWhere('id', (int) request('plan'));
 
         return view('subscription.show', [
             'subscription' => $subscription,
-            'plans' => SaasPlan::where('is_active', true)->orderBy('id')->get(),
+            'plans' => $plans,
             'providers' => config('limete.payment_providers'),
+            'catalog' => $catalog,
+            'usage' => $catalog->usage(),
+            'selectedPlanId' => $requested?->id ?? $subscription?->saas_plan_id,
+            'expired' => $catalog->isExpired($subscription),
+            'daysRemaining' => $catalog->daysRemaining($subscription),
         ]);
     }
 

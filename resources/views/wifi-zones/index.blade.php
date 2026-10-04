@@ -4,7 +4,11 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h2 class="h4 mb-0">Mes WiFi Zones</h2>
     @unless($first)
-        <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">+ Nouvelle WiFi Zone</a>
+        @if($zoneLimitReached)
+            <button type="button" class="btn biz-btn" data-bs-toggle="modal" data-bs-target="#zoneUpgradeModal">+ Nouvelle WiFi Zone</button>
+        @else
+            <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">+ Nouvelle WiFi Zone</a>
+        @endif
     @endunless
 </div>
 
@@ -14,7 +18,11 @@
             <h3 class="h5">Aucune WiFi Zone</h3>
             <p class="mb-1">Crée ta première WiFi Zone</p>
             <p class="text-secondary mb-3">Créez votre première zone WiFi pour commencer. Un nom et une adresse suffisent.</p>
-            <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">Créer ma zone</a>
+            @if($zoneLimitReached)
+                <button type="button" class="btn biz-btn" data-bs-toggle="modal" data-bs-target="#zoneUpgradeModal">Créer ma zone</button>
+            @else
+                <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">Créer ma zone</a>
+            @endif
         </div>
     </section>
 @else
@@ -69,5 +77,8 @@
             </div>
         @endforeach
     </div>
+@endif
+@if($zoneLimitReached)
+    @include('subscription.upgrade-modal')
 @endif
 @endsection

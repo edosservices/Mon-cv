@@ -102,6 +102,35 @@
     .biz-nav { flex-direction: column; overflow: visible; position: sticky; top: 84px; }
 }
 
+#zoneUpgradeModal {
+    --bs-primary: var(--biz-btn, #0b5ed7);
+}
+
+#zoneUpgradeModal .modal-body {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#zoneUpgradeModal .modal-footer {
+    position: relative;
+    z-index: 2;
+    background: #fff;
+    border-top: 1px solid rgba(18, 32, 51, .08);
+}
+
+#zoneUpgradeModal .plan-offer {
+    transition: box-shadow .15s ease;
+}
+
+#zoneUpgradeModal .plan-offer:hover {
+    box-shadow: 0 .5rem 1.1rem rgba(7, 30, 61, .12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #zoneUpgradeModal .plan-offer { transition: none; }
+}
+
 @media print {
     .no-print, .biz-top, .biz-nav { display: none !important; }
     .biz, .biz-main { background: white; padding: 0; }

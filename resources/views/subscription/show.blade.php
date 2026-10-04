@@ -1,33 +1,167 @@
 @extends('layouts.app')
 @section('heading', 'Abonnement')
+@push('head')
+    @vite(['resources/css/subscription.css', 'resources/js/subscription.js'])
+@endpush
 @section('content')
-<article class="rounded-2xl bg-white p-5 shadow-sm">
-    <p class="text-sm text-slate-500">Plan actuel</p>
-    <h2 class="text-2xl font-semibold">{{ $subscription->saasPlan->name ?? 'Aucun' }}</h2>
-    <p class="mt-2">Prix : {{ \App\Support\Money::format($subscription->saasPlan->price ?? null, $subscription->saasPlan->currency ?? null) }}</p>
-    <p>Début : {{ $subscription->starts_at?->timezone(config('app.timezone'))->format('d/m/Y') }}</p>
-    <p>Expiration : {{ $subscription->ends_at?->timezone(config('app.timezone'))->format('d/m/Y') }}</p>
-    <p>Statut : {{ $subscription->statusEnum()->label() }}</p>
-</article>
-<form method="POST" action="{{ route('subscription.checkout') }}" class="mt-5 space-y-3 rounded-2xl bg-white p-5 shadow-sm">
-    @csrf
-    <h2 class="font-semibold">Changer ou renouveler</h2>
-    <label class="block text-sm">Plan
-        <select class="mt-1 w-full rounded-lg border px-3 py-2" name="saas_plan_id">
-            @foreach($plans as $plan)
-                <option value="{{ $plan->id }}">{{ $plan->name }} — {{ \App\Support\Money::format($plan->price, $plan->currency) }}</option>
-            @endforeach
-        </select>
-    </label>
-    <label class="block text-sm">Moyen
-        <select class="mt-1 w-full rounded-lg border px-3 py-2" name="provider">
-            @foreach($providers as $key => $label)
-                <option value="{{ $key }}">{{ $label }}</option>
-            @endforeach
-        </select>
-    </label>
-    <label class="block text-sm">Référence de transaction<input class="mt-1 w-full rounded-lg border px-3 py-2" name="transaction_reference"></label>
-    <p class="text-xs text-slate-500">Les clés des opérateurs restent dans le fichier .env du serveur. Sans clé, seul le paiement manuel est disponible.</p>
-    <button class="rounded-xl bg-electric px-4 py-3 text-white">Enregistrer le paiement</button>
-</form>
+@php
+    $timezone = config('app.timezone');
+    $plan = $subscription?->saasPlan;
+    $starts = $subscription?->starts_at?->timezone($timezone);
+    $ends = $subscription?->ends_at?->timezone($timezone);
+@endphp
+<div class="sub-page container-fluid px-0">
+    @if($expired)
+        <section class="card border-0 shadow-sm rounded-4 mb-4 border-start border-warning border-4" role="status">
+            <div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-2">Votre abonnement a expiré.</h2>
+                <p class="text-muted mb-3">Renouvelez votre abonnement pour continuer à utiliser toutes les fonctionnalités.</p>
+                <a class="btn btn-primary btn-lg" href="#paiement">Renouveler mon abonnement</a>
+            </div>
+        </section>
+    @endif
+
+    <section class="mb-4" aria-labelledby="current-plan-title">
+        <h2 class="h4 fw-bold mb-3" id="current-plan-title">Votre abonnement</h2>
+        <article class="card border-0 shadow rounded-4">
+            <div class="card-body p-4">
+                @if($subscription && $plan)
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                        <div>
+                            <p class="text-muted small mb-1">Plan actuel</p>
+                            <h3 class="h3 fw-bold mb-1">{{ $plan->name }}</h3>
+                            <p class="h4 fw-semibold mb-0">{{ $catalog->priceLabel($plan) }}</p>
+                            @if($catalog->periodLabel($plan))
+                                <p class="text-muted small mb-0 mt-1">{{ $catalog->periodLabel($plan) }}</p>
+                            @endif
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            @if($subscription->status === \App\Enums\SubscriptionStatus::Trial->value && ! $expired)
+                                <span class="badge rounded-pill text-bg-info">Période d’essai</span>
+                            @endif
+                            <span class="badge rounded-pill {{ $expired ? 'text-bg-warning' : 'text-bg-primary' }}">{{ $expired ? 'Expiré' : $subscription->statusEnum()->label() }}</span>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            <p class="text-muted small mb-1">Devise</p>
+                            <p class="fw-semibold mb-0">{{ $plan->currency ?: '—' }}</p>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            <p class="text-muted small mb-1">Début</p>
+                            <p class="fw-semibold mb-0">{{ $starts?->format('d/m/Y') ?: '—' }}</p>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            <p class="text-muted small mb-1">Expiration</p>
+                            <p class="fw-semibold mb-0">{{ $ends?->format('d/m/Y') ?: '—' }}</p>
+                            @if($ends && ! $expired)
+                                <p class="small text-muted mb-0">Valable jusqu’au {{ $ends->format('d/m/Y') }}</p>
+                                @if($daysRemaining === 0)
+                                    <p class="small mb-0">Expire aujourd’hui</p>
+                                @elseif($daysRemaining !== null && $daysRemaining > 0)
+                                    <p class="small mb-0">Expire dans {{ $daysRemaining }} {{ $daysRemaining > 1 ? 'jours' : 'jour' }}</p>
+                                @endif
+                            @endif
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            <p class="text-muted small mb-1">Statut</p>
+                            <p class="fw-semibold mb-0">{{ $expired ? 'Expiré' : $subscription->statusEnum()->label() }}</p>
+                        </div>
+                    </div>
+                    @if($advantages = $catalog->advantages($plan))
+                        <ul class="list-unstyled d-flex flex-wrap gap-2 mt-4 mb-0">
+                            @foreach($advantages as $line)
+                                <li><span class="badge rounded-pill text-bg-light border">{{ $line }}</span></li>
+                            @endforeach
+                        </ul>
+                    @endif
+                @else
+                    <p class="mb-0">Aucun abonnement en cours.</p>
+                @endif
+            </div>
+        </article>
+    </section>
+
+    <section class="mb-4" aria-labelledby="usage-title">
+        <h2 class="h4 fw-bold mb-3" id="usage-title">Votre utilisation</h2>
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    @foreach(['zones', 'mikrotiks'] as $meterKey)
+                        @php $meter = $usage[$meterKey]; @endphp
+                        <div class="col-12 col-md-6">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <span class="fw-semibold">{{ $meter['label'] }}</span>
+                                <span class="text-muted">
+                                    @if($meter['max'] !== null)
+                                        {{ $meter['count'] }} / {{ $meter['max'] }}
+                                    @else
+                                        {{ $meter['count'] }} · sans plafond
+                                    @endif
+                                </span>
+                            </div>
+                            @if($meter['percent'] !== null)
+                                <div class="progress" role="progressbar" aria-label="{{ $meter['label'] }}" aria-valuenow="{{ $meter['count'] }}" aria-valuemin="0" aria-valuemax="{{ $meter['max'] }}">
+                                    <div class="progress-bar" style="width: {{ $meter['percent'] }}%"></div>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                    <div class="col-12 col-sm-6">
+                        <p class="text-muted small mb-1">Tickets</p>
+                        <p class="h5 fw-bold mb-0">{{ $usage['tickets']['count'] }}</p>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <p class="text-muted small mb-1">Clients</p>
+                        <p class="h5 fw-bold mb-0">{{ $usage['clients']['count'] }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-4" aria-labelledby="offers-title">
+        <div class="text-center mb-4">
+            <h2 class="h4 fw-bold mb-2" id="offers-title">Développez votre activité</h2>
+            <p class="text-muted mb-0">Passez à une formule supérieure pour bénéficier de limites plus élevées et de nouvelles fonctionnalités.</p>
+        </div>
+        @include('subscription.partials.plan-cards')
+    </section>
+
+    <form method="POST" action="{{ route('subscription.checkout') }}" id="paiement" class="card border-0 shadow-sm rounded-4">
+        @csrf
+        <div class="card-header bg-transparent border-0 pt-4 px-4">
+            <h2 class="h5 fw-bold mb-1">Changer ou renouveler</h2>
+            <p class="text-muted small mb-0">Le paiement reste en attente jusqu’à confirmation réelle. L’abonnement mensuel n’est pas modifié avant cette confirmation.</p>
+        </div>
+        <div class="card-body px-4">
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="saas-plan">Plan</label>
+                    <select class="form-select" id="saas-plan" name="saas_plan_id">
+                        @foreach($plans as $offer)
+                            <option value="{{ $offer->id }}" @selected((int) $selectedPlanId === (int) $offer->id)>{{ $offer->name }} — {{ $catalog->priceLabel($offer) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="provider">Moyen</label>
+                    <select class="form-select" id="provider" name="provider">
+                        @foreach($providers as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="transaction-reference">Référence de transaction</label>
+                    <input class="form-control" id="transaction-reference" name="transaction_reference" maxlength="80" value="{{ old('transaction_reference') }}">
+                </div>
+            </div>
+            <p class="text-muted small mt-3 mb-0">Les clés des opérateurs restent dans le fichier .env du serveur. Sans clé, seul le paiement manuel est disponible.</p>
+        </div>
+        <div class="card-footer bg-transparent border-0 px-4 pb-4">
+            <button class="btn btn-primary btn-lg" type="submit">Enregistrer le paiement</button>
+        </div>
+    </form>
+</div>
 @endsection
