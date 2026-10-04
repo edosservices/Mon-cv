@@ -444,6 +444,7 @@ class VoucherController extends Controller
                 'plan_id' => 'Ce forfait n’est pas actif.',
             ]);
         }
+        set_time_limit(120);
         $created = $batch->generate($zone->id, $plan->id, (int) $data['count']);
         $summary = $mikrotik->provisionMany($created);
         $audit->record('vouchers.created', $zone, null, [
