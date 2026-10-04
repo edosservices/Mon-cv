@@ -6,6 +6,7 @@
     <title>@yield('title', 'LIMETE WIFI MANAGER')</title>
     <link rel="icon" href="{{ asset('brand/logo-limete-wifi-manager.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('head')
     @auth
         @if(auth()->user()->tenant)
             <style>
@@ -16,7 +17,7 @@
         @endif
     @endauth
 </head>
-<body class="lm-app min-h-screen text-ink">
+<body class="lm-app min-h-screen text-ink @yield('body-class')">
     <x-animated-background />
     <div class="lm-backdrop" data-lm-backdrop></div>
     <div class="lm-frame">

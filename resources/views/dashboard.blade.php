@@ -1,5 +1,9 @@
 @extends('layouts.app')
 @section('heading', 'Tableau de bord')
+@section('body-class', 'en-dash')
+@push('head')
+    @vite(['resources/css/dashboard.css', 'resources/js/dashboard.js'])
+@endpush
 @section('content')
 @php
     $periods = [
@@ -14,132 +18,10 @@
     $query = request()->except('page');
 @endphp
 
-<div class="lm-dash">
-<header class="lm-hero min-w-0">
-    <p class="lm-page-sub">Vue générale de votre activité</p>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <p class="lm-hello">Bonjour, {{ auth()->user()->name }}</p>
-        @if(auth()->user()->hasPermission('vouchers.manage'))
-            <a class="lm-cta" href="{{ route('vouchers.generate') }}">Générer des tickets</a>
-        @endif
-    </div>
-    <form method="GET" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <label class="text-sm font-semibold">WiFi Zone
-            <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3" name="zone" onchange="this.form.submit()">
-                <option value="">Toutes les zones</option>
-                @foreach($report['zones'] as $zone)
-                    <option value="{{ $zone->id }}" @selected($filters['zone_id'] === $zone->id)>{{ $zone->name }}</option>
-                @endforeach
-            </select>
-        </label>
-        <label class="text-sm font-semibold">Période
-            <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3" name="period" onchange="this.form.submit()">
-                @foreach($periods as $value => $label)
-                    <option value="{{ $value }}" @selected($filters['period'] === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </label>
-        @if($filters['period'] === 'custom')
-            <label class="text-sm font-semibold">Du
-                <input class="mt-1 w-full rounded-xl border px-3 py-3" type="date" name="from" value="{{ $filters['from']->toDateString() }}">
-            </label>
-            <label class="text-sm font-semibold">Au
-                <input class="mt-1 w-full rounded-xl border px-3 py-3" type="date" name="to" value="{{ $filters['to']->toDateString() }}">
-            </label>
-            <button class="rounded-xl bg-electric px-4 py-3 text-sm font-semibold text-white sm:col-span-2">Appliquer</button>
-        @endif
-        <input type="hidden" name="grain" value="{{ $filters['grain'] }}">
-    </form>
-</header>
+<div class="lm-dash en-board">
+@include('partials.dashboard-cockpit')
 
-<details class="lm-quick-fold" open>
-    <summary>Actions rapides</summary>
-<nav class="lm-quick" aria-label="Actions rapides">
-    @if(auth()->user()->hasPermission('sales.confirm'))
-        <a href="{{ route('sales.quick') }}">+ Vendre un ticket</a>
-    @endif
-    @if(auth()->user()->hasPermission('vouchers.manage'))
-        <a href="{{ route('vouchers.generate') }}">+ Générer des tickets</a>
-    @endif
-    @if(auth()->user()->hasPermission('plans.manage'))
-        <a href="{{ route('plans.create') }}">+ Créer un forfait</a>
-    @endif
-    @if(auth()->user()->hasPermission('zones.manage'))
-        <a href="{{ route('wifi-zones.create') }}">+ Ajouter une WiFi Zone</a>
-    @endif
-    @if(auth()->user()->hasPermission('settings.manage'))
-        <a href="{{ route('business.edit') }}">Mon Business</a>
-        @if(auth()->user()->hasPermission('mikrotiks.manage'))
-            <a href="{{ route('mikrotiks.assistant') }}">Connecter mon MikroTik</a>
-        @endif
-    @endif
-    @if(auth()->user()->hasPermission('sales.view'))
-        <a href="{{ route('reports.index') }}">Mes Rapports</a>
-    @endif
-</nav>
-</details>
-
-@if($notices->isNotEmpty())
-<section class="mb-4 space-y-2" aria-label="Notifications">
-    @foreach($notices as $notice)
-        <a class="block min-w-0 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm" href="{{ route('notifications.index') }}">
-            <p class="font-semibold">{{ $notice->data['title'] ?? 'Notification' }}</p>
-            <p class="break-words text-slate-700">{{ $notice->data['body'] ?? '' }}</p>
-        </a>
-    @endforeach
-</section>
-@endif
-
-@if($shopZones->isNotEmpty())
-<section class="mb-4 rounded-2xl bg-navy p-4 text-white">
-    <p class="text-sm text-sky-100">Boutique publique</p>
-    <div class="mt-3 space-y-3">
-        @foreach($shopZones as $zone)
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="min-w-0 font-semibold">{{ $zone->name }}</p>
-                <div class="flex flex-wrap gap-2">
-                    <a class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-navy" href="{{ route('shop.show', $zone->slug) }}" target="_blank" rel="noopener">Voir ma boutique</a>
-                    <button type="button" class="js-copy rounded-xl border border-white/30 px-4 py-3 text-sm" data-url="{{ route('shop.show', $zone->slug) }}">Copier le lien</button>
-                </div>
-            </div>
-        @endforeach
-    </div>
-</section>
-@endif
-
-<section class="lm-grid" aria-label="Indicateurs">
-    @foreach($report['kpis'] as $kpi)
-        <article class="lm-kpi lm-reveal" title="{{ $kpi['label'] }}">
-            <p class="text-sm text-slate-500">{{ $kpi['label'] }}</p>
-            <p class="mt-2 break-words text-2xl font-semibold" @if(! $kpi['money'] && is_numeric($kpi['value'])) data-count="{{ (int) $kpi['value'] }}" @endif>
-                {{ $kpi['money'] ? \App\Support\Money::format($kpi['value']) : $kpi['value'] }}
-            </p>
-            @if($kpi['change'] !== null)
-                <p class="mt-1 text-sm font-semibold {{ $kpi['change'] >= 0 ? 'text-emerald-700' : 'text-red-700' }}">
-                    {{ $kpi['change'] >= 0 ? '▲' : '▼' }} {{ $kpi['change'] }} % vs hier
-                </p>
-            @endif
-        </article>
-    @endforeach
-    <article class="lm-kpi">
-        <p class="lm-kpi-label">Chiffre d’affaires du mois</p>
-        <p class="lm-kpi-value">{{ \App\Support\Money::format($pulse['month']) }}</p>
-    </article>
-    <article class="lm-kpi">
-        <p class="lm-kpi-label">Tickets vendus</p>
-        <p class="lm-kpi-value" data-count="{{ (int) $pulse['sold'] }}">{{ $pulse['sold'] }}</p>
-    </article>
-    <article class="lm-kpi">
-        <p class="lm-kpi-label">Tickets disponibles</p>
-        <p class="lm-kpi-value" data-count="{{ (int) $pulse['available'] }}">{{ $pulse['available'] }}</p>
-    </article>
-    <article class="lm-kpi">
-        <p class="lm-kpi-label">Sessions actives</p>
-        <p class="lm-kpi-value" data-count="{{ (int) $pulse['sessions'] }}">{{ $pulse['sessions'] }}</p>
-    </article>
-</section>
-
-<article class="lm-panel lm-router-card {{ ($charts['router']['online'] ?? false) ? 'is-online' : 'is-down' }}">
+<article class="card border-0 lm-panel lm-router-card {{ ($charts['router']['online'] ?? false) ? 'is-online' : 'is-down' }}">
     <h2>Routeur</h2>
     @if($charts['router'])
         <p class="lm-router-state">{{ $charts['router']['online'] ? 'Connected' : 'Offline' }}</p>
@@ -166,42 +48,6 @@
         <p class="mt-2 text-sm text-slate-500">Aucun routeur associé.</p>
     @endif
 </article>
-
-<section id="revenus" class="lm-panel">
-    <div class="lm-panel-head">
-        <h2>Revenus</h2>
-        <div class="lm-tabs">
-            @foreach(['day' => 'Aujourd’hui', 'week' => 'Semaine', 'month' => 'Mois'] as $value => $label)
-                <a class="{{ $filters['grain'] === $value ? 'is-on' : '' }}" href="{{ route('dashboard', array_merge($query, ['grain' => $value])) }}">{{ $label }}</a>
-            @endforeach
-        </div>
-    </div>
-    <p class="lm-figure">{{ \App\Support\Money::format($report['period_revenue']) }}</p>
-    <p class="lm-meta">{{ $filters['from']->timezone(config('app.timezone'))->format('d/m/Y') }} – {{ $filters['to']->timezone(config('app.timezone'))->format('d/m/Y') }}</p>
-    @if($report['series'] === [])
-        <p class="mt-4 text-sm text-slate-500">Pas encore de vente confirmée sur cette période.</p>
-    @else
-        @php $max = max(1, collect($report['series'])->max(fn ($row) => abs($row['amount']))); @endphp
-        <div class="chart mt-4">
-            <svg viewBox="0 0 100 36" width="100%" height="140" role="img" aria-label="Évolution du chiffre d'affaires">
-                @foreach($report['series'] as $index => $point)
-                    @php
-                        $count = max(1, count($report['series']));
-                        $x = $count === 1 ? 50 : ($index / ($count - 1)) * 100;
-                        $height = min(32, (abs($point['amount']) / $max) * 32);
-                        $y = 34 - $height;
-                    @endphp
-                    <rect x="{{ $x - (80 / $count / 2) }}" y="{{ $y }}" width="{{ max(1.2, 70 / $count) }}" height="{{ $height }}" rx="0.6" fill="{{ $point['amount'] < 0 ? '#a11d1d' : '#0b5ed7' }}"></rect>
-                @endforeach
-            </svg>
-        </div>
-        <ul class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-600">
-            @foreach($report['series'] as $point)
-                <li class="min-w-0">{{ $point['label'] }} · {{ \App\Support\Money::format($point['amount']) }}</li>
-            @endforeach
-        </ul>
-    @endif
-</section>
 
 @if($report['zone_rows'] !== [])
 <section id="zones" class="mt-6">
@@ -409,58 +255,6 @@
 </section>
 
 @include('partials.space-charts')
-
-<section id="paiements" class="lm-panel">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="font-semibold">Paiements</h2>
-        <a class="text-sm font-semibold text-electric" href="{{ route('exports.payments', $query) }}">Exporter CSV</a>
-    </div>
-    <ul class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        @foreach($report['payments'] as $state)
-            <li class="min-w-0 rounded-xl bg-slate-50 p-3 text-sm">
-                <p class="text-slate-500">{{ $state['label'] }}</p>
-                <p class="text-xl font-semibold">{{ $state['total'] }}</p>
-                @if($state['status'] === 'pending' && $state['total'] > 0)
-                    <p>Montant en attente {{ \App\Support\Money::format($state['amount']) }}</p>
-                @endif
-            </li>
-        @endforeach
-    </ul>
-</section>
-
-<section id="forfaits" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <h2 class="font-semibold">Forfaits</h2>
-    @if($report['plans'] === [])
-        <p class="mt-3 text-sm text-slate-500">Aucun forfait.</p>
-    @else
-        @php $planMax = max(1, collect($report['plans'])->max('sold')); @endphp
-        <ul class="mt-4 space-y-3">
-            @foreach($report['plans'] as $plan)
-                <li class="min-w-0">
-                    <div class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                        <span class="font-semibold">{{ $plan['name'] }}</span>
-                        <span>{{ $plan['sold'] }} vendus · {{ \App\Support\Money::format($plan['revenue'], $plan['currency']) }}</span>
-                    </div>
-                    <p class="text-xs text-slate-500">{{ $plan['duration'] }} · {{ \App\Support\Money::format($plan['price'], $plan['currency']) }} · {{ $plan['active'] }} actifs · {{ $plan['expired'] }} expirés</p>
-                    <div class="mt-1 h-2 rounded bg-slate-100"><div class="h-2 rounded bg-electric" style="width: {{ max($plan['sold'] > 0 ? 4 : 0, ($plan['sold'] / $planMax) * 100) }}%"></div></div>
-                </li>
-            @endforeach
-        </ul>
-    @endif
-</section>
-
-<section id="heures" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
-    <h2 class="font-semibold">Heures</h2>
-    @if($report['hours'] === [])
-        <p class="mt-3 text-sm text-slate-500">Pas assez de données</p>
-    @else
-        <ul class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-            @foreach($report['hours'] as $hour)
-                <li class="rounded-xl bg-slate-50 p-3 text-sm"><span class="block text-slate-500">{{ $hour['label'] }}</span><span class="text-lg font-semibold">{{ $hour['total'] }}</span></li>
-            @endforeach
-        </ul>
-    @endif
-</section>
 
 <section id="clients" class="mt-6 min-w-0 rounded-2xl bg-white p-4 shadow-sm">
     <div class="flex flex-wrap items-center justify-between gap-3">
