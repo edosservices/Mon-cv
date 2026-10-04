@@ -1,34 +1,63 @@
 @extends('layouts.app')
 @section('heading', 'Générer')
 @section('content')
+<div class="tg">
 @include('vouchers.assist-steps', ['step' => 1])
+@php
+    $routerOn = $quickZone && $quickRouter && empty($quick['offline']);
+@endphp
+<header class="tg-hero">
+    <div>
+        <p class="tg-kicker">Limete WiFi</p>
+        <h2>Génération de tickets</h2>
+        <p class="tg-lead">Créer rapidement des tickets WiFi pour vos clients.</p>
+    </div>
+    @if($quickZone)
+        <div class="tg-pills">
+            <span class="tg-pill">{{ $quickZone->name }}</span>
+            @if($quickRouter)
+                <span class="tg-pill"><span class="tg-dot {{ $routerOn ? 'is-on' : '' }}"></span>{{ $routerOn ? 'Routeur connecté' : 'Hors ligne' }}</span>
+            @endif
+        </div>
+    @endif
+</header>
 @if($quickZone)
-    <section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
-        <h2 class="text-lg font-semibold">1. Routeur</h2>
-        <p class="mt-1 text-sm text-slate-600">Le catalogue est relu sur le routeur de la zone choisie.</p>
-        <form class="mt-4 grid gap-3" method="GET" action="{{ url()->current() }}">
-            <label class="text-sm font-semibold" for="catalog-zone">WiFi Zone / routeur
-                <select class="mt-1 w-full rounded-xl border px-3 py-3 text-base" id="catalog-zone" name="wifi_zone_id" onchange="this.form.submit()">
+    <section class="tg-card">
+        <div class="tg-card-head">
+            <span class="tg-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="16" r="1.2" fill="currentColor"/></svg></span>
+            <div>
+                <h2>1. Routeur</h2>
+                <p>Le catalogue est relu sur le routeur de la zone choisie.</p>
+            </div>
+        </div>
+        <form class="tg-grid" method="GET" action="{{ url()->current() }}" data-tg-zone>
+            <label class="tg-label" for="catalog-zone">WiFi Zone / routeur
+                <select id="catalog-zone" name="wifi_zone_id" onchange="var n=this.form.querySelector('[data-tg-zone-wait]'); if(n) n.hidden=false; this.form.submit();">
                     @foreach($zones as $zone)
                         <option value="{{ $zone->id }}" @selected((int) $quickZone->id === (int) $zone->id)>{{ $zone->name }}</option>
                     @endforeach
                 </select>
             </label>
-            @if($quickRouter)
-                <p class="text-sm text-slate-700">Routeur sélectionné : <strong>{{ $quickRouter->name }}</strong> · {{ $quickRouter->host }}</p>
-            @else
-                <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">Aucun routeur actif sur cette zone. Le catalogue local est utilisé s’il existe.</p>
-            @endif
+            <div class="tg-router-box">
+                <span class="text-sm font-semibold">Routeur</span>
+                @if($quickRouter)
+                    <strong class="tg-router-name">Routeur sélectionné : {{ $quickRouter->name }}</strong>
+                    <small>{{ $quickRouter->host }}</small>
+                @else
+                    <strong>Aucun routeur actif sur cette zone. Le catalogue local est utilisé s’il existe.</strong>
+                @endif
+            </div>
             @if($quick['notice'])
-                <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{{ $quick['notice'] }}</p>
+                <p class="tg-note">{{ $quick['notice'] }}</p>
             @endif
+            <p class="tg-hint" data-tg-zone-wait hidden>Chargement du catalogue…</p>
         </form>
     </section>
     @include('vouchers.express')
     @include('vouchers.quick')
 @endif
 
-<section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
+<section class="tg-card">
     <h2 class="text-lg font-semibold">Choisir la durée</h2>
     <p class="mt-1 text-sm text-slate-600">Seules les durées de vos forfaits sont proposées.</p>
     @forelse($zones as $zone)
@@ -73,7 +102,7 @@
     <p class="mb-4 text-sm text-slate-600">Maximum {{ $limit }} tickets par génération pour votre abonnement. Les identifiants, les mots de passe, les jetons et les QR sont créés automatiquement.</p>
 @endif
 
-<form method="POST" action="{{ route('vouchers.store') }}" class="grid gap-4 rounded-2xl bg-white p-4 shadow-sm">
+<form method="POST" action="{{ route('vouchers.store') }}" class="tg-card tg-batch">
     @csrf
     <label class="text-sm font-semibold">WiFi Zone
         <select class="mt-1 w-full rounded-xl border px-3 py-3" name="wifi_zone_id" id="zone" required @disabled($zones->isEmpty() || $limit < 1)>
@@ -118,8 +147,9 @@
             @endforeach
         </div>
     </fieldset>
-    <button class="rounded-xl bg-electric px-4 py-3 font-semibold text-white" @disabled($zones->isEmpty() || $plans->isEmpty() || $limit < 1)>Générer les tickets</button>
+    <button class="tg-cta" @disabled($zones->isEmpty() || $plans->isEmpty() || $limit < 1)>Générer les tickets</button>
 </form>
+</div>
 @endsection
 @push('scripts')
 <script>
