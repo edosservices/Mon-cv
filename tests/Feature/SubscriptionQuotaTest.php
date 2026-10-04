@@ -107,6 +107,7 @@ class SubscriptionQuotaTest extends TestCase
             ->assertSee('PREMIUM', false)
             ->assertSee('15 000 FC / mois', false)
             ->assertSee('25 000 FC / mois', false)
+            ->assertSee('8.9 $ / mois', false)
             ->assertSee('Passer à cette formule', false)
             ->assertSee(route('subscription.show', ['plan' => $business->id]).'#paiement', false)
             ->assertDontSee('ARCHIVE', false)
@@ -151,6 +152,7 @@ class SubscriptionQuotaTest extends TestCase
             ->assertSee('BUSINESS', false)
             ->assertSee('PRO', false)
             ->assertSee('15 000 FC / mois', false)
+            ->assertSee('8.9 $ / mois', false)
             ->assertSee('Passer à cette formule', false)
             ->assertSee(route('subscription.checkout'), false)
             ->assertDontSee('Paiement réussi', false)
@@ -252,6 +254,8 @@ class SubscriptionQuotaTest extends TestCase
             ->assertSee('Renouvelez votre abonnement pour continuer à utiliser toutes les fonctionnalités.', false)
             ->assertSee('Renouveler mon abonnement', false)
             ->assertSee('04/09/2026', false)
+            ->assertSee('4.9 $ / mois', false)
+            ->assertSee('8.9 $ / mois', false)
             ->assertSee(route('subscription.checkout'), false)
             ->assertDontSee('Paiement réussi', false);
     }

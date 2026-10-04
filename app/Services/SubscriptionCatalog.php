@@ -49,7 +49,7 @@ class SubscriptionCatalog
 
     public function priceLabel(SaasPlan $plan): string
     {
-        $amount = Money::shop($plan->price, $plan->currency);
+        $amount = $this->amountLabel($plan);
         $days = (int) ($plan->interval_days ?? 0);
 
         if ($days === 30) {
@@ -61,6 +61,21 @@ class SubscriptionCatalog
         }
 
         return $amount;
+    }
+
+    private function amountLabel(SaasPlan $plan): string
+    {
+        if ($plan->price === null || $plan->price === '') {
+            return 'À définir';
+        }
+
+        $currency = $plan->currency ?: config('limete.currency');
+
+        if ($currency === 'USD') {
+            return number_format((float) $plan->price, 1, '.', '').' $';
+        }
+
+        return Money::shop($plan->price, $currency);
     }
 
     public function periodLabel(SaasPlan $plan): ?string
