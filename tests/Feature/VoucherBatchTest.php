@@ -35,7 +35,7 @@ class VoucherBatchTest extends TestCase
 
         $page = $this->actingAs($user)->get('/vouchers/generated');
         $page->assertOk()->assertSee('Tickets générés')->assertSee($voucher->username);
-        $page->assertSee($voucher->password, false);
+        $page->assertDontSee($voucher->password, false);
     }
 
     public function test_ten_tickets_are_unique_and_listed_for_selection(): void
@@ -68,7 +68,7 @@ class VoucherBatchTest extends TestCase
             ->assertSee('Télécharger tous')
             ->assertSee('Sélectionner')
             ->assertSee('Dupliquer la configuration')
-            ->assertSee($first->password, false);
+            ->assertDontSee($first->password, false);
     }
 
     public function test_one_hundred_tickets_stay_inside_the_subscription_limit_and_stay_unique(): void

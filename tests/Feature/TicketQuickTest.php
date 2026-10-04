@@ -466,7 +466,7 @@ class TicketQuickTest extends TestCase
         $page = $this->actingAs($user)->get('/vouchers/generated');
         $page->assertOk()->assertDontSee('secret-router', false);
         foreach (Voucher::withoutGlobalScope('tenant')->get() as $voucher) {
-            $page->assertSee($voucher->password, false);
+            $page->assertDontSee($voucher->password, false);
             $this->assertSame('1Jours', $voucher->profile_snapshot['profile']);
         }
 

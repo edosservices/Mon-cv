@@ -57,7 +57,6 @@
                 <input class="ticket-check" form="ticket-bulk" type="checkbox" name="ids[]" value="{{ $voucher->id }}" checked> Sélectionner
             </label>
             <strong>{{ $voucher->username }}</strong>
-            <strong>{{ $voucher->password }}</strong>
             <p>{{ $voucher->plan->name ?? '' }}</p>
             <p>{{ $voucher->plan->validityLabel() ?? '' }}</p>
             <p>{{ \App\Support\Money::shop($voucher->price_amount, $voucher->currency) }}</p>
