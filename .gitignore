@@ -19,6 +19,7 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/app/hostinger/
 /storage/pail
 /vendor
 /database/*.sqlite
