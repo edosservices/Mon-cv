@@ -31,7 +31,7 @@ class SaleService
 
         return DB::transaction(function () use ($zone, $plan, $customer, $provider, $reference) {
             $buyer = null;
-            if (filled($customer['phone'] ?? null) || filled($customer['name'] ?? null)) {
+            if (filled($customer['phone'] ?? null) || filled($customer['name'] ?? null) || filled($customer['email'] ?? null)) {
                 $buyer = Customer::query()
                     ->when(filled($customer['phone'] ?? null), fn ($query) => $query->where('phone', $customer['phone']))
                     ->first();
@@ -42,6 +42,8 @@ class SaleService
                         'phone' => $customer['phone'] ?? null,
                         'email' => $customer['email'] ?? null,
                     ]);
+                } elseif (filled($customer['email'] ?? null)) {
+                    $buyer->forceFill(['email' => $customer['email']])->save();
                 }
             }
 
@@ -69,6 +71,10 @@ class SaleService
                 'transaction_reference' => $reference,
                 'customer_phone' => $customer['phone'] ?? null,
                 'customer_name' => $customer['name'] ?? null,
+                'customer_email' => $customer['email'] ?? null,
+                'country' => $customer['country'] ?? null,
+                'operator' => $customer['operator'] ?? null,
+                'otp' => $customer['otp'] ?? null,
                 'return_url' => route('shop.order', [$zone->slug, $sale->public_token]),
                 'tenant_id' => $zone->tenant_id,
                 'wifi_zone_id' => $zone->id,

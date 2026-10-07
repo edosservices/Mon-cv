@@ -29,6 +29,8 @@ class PaymentWebhookController extends Controller
             $notice = $gateway->verifyPayment($request->getContent(), $signature);
         } catch (InvalidPaymentSignature) {
             return response()->json(['status' => 'rejected'], 401);
+        } catch (InvalidArgumentException) {
+            return response()->json(['status' => 'rejected'], 422);
         }
 
         $result = $settlement->apply($provider, $notice);

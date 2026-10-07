@@ -140,6 +140,8 @@
                             <input id="phone-{{ $plan->id }}" class="form-control" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone') }}" placeholder="812 345 678" required>
                         </div>
                     @endif
+                    <label class="form-label fw-bold mt-3" for="email-{{ $plan->id }}">E-mail <span class="fw-normal">(pour iKeePay)</span></label>
+                    <input id="email-{{ $plan->id }}" class="form-control" name="email" type="email" autocomplete="email" value="{{ old('email') }}" maxlength="160" placeholder="client@mail.com">
                     <fieldset class="pay-choices">
                         <legend>Moyen de paiement</legend>
                         <div class="d-grid gap-2 mt-2">

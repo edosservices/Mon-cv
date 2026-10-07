@@ -9,6 +9,8 @@ use App\Models\WifiZone;
 use App\Rules\CustomerPhone;
 use App\Services\AuditLogger;
 use App\Services\Mikrotik\MikrotikService;
+use App\Services\Payments\IkeePayCatalog;
+use App\Services\Payments\IkeePayGateway;
 use App\Services\Payments\PaymentManager;
 use App\Services\SaleService;
 use App\Support\QrCodes;
@@ -54,6 +56,9 @@ class WifiShopController extends Controller
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
+            'email' => ['nullable', 'email', 'max:160'],
+        ], [
+            'email.email' => 'Indiquez une adresse e-mail valide.',
         ]);
 
         $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
@@ -80,6 +85,7 @@ class WifiShopController extends Controller
             'plan' => $plan,
             'customer' => $draft,
             'providers' => app(PaymentManager::class)->enabledProviders(),
+            'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
             'step' => 2,
         ]);
     }
@@ -87,24 +93,60 @@ class WifiShopController extends Controller
     public function checkout(Request $request, string $slug, SaleService $sales)
     {
         $zone = $this->zone($slug);
+
+        if (! filled($request->input('country')) && filled($request->input('ikeepay_method'))) {
+            $parts = explode('|', (string) $request->input('ikeepay_method'), 2);
+            $request->merge([
+                'country' => $parts[0] ?? '',
+                'operator' => $parts[1] ?? '',
+            ]);
+        }
+
         $data = $request->validate([
             'plan_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
-            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay'],
+            'email' => ['nullable', 'email', 'max:160', 'required_if:provider,ikeepay'],
+            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay,ikeepay'],
             'transaction_reference' => ['nullable', 'string', 'max:80'],
+            'country' => ['nullable', 'string', 'size:2'],
+            'operator' => ['nullable', 'string', 'max:40'],
+            'otp' => ['nullable', 'string', 'max:12'],
         ], [
             'provider.required' => 'Choisissez un moyen de paiement.',
             'provider.in' => 'Ce moyen de paiement n’est pas disponible.',
+            'email.required_if' => 'Indiquez une adresse e-mail pour payer avec iKeePay.',
+            'email.email' => 'Indiquez une adresse e-mail valide.',
         ]);
 
         $plan = $this->plans($zone)->firstWhere('id', (int) $data['plan_id']);
         abort_unless($plan, 404);
         $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
 
+        if (filled($data['operator'] ?? null) || filled($data['country'] ?? null)) {
+            $data['country'] = strtoupper((string) ($data['country'] ?? ''));
+            $data['operator'] = strtoupper((string) ($data['operator'] ?? ''));
+
+            if (! app(IkeePayCatalog::class)->allows($data['country'], $data['operator'])) {
+                return back()->withErrors([
+                    'operator' => 'Cet opérateur n’est pas disponible pour ce pays.',
+                ])->withInput();
+            }
+
+            if (! filled($data['phone'] ?? null)) {
+                return back()->withErrors([
+                    'phone' => 'Indiquez un numéro de téléphone pour ce paiement.',
+                ])->withInput();
+            }
+        }
+
         try {
             $sale = $sales->placeOrder($zone, $plan, $data, $data['provider'], $data['transaction_reference'] ?? null);
         } catch (\RuntimeException $exception) {
+            if ($exception instanceof \Illuminate\Database\QueryException) {
+                throw $exception;
+            }
+
             return back()->with('warning', $exception->getMessage())->withInput();
         }
 
@@ -112,7 +154,57 @@ class WifiShopController extends Controller
         session(['shop_phone.'.$zone->id => $data['phone']]);
         $this->remember($zone, 'customer_sales', $sale->public_token);
 
+        if ($data['provider'] === 'ikeepay') {
+            $sale->load('payment');
+            $payment = $sale->payment;
+
+            if (($payment?->metadata['flow'] ?? null) === 'h2h') {
+                if (($payment->metadata['remote_status'] ?? null) === 'completed') {
+                    app(IkeePayGateway::class)->verifyTransaction($payment);
+                    $sale->refresh();
+                    $payment->refresh();
+                }
+
+                if ($sale->status !== 'paid') {
+                    $link = $payment->metadata['payment_link'] ?? null;
+                    if (is_string($link) && str_starts_with($link, 'https://')) {
+                        return redirect()->away($link);
+                    }
+                }
+
+                return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
+            }
+
+            return redirect()->route('shop.ikeepay', [$zone->slug, $sale->public_token]);
+        }
+
         return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
+    }
+
+    public function ikeepay(string $slug, string $token)
+    {
+        $zone = $this->zone($slug);
+        $sale = Sale::where('public_token', $token)
+            ->where('wifi_zone_id', $zone->id)
+            ->with('payment', 'customer')
+            ->firstOrFail();
+        $payment = $sale->payment;
+        abort_unless($payment?->provider === 'ikeepay', 404);
+        if (($payment->metadata['flow'] ?? null) === 'h2h') {
+            return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
+        }
+
+        return view('shop.ikeepay', [
+            'zone' => $zone,
+            'sale' => $sale,
+            'amount' => number_format((float) $payment->amount, 2, '.', ''),
+            'currency' => strtoupper((string) $payment->currency),
+            'orderId' => (string) $payment->internal_reference,
+            'email' => (string) ($sale->customer?->email ?? ''),
+            'publicKey' => (string) config('services.ikeepay.public_key'),
+            'checkoutUrl' => (string) config('services.ikeepay.checkout_url'),
+            'returnUrl' => route('shop.order', [$zone->slug, $sale->public_token]),
+        ]);
     }
 
     public function order(string $slug, string $token)

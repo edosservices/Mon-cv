@@ -38,6 +38,19 @@ class PaymentSettlement
                 return 'rejected';
             }
 
+            if (filled($notice->providerReference)) {
+                $taken = Payment::withoutGlobalScope('tenant')
+                    ->where('provider_reference', $notice->providerReference)
+                    ->where('id', '!=', $payment->id)
+                    ->exists();
+
+                if ($taken) {
+                    $this->store($payment, 'rejected', $notice);
+
+                    return 'rejected';
+                }
+            }
+
             if (! $this->sameAmount($payment->amount, $notice->amount) || strtoupper((string) $payment->currency) !== $notice->currency) {
                 $this->store($payment, 'rejected', $notice);
 

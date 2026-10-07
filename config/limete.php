@@ -23,6 +23,7 @@ return [
         'mpesa' => 'M-Pesa',
         'card' => 'Carte bancaire',
         'unipay' => 'UniPay',
+        'ikeepay' => 'iKeePay',
     ],
 
     /*

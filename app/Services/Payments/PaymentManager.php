@@ -16,6 +16,7 @@ class PaymentManager
             'mpesa' => new MpesaGateway,
             'card' => new CardGateway,
             'unipay' => new UniPayGateway,
+            'ikeepay' => new IkeePayGateway,
             default => throw new InvalidArgumentException('Moyen de paiement inconnu.'),
         };
     }
@@ -43,6 +44,7 @@ class PaymentManager
             'mpesa' => 'limete.payments.mpesa.api_key',
             'card' => 'limete.payments.card.secret',
             'unipay' => 'services.unipay.key',
+            'ikeepay' => 'services.ikeepay.public_key',
             default => null,
         };
 

@@ -37,6 +37,9 @@
     <label class="field" for="name">Nom <span>(facultatif)</span>
         <input id="name" name="name" type="text" autocomplete="name" value="{{ old('name') }}" maxlength="120">
     </label>
+    <label class="field" for="email">E-mail <span>(pour iKeePay)</span>
+        <input id="email" name="email" type="email" autocomplete="email" value="{{ old('email') }}" maxlength="160" placeholder="client@mail.com">
+    </label>
     <button class="btn btn-primary" type="submit">Continuer</button>
     <p class="help"><a href="{{ route('client.register') }}">Créer un compte</a> pour retrouver vos tickets plus tard.</p>
 </form>

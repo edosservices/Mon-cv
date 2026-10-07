@@ -100,6 +100,19 @@
         <p class="help">Statut : {{ \App\Enums\PaymentStatus::tryFrom($payment->status ?? '')?->label() ?? 'En attente' }}</p>
         <p class="help">{{ $payment->metadata['note'] ?? 'Le ticket apparaîtra après confirmation du paiement.' }}</p>
         <p class="help">Le serveur confirme le paiement. Cette page ne le transforme pas en succès.</p>
+        @if($payment?->provider === 'ikeepay')
+            <p class="help">Le paiement iKeePay reste en attente jusqu’à la confirmation du serveur.</p>
+            @php
+                $paymentLink = $payment->metadata['payment_link'] ?? null;
+                $paymentLink = is_string($paymentLink) && str_starts_with($paymentLink, 'https://') ? $paymentLink : null;
+            @endphp
+            @if($paymentLink)
+                <a class="btn btn-primary" href="{{ $paymentLink }}">Continuer le paiement</a>
+            @endif
+            @if(($payment->metadata['flow'] ?? 'inline') !== 'h2h')
+                <a class="btn btn-primary" href="{{ route('shop.ikeepay', [$zone->slug, $sale->public_token]) }}">Revenir au paiement iKeePay</a>
+            @endif
+        @endif
         <form method="POST" action="{{ route('shop.payment.refresh', [$zone->slug, $sale->public_token]) }}" data-wait>
             @csrf
             <button class="btn btn-primary btn-lg rounded-pill w-100" type="submit" data-busy="Vérification…">Vérifier le paiement</button>
