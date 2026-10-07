@@ -127,10 +127,10 @@ class HostingerSqlDump
     {
         $errors = [];
 
-        if (preg_match('/CREATE\s+DATABASE/i', $sql) === 1) {
+        if (preg_match('/^\s*CREATE\s+(?:DATABASE|SCHEMA)\b/im', $sql) === 1) {
             $errors[] = 'CREATE DATABASE est présent.';
         }
-        if (preg_match('/^USE\s+/mi', $sql) === 1) {
+        if (preg_match('/^\s*USE\b/im', $sql) === 1) {
             $errors[] = 'USE est présent.';
         }
         if (stripos($sql, 'DEFINER') !== false) {
@@ -149,6 +149,9 @@ class HostingerSqlDump
         }
         if (! str_contains($sql, 'SET FOREIGN_KEY_CHECKS=0;')) {
             $errors[] = 'FOREIGN_KEY_CHECKS=0 est absent.';
+        }
+        if (! str_contains($sql, 'SET FOREIGN_KEY_CHECKS=1;')) {
+            $errors[] = 'FOREIGN_KEY_CHECKS=1 est absent.';
         }
         if (! str_contains($sql, 'SET NAMES utf8mb4;')) {
             $errors[] = 'SET NAMES utf8mb4 est absent.';
