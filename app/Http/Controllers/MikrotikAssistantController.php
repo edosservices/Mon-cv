@@ -63,13 +63,17 @@ class MikrotikAssistantController extends Controller
             $draft['timeout'] = (int) ($data['timeout'] ?? 5);
             $draft['step'] = 3;
         } elseif ($step === 3) {
+            $keeping = filled($draft['secret'] ?? null);
             $data = $request->validate([
                 'username' => ['required', 'string', 'max:80'],
-                'password' => ['required', 'string', 'max:120'],
+                'password' => [$keeping ? 'nullable' : 'required', 'string', 'max:120'],
             ]);
             $draft['username'] = $data['username'];
-            $draft['secret'] = Crypt::encryptString($data['password']);
+            if (filled($data['password'] ?? null)) {
+                $draft['secret'] = Crypt::encryptString($data['password']);
+            }
             $draft['step'] = 4;
+            $draft['failure'] = null;
         } else {
             return redirect()->route('mikrotiks.assistant');
         }
@@ -98,15 +102,18 @@ class MikrotikAssistantController extends Controller
         try {
             $found = $service->discover($draft['host'], $port, $draft['username'], $password, (int) ($draft['timeout'] ?? 5), $secure);
         } catch (RuntimeException $exception) {
+            $diagnosis = $service->explainFailure($exception->getMessage(), $draft['host'], $secure);
             $draft['probe'] = null;
+            $draft['failure'] = $diagnosis;
             $draft['mode'] = $mode;
             $draft['step'] = 4;
             session(['mikrotik.assistant' => $draft]);
 
-            return redirect()->route('mikrotiks.assistant')->with('warning', '✕ Connexion impossible. '.$service->explainFailure($exception->getMessage(), $draft['host'], $secure));
+            return redirect()->route('mikrotiks.assistant')->with('warning', '✕ '.$diagnosis);
         }
 
         $draft['probe'] = $found;
+        $draft['failure'] = null;
         $draft['mode'] = $mode;
         $draft['step'] = 4;
         session(['mikrotik.assistant' => $draft]);
@@ -116,6 +123,17 @@ class MikrotikAssistantController extends Controller
             : 'Simulation réussie. Aucun routeur réel n’est connecté.';
 
         return redirect()->route('mikrotiks.assistant')->with('status', $message);
+    }
+
+    public function revise()
+    {
+        $draft = $this->draft();
+        $draft['step'] = 2;
+        $draft['probe'] = null;
+        $draft['failure'] = null;
+        session(['mikrotik.assistant' => $draft]);
+
+        return redirect()->route('mikrotiks.assistant');
     }
 
     public function advance()
@@ -183,7 +201,7 @@ class MikrotikAssistantController extends Controller
     {
         $router = $service->syncRouter($mikrotik);
         if ($router->status !== 'online') {
-            return back()->with('warning', '✕ Connexion impossible. '.$service->explainFailure((string) $router->last_error, $router->host, $router->usesSecureApi()));
+            return back()->with('warning', 'Le MikroTik n’a pas pu être lu. '.$service->explainFailure((string) $router->last_error, $router->host, $router->usesSecureApi()));
         }
 
         $message = $router->detail('connection_mode') === 'real'
@@ -256,6 +274,9 @@ class MikrotikAssistantController extends Controller
             'pending' => $pending,
             'profiles' => $router->detail('profile_rows', []),
             'sessions' => $router->detail('sessions', []),
+            'reading' => filled($router->last_error)
+                ? app(MikrotikService::class)->explainFailure((string) $router->last_error, $router->host, $router->usesSecureApi())
+                : null,
             'preview' => session('profile_preview'),
             'previewPlanId' => session('preview_plan_id'),
         ];
@@ -292,6 +313,7 @@ class MikrotikAssistantController extends Controller
             'username' => '',
             'secret' => null,
             'probe' => null,
+            'failure' => null,
             'mode' => null,
         ];
     }

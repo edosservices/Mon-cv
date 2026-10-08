@@ -136,7 +136,6 @@ class MikrotikAssistantTest extends TestCase
 
         $this->actingAs($user)->from('/mikrotiks/assistant')->post('/mikrotiks/assistant/test')->assertRedirect();
         $this->actingAs($user)->get('/mikrotiks/assistant')
-            ->assertSee('Connexion impossible')
             ->assertSee('Identifiants RouterOS incorrects')
             ->assertDontSee('router-secret-77', false)
             ->assertDontSee('/system/identity', false);
@@ -147,6 +146,67 @@ class MikrotikAssistantTest extends TestCase
             ->assertSee('MikroTik non joignable depuis le serveur')
             ->assertDontSee('router-secret-77', false);
         $this->assertSame(0, Mikrotik::count());
+    }
+
+    public function test_the_test_step_can_be_modified_and_a_failed_read_stays_explicit(): void
+    {
+        [$user] = $this->workspace();
+        $this->reachTestStep($user);
+
+        $this->actingAs($user)->get('/mikrotiks/assistant')
+            ->assertOk()
+            ->assertSee('Modifier')
+            ->assertSee('10.8.0.1')
+            ->assertSee('Le test de connexion est effectué depuis le serveur Limete WiFi. Une adresse privée comme 192.168.x.x peut être accessible depuis votre téléphone ou ordinateur connecté au MikroTik, mais inaccessible depuis le serveur.')
+            ->assertDontSee('router-secret-77', false);
+
+        $this->actingAs($user)->post('/mikrotiks/assistant/revise')->assertRedirect('/mikrotiks/assistant');
+        $this->actingAs($user)->get('/mikrotiks/assistant')
+            ->assertSee('Adresse IP ou nom')
+            ->assertSee('value="10.8.0.1"', false)
+            ->assertDontSee('router-secret-77', false);
+
+        $this->actingAs($user)->post('/mikrotiks/assistant/step', [
+            'step' => 2,
+            'host' => '192.168.88.1',
+            'api_port' => 8728,
+        ])->assertRedirect();
+        $this->actingAs($user)->post('/mikrotiks/assistant/step', [
+            'step' => 3,
+            'username' => 'admin',
+            'password' => '',
+        ])->assertRedirect();
+
+        $fake = new FakeHotspotRouter;
+        $fake->fail('Connection timed out. router-secret-77');
+        $this->app->instance(HotspotRouter::class, $fake);
+        $this->actingAs($user)->post('/mikrotiks/assistant/test')->assertRedirect();
+        $this->actingAs($user)->get('/mikrotiks/assistant')
+            ->assertSee('192.168.88.1')
+            ->assertSee('MikroTik non joignable depuis le serveur')
+            ->assertSee('Modifier')
+            ->assertDontSee('router-secret-77', false);
+        $this->assertSame(0, Mikrotik::count());
+    }
+
+    public function test_a_failed_read_names_the_cause_and_keeps_the_saved_address(): void
+    {
+        [$owner, , , $router] = $this->readyRouter();
+        $secret = $router->password;
+        app(HotspotRouter::class)->fail('Connexion impossible au routeur. '.$secret);
+
+        $this->actingAs($owner)->get('/mikrotiks/assistant/'.$router->id)
+            ->assertOk()
+            ->assertSee('Lire le routeur')
+            ->assertSee('Modifier')
+            ->assertDontSee($secret, false);
+        $this->actingAs($owner)->post('/mikrotiks/assistant/'.$router->id.'/read')->assertRedirect();
+        $this->actingAs($owner)->get('/mikrotiks/assistant/'.$router->id)
+            ->assertSee('Le MikroTik n’a pas pu être lu.')
+            ->assertSee('MikroTik non joignable depuis le serveur')
+            ->assertDontSee($secret, false);
+        $this->assertSame('10.8.0.1', $router->fresh()->host);
+        $this->assertSame($secret, $router->fresh()->password);
     }
 
     public function test_tenant_isolation_and_permissions(): void

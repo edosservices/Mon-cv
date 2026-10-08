@@ -143,6 +143,7 @@ Route::middleware(['auth', 'tenant', 'tenant.active', 'role:entrepreneur,staff']
             Route::post('/mikrotiks/assistant/start', [MikrotikAssistantController::class, 'start'])->name('mikrotiks.assistant.start');
             Route::post('/mikrotiks/assistant/step', [MikrotikAssistantController::class, 'step'])->name('mikrotiks.assistant.step');
             Route::post('/mikrotiks/assistant/test', [MikrotikAssistantController::class, 'test'])->name('mikrotiks.assistant.test');
+            Route::post('/mikrotiks/assistant/revise', [MikrotikAssistantController::class, 'revise'])->name('mikrotiks.assistant.revise');
             Route::post('/mikrotiks/assistant/continue', [MikrotikAssistantController::class, 'advance'])->name('mikrotiks.assistant.continue');
             Route::post('/mikrotiks/assistant/save', [MikrotikAssistantController::class, 'save'])->name('mikrotiks.assistant.save');
             Route::get('/mikrotiks/assistant/{mikrotik}', [MikrotikAssistantController::class, 'show'])->name('mikrotiks.assistant.show');

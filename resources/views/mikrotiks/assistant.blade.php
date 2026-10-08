@@ -56,6 +56,7 @@
                 <form method="POST" action="{{ route('mikrotiks.assistant.step') }}" data-loader>
                     @csrf
                     <input type="hidden" name="step" value="2">
+                    <p class="text-secondary">Le test de connexion est effectué depuis le serveur Limete WiFi. Une adresse privée comme 192.168.x.x peut être accessible depuis votre téléphone ou ordinateur connecté au MikroTik, mais inaccessible depuis le serveur.</p>
                     <label class="form-label" for="router-host">Adresse IP ou nom</label>
                     <input class="form-control" id="router-host" name="host" value="{{ old('host', $draft['host']) }}" required placeholder="192.168.88.1">
                     <label class="form-label mt-3" for="router-port">Port</label>
@@ -82,16 +83,34 @@
                     <label class="form-label" for="router-user">Nom d’utilisateur</label>
                     <input class="form-control" id="router-user" name="username" value="{{ old('username', $draft['username']) }}" required autocomplete="off">
                     <label class="form-label mt-3" for="router-password">Mot de passe</label>
-                    <input class="form-control" id="router-password" name="password" type="password" required autocomplete="new-password">
+                    <input class="form-control" id="router-password" name="password" type="password" value="" @if(empty($draft['secret'])) required @endif autocomplete="new-password" placeholder="{{ empty($draft['secret']) ? '' : 'Laisser vide pour conserver' }}">
                     <p class="form-text">Le mot de passe n’est plus affiché après cette étape.</p>
                     <button class="btn biz-btn mt-3">Continuer</button>
                 </form>
             @elseif($step === 4)
                 <p>Nous allons vérifier que le routeur répond, sans l’enregistrer.</p>
-                <form method="POST" action="{{ route('mikrotiks.assistant.test') }}" data-loader>
-                    @csrf
-                    <button class="btn biz-btn">Tester la connexion</button>
-                </form>
+                <p class="text-secondary">Le test de connexion est effectué depuis le serveur Limete WiFi. Une adresse privée comme 192.168.x.x peut être accessible depuis votre téléphone ou ordinateur connecté au MikroTik, mais inaccessible depuis le serveur.</p>
+                <dl class="row mb-3">
+                    <dt class="col-sm-4">Nom</dt><dd class="col-sm-8">{{ $draft['name'] ?: '—' }}</dd>
+                    <dt class="col-sm-4">Adresse</dt><dd class="col-sm-8">{{ $draft['host'] }}</dd>
+                    <dt class="col-sm-4">Port API</dt><dd class="col-sm-8">{{ $draft['api_port'] ?: 8728 }}</dd>
+                    <dt class="col-sm-4">Port API-SSL</dt><dd class="col-sm-8">{{ $draft['api_ssl_port'] ?: 8729 }}</dd>
+                    <dt class="col-sm-4">Type de connexion</dt><dd class="col-sm-8">{{ ($draft['connection_type'] ?? 'api') === 'api-ssl' ? 'API-SSL' : 'API' }}</dd>
+                    <dt class="col-sm-4">Utilisateur</dt><dd class="col-sm-8">{{ $draft['username'] ?: '—' }}</dd>
+                </dl>
+                @if(filled($draft['failure'] ?? null))
+                    <div class="alert alert-warning" role="status">{{ $draft['failure'] }}</div>
+                @endif
+                <div class="d-flex flex-wrap gap-2">
+                    <form method="POST" action="{{ route('mikrotiks.assistant.test') }}" data-loader>
+                        @csrf
+                        <button class="btn biz-btn">Tester la connexion</button>
+                    </form>
+                    <form method="POST" action="{{ route('mikrotiks.assistant.revise') }}">
+                        @csrf
+                        <button class="btn btn-outline-primary">Modifier</button>
+                    </form>
+                </div>
                 @if(is_array($draft['probe'] ?? null))
                     @php $probe = $draft['probe']; @endphp
                     <div class="alert {{ ($draft['mode'] ?? '') === 'real' ? 'alert-success' : 'alert-warning' }} mt-3" role="status">
@@ -161,6 +180,7 @@
             <div class="card-body">
                 <h3 class="h6 mb-1">{{ $router->name }}</h3>
                 <p class="mb-1">WiFi Zone : {{ $router->wifiZone->name ?? 'Non choisie' }}</p>
+                <p class="mb-1">Adresse : {{ $router->host }}</p>
                 <p class="mb-2">
                     @if(($router->details['connection_mode'] ?? '') === 'simulation')
                         <span class="badge text-bg-warning">SIMULATION</span>
@@ -174,7 +194,17 @@
                         <span class="badge text-bg-secondary">En attente</span>
                     @endif
                 </p>
-                <a class="btn btn-outline-primary btn-sm" href="{{ route('mikrotiks.assistant.show', $router) }}">Ouvrir</a>
+                @if($router->last_error)
+                    <p class="mb-2">{{ app(\App\Services\Mikrotik\MikrotikService::class)->explainFailure((string) $router->last_error, $router->host, $router->usesSecureApi()) }}</p>
+                @endif
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-outline-primary btn-sm" href="{{ route('mikrotiks.assistant.show', $router) }}">Ouvrir</a>
+                    <a class="btn btn-outline-primary btn-sm" href="{{ route('mikrotiks.edit', $router) }}">Modifier</a>
+                    <form method="POST" action="{{ route('mikrotiks.test', $router) }}">
+                        @csrf
+                        <button class="btn btn-outline-primary btn-sm">Tester la connexion</button>
+                    </form>
+                </div>
             </div>
         </article>
     @empty
