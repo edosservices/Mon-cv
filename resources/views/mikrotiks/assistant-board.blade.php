@@ -43,13 +43,21 @@
                 <p class="mb-1">Version : {{ $router->routeros_version ?: '—' }}</p>
                 <p class="mb-1">Temps de marche : {{ $router->detail('uptime') ?: '—' }}</p>
                 <p class="mb-1">Dernière synchronisation : {{ $router->last_synced_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</p>
-                <p class="mb-1">Dernière erreur : {{ $router->last_error ?: 'Aucune' }}</p>
+                <p class="mb-1">Dernière erreur : {{ $reading ?: 'Aucune' }}</p>
                 <p class="mb-1">Utilisateurs actifs : {{ $router->detail('active_users', 0) }}</p>
                 <p class="mb-3">Tickets en attente : {{ $pending->count() }}</p>
-                <form method="POST" action="{{ route('mikrotiks.assistant.read', $router) }}" data-loader>
-                    @csrf
-                    <button class="btn biz-btn">Synchroniser</button>
-                </form>
+                <p class="text-secondary">Le test de connexion est effectué depuis le serveur Limete WiFi. Une adresse privée comme 192.168.x.x peut être accessible depuis votre téléphone ou ordinateur connecté au MikroTik, mais inaccessible depuis le serveur.</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <form method="POST" action="{{ route('mikrotiks.assistant.read', $router) }}" data-loader>
+                        @csrf
+                        <button class="btn biz-btn">Lire le routeur</button>
+                    </form>
+                    <form method="POST" action="{{ route('mikrotiks.test', $router) }}">
+                        @csrf
+                        <button class="btn btn-outline-primary">Tester la connexion</button>
+                    </form>
+                    <a class="btn btn-outline-primary" href="{{ route('mikrotiks.edit', $router) }}">Modifier</a>
+                </div>
                 <form class="mt-2" method="POST" action="{{ route('mikrotiks.assistant.auto', $router) }}">
                     @csrf
                     <input type="hidden" name="auto_sync" value="{{ $router->auto_sync ? 0 : 1 }}">
