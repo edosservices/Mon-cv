@@ -154,4 +154,35 @@ class IkeePayCatalog
             default => $this->operators()[$operator] ?? $operator,
         };
     }
+
+    /**
+     * Moyens H2H connus, mais absents de la liste des pays. Ils s’affichent
+     * avant la confirmation et ne peuvent pas créer de commande.
+     *
+     * @return list<array{provider: string, operator: string, label: string, reason: string}>
+     */
+    public function unavailableShopMethods(): array
+    {
+        $offered = [];
+        foreach ($this->choices() as $choice) {
+            $offered[$choice['operator']] = true;
+        }
+
+        $manager = app(PaymentManager::class);
+        $rows = [];
+        foreach ($this->providerOperators() as $provider => $operator) {
+            if (! $manager->enabled($provider) || isset($offered[$operator])) {
+                continue;
+            }
+
+            $rows[] = [
+                'provider' => $provider,
+                'operator' => $operator,
+                'label' => $this->shopLabel($operator),
+                'reason' => 'Indisponible : aucun pays iKeePay n’autorise l’opérateur '.$operator.'. Aucune demande ne sera envoyée.',
+            ];
+        }
+
+        return $rows;
+    }
 }

@@ -32,6 +32,7 @@ class WifiShopController extends Controller
             'plans' => $this->plans($zone),
             'providers' => $this->guestProviders(),
             'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
+            'unavailableH2h' => app(IkeePayCatalog::class)->unavailableShopMethods(),
             'knownPhone' => $phone,
             'activeVoucher' => $this->activeVoucher($zone, $phone),
             'step' => 0,
@@ -91,6 +92,7 @@ class WifiShopController extends Controller
             'customer' => $draft,
             'providers' => $this->guestProviders(),
             'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
+            'unavailableH2h' => app(IkeePayCatalog::class)->unavailableShopMethods(),
             'ikeepayReady' => filled($zone->tenant?->ikeepayPublicKey()),
             'step' => 2,
         ]);
@@ -168,9 +170,9 @@ class WifiShopController extends Controller
             $data['operator'] = $choice['operator'];
         }
 
-        if (in_array($data['provider'], ['mpesa', 'card'], true)) {
+        if (in_array($data['provider'], ['airtel_money', 'orange_money', 'mpesa', 'card'], true)) {
             return back()->withErrors([
-                'provider' => 'Ce connecteur n’envoie aucune demande à iKeePay. Aucun paiement n’a été créé.',
+                'provider' => 'Ce moyen n’est pas envoyé à iKeePay. Aucune commande n’a été créée.',
             ])->withInput();
         }
 

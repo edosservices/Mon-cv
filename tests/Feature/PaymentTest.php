@@ -389,7 +389,8 @@ $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
             ->assertOk()
             ->assertSee('Paiement')
             ->assertSee('Paiement manuel / comptoir')
-            ->assertDontSee('Airtel Money')
+            ->assertSee('Airtel Money — Indisponible', false)
+            ->assertSee('Orange Money — Indisponible', false)
             ->assertDontSee('M-Pesa')
             ->assertSee('UniPay');
         $this->post('/wifi/'.$zone->slug, [

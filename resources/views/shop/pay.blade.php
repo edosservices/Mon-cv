@@ -83,6 +83,17 @@
     <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
     <h2>Comment souhaitez-vous payer ?</h2>
     <p class="help">Aucun ticket n’est créé avant la confirmation du paiement.</p>
+    @if(($unavailableH2h ?? []) !== [])
+        <div class="choices">
+            @foreach($unavailableH2h as $method)
+                <label class="choice">
+                    <input type="radio" disabled>
+                    <span>{{ $method['label'] }} — Indisponible</span>
+                </label>
+                <p class="help">{{ $method['reason'] }}</p>
+            @endforeach
+        </div>
+    @endif
     <div class="choices">
         @foreach($providers as $key => $label)
             @continue($key === 'ikeepay')

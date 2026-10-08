@@ -415,8 +415,8 @@ JS;
             ->assertSee('Durée')
             ->assertSee('1 000 FC')
             ->assertSee('+243810002424')
-            ->assertDontSee('Airtel Money')
-            ->assertDontSee('Orange Money')
+            ->assertSee('Airtel Money — Indisponible', false)
+            ->assertSee('Orange Money — Indisponible', false)
             ->assertDontSee('M-Pesa')
             ->assertDontSee('Carte bancaire')
             ->assertSee('Paiement manuel / comptoir');
