@@ -103,7 +103,7 @@ class MikrotikAssistantController extends Controller
             $draft['step'] = 4;
             session(['mikrotik.assistant' => $draft]);
 
-            return redirect()->route('mikrotiks.assistant')->with('warning', '✕ Connexion impossible. '.$service->explainFailure($exception->getMessage()));
+            return redirect()->route('mikrotiks.assistant')->with('warning', '✕ Connexion impossible. '.$service->explainFailure($exception->getMessage(), $draft['host'], $secure));
         }
 
         $draft['probe'] = $found;
@@ -183,7 +183,7 @@ class MikrotikAssistantController extends Controller
     {
         $router = $service->syncRouter($mikrotik);
         if ($router->status !== 'online') {
-            return back()->with('warning', '✕ Connexion impossible. '.$service->explainFailure((string) $router->last_error));
+            return back()->with('warning', '✕ Connexion impossible. '.$service->explainFailure((string) $router->last_error, $router->host, $router->usesSecureApi()));
         }
 
         $message = $router->detail('connection_mode') === 'real'

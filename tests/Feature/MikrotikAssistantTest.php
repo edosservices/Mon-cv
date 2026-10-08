@@ -137,14 +137,14 @@ class MikrotikAssistantTest extends TestCase
         $this->actingAs($user)->from('/mikrotiks/assistant')->post('/mikrotiks/assistant/test')->assertRedirect();
         $this->actingAs($user)->get('/mikrotiks/assistant')
             ->assertSee('Connexion impossible')
-            ->assertSee('mot de passe est incorrect')
+            ->assertSee('Identifiants RouterOS incorrects')
             ->assertDontSee('router-secret-77', false)
             ->assertDontSee('/system/identity', false);
 
         $fake->fail('Connection timed out. router-secret-77');
         $this->actingAs($user)->post('/mikrotiks/assistant/test')->assertRedirect();
         $this->actingAs($user)->get('/mikrotiks/assistant')
-            ->assertSee('ne répond pas à temps')
+            ->assertSee('MikroTik non joignable depuis le serveur')
             ->assertDontSee('router-secret-77', false);
         $this->assertSame(0, Mikrotik::count());
     }
