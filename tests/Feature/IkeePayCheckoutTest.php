@@ -156,20 +156,21 @@ class IkeePayCheckoutTest extends TestCase
     {
         Bus::fake();
         Http::preventStrayRequests();
+        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
         $sale = $this->inlineSale();
         $payment = $sale->payment;
 
-        $payload = [
-            'event' => 'payment.success',
-            'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
-            'order_id' => $payment->internal_reference,
-            'amount' => 1000,
-            'currency' => 'CDF',
-            'status' => 'completed',
-        ];
+        $payload = $this->inlineWebhook($payment->internal_reference);
+        Http::fake([
+            'https://api.ikeepay.com/checkout/IKP-H2H-B5C9EC0E' => Http::response($this->inlineCheckoutBody($payment->internal_reference)),
+        ]);
 
         $this->postJson('/payments/ikeepay/webhook', $payload)->assertOk();
         $this->postJson('/payments/ikeepay/webhook', $payload)->assertOk();
+        Http::assertSent(fn ($request) => $request->method() === 'GET'
+            && $request->url() === 'https://api.ikeepay.com/checkout/IKP-H2H-B5C9EC0E'
+            && $request->hasHeader('x-api-key', $this->secret)
+            && ! $request->hasHeader('x-api-key', 'GLOBAL-KEY-MUST-NOT-BE-USED'));
 
         $sale->refresh();
         $this->assertSame('paid', $sale->status);
@@ -182,38 +183,98 @@ class IkeePayCheckoutTest extends TestCase
     public function test_an_inline_webhook_with_the_wrong_amount_creates_no_ticket(): void
     {
         Bus::fake();
+        Http::preventStrayRequests();
         $sale = $this->inlineSale();
 
-        $this->postJson('/payments/ikeepay/webhook', [
-            'event' => 'payment.success',
-            'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
-            'order_id' => $sale->payment->internal_reference,
+        $this->postJson('/payments/ikeepay/webhook', $this->inlineWebhook($sale->payment->internal_reference, [
             'amount' => 1,
-            'currency' => 'CDF',
-            'status' => 'completed',
-        ])->assertStatus(422);
+        ]))->assertStatus(422);
+
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertNull($sale->payment->fresh()->provider_reference);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Bus::assertNotDispatched(SyncHotspotUser::class);
+        Http::assertNothingSent();
+    }
+
+    public function test_an_inline_webhook_with_the_wrong_currency_creates_no_ticket(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $sale = $this->inlineSale();
+
+        $this->postJson('/payments/ikeepay/webhook', $this->inlineWebhook($sale->payment->internal_reference, [
+            'currency' => 'USD',
+        ]))->assertStatus(422);
 
         $this->assertSame('pending', $sale->payment->fresh()->status);
         $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
-        Bus::assertNotDispatched(SyncHotspotUser::class);
+        Http::assertNothingSent();
     }
 
-    public function test_inline_verify_uses_get_checkout_and_the_entrepreneur_secret(): void
+    public function test_a_false_ikeepay_reference_is_checked_and_creates_no_ticket(): void
     {
         Bus::fake();
-        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
+        Http::preventStrayRequests();
+        $sale = $this->inlineSale();
+        Http::fake([
+            'https://api.ikeepay.com/checkout/IKP-FAKE' => Http::response(['status' => 'not_found'], 404),
+        ]);
+
+        $this->postJson('/payments/ikeepay/webhook', $this->inlineWebhook($sale->payment->internal_reference, [
+            'ikeepay_ref' => 'IKP-FAKE',
+        ]))->assertStatus(422);
+
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertNull($sale->payment->fresh()->provider_reference);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.ikeepay.com/checkout/IKP-FAKE'
+            && $request->hasHeader('x-api-key', $this->secret));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), $sale->payment->internal_reference));
+    }
+
+    public function test_checkout_pending_and_failed_responses_create_no_ticket(): void
+    {
+        Bus::fake();
         $sale = $this->inlineSale();
         $payment = $sale->payment;
 
+        foreach (['pending', 'failed'] as $status) {
+            Http::fake([
+                'https://api.ikeepay.com/checkout/IKP-H2H-B5C9EC0E' => Http::response($this->inlineCheckoutBody($payment->internal_reference, [
+                    'status' => $status,
+                ])),
+            ]);
+
+            $this->postJson('/payments/ikeepay/webhook', $this->inlineWebhook($payment->internal_reference))
+                ->assertStatus(422);
+            $this->assertSame('pending', $payment->fresh()->status);
+            $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        }
+
+        Bus::assertNotDispatched(SyncHotspotUser::class);
+    }
+
+    public function test_verify_uses_the_ikeepay_reference_and_not_the_internal_one(): void
+    {
+        Bus::fake();
+        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
+        Http::preventStrayRequests();
+        $sale = $this->inlineSale();
+        $payment = $sale->payment;
+
+        $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
+            ->assertRedirect();
+        Http::assertNothingSent();
+        $this->get('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token)
+            ->assertOk()
+            ->assertSee('Nous attendons la confirmation du paiement.')
+            ->assertSee('Paiement en cours de confirmation');
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+
+        $payment->forceFill(['provider_reference' => 'IKP-H2H-B5C9EC0E'])->save();
         Http::fake([
-            'https://api.ikeepay.com/checkout/'.$payment->internal_reference => Http::response([
-                'event' => 'payment.success',
-                'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
-                'order_id' => $payment->internal_reference,
-                'amount' => 1000,
-                'currency' => 'CDF',
-                'status' => 'completed',
-            ]),
+            'https://api.ikeepay.com/checkout/IKP-H2H-B5C9EC0E' => Http::response($this->inlineCheckoutBody($payment->internal_reference)),
         ]);
 
         $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
@@ -221,15 +282,54 @@ class IkeePayCheckoutTest extends TestCase
 
         $this->assertSame('paid', $sale->fresh()->status);
         $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
-        Http::assertSent(fn ($request) => $request->url() === 'https://api.ikeepay.com/checkout/'.$payment->internal_reference
-            && $request->method() === 'GET'
+        Http::assertSent(fn ($request) => $request->method() === 'GET'
+            && $request->url() === 'https://api.ikeepay.com/checkout/IKP-H2H-B5C9EC0E'
             && $request->hasHeader('x-api-key', $this->secret)
             && ! $request->hasHeader('x-api-key', 'GLOBAL-KEY-MUST-NOT-BE-USED'));
-        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/h2h-verify/'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/checkout/'.$payment->internal_reference)
+            || str_contains($request->url(), '/h2h-verify/'));
 
         $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
             ->assertRedirect();
         $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+    }
+
+    public function test_a_tenant_without_a_secret_cannot_confirm_an_inline_payment(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
+        $sale = $this->inlineSale();
+        $sale->payment->tenant->forceFill(['ikeepay_secret_key' => null])->save();
+
+        $this->postJson('/payments/ikeepay/webhook', $this->inlineWebhook($sale->payment->internal_reference))
+            ->assertStatus(422);
+
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Http::assertNothingSent();
+        Bus::assertNotDispatched(SyncHotspotUser::class);
+    }
+
+    public function test_the_browser_success_signal_does_not_create_a_voucher(): void
+    {
+        Http::preventStrayRequests();
+        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
+        $sale = $this->inlineSale();
+
+        $this->get('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/ikeepay')
+            ->assertOk()
+            ->assertSee($this->publicKey, false)
+            ->assertSee('pk', false)
+            ->assertDontSee($this->secret, false)
+            ->assertDontSee('GLOBAL-KEY-MUST-NOT-BE-USED', false)
+            ->assertSee("document.getElementById('ikeepay-refresh').submit()", false)
+            ->assertSee('Paiement en cours de confirmation', false)
+            ->assertDontSee('markPaymentAsPaid', false);
+
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Http::assertNothingSent();
     }
 
     public function test_a_repeated_inline_checkout_reuses_the_pending_order(): void
@@ -263,6 +363,38 @@ class IkeePayCheckoutTest extends TestCase
             'provider' => 'ikeepay',
         ])->assertRedirect();
 
-        return Sale::withoutGlobalScope('tenant')->with('payment', 'wifiZone')->firstOrFail();
+        return Sale::withoutGlobalScope('tenant')->with('payment.tenant', 'wifiZone')->firstOrFail();
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function inlineWebhook(string $orderId, array $overrides = []): array
+    {
+        return array_merge([
+            'event' => 'payment.success',
+            'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
+            'order_id' => $orderId,
+            'amount' => 1000,
+            'currency' => 'CDF',
+            'status' => 'completed',
+        ], $overrides);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function inlineCheckoutBody(string $orderId, array $overrides = []): array
+    {
+        return array_merge([
+            'event' => 'payment.success',
+            'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
+            'order_id' => $orderId,
+            'amount' => 1000,
+            'currency' => 'CDF',
+            'status' => 'completed',
+        ], $overrides);
     }
 }

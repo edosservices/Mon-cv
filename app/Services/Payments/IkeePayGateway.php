@@ -42,6 +42,21 @@ class IkeePayGateway implements PaymentGateway
             return $payment->refresh();
         }
 
+        $inline = ($payment->metadata['flow'] ?? null) === 'inline';
+        if ($inline) {
+            $ikeepayRef = is_string($payment->provider_reference) ? trim($payment->provider_reference) : '';
+            if ($ikeepayRef === '') {
+                return $payment->refresh();
+            }
+
+            $body = $this->fetchCheckout($secret, $ikeepayRef);
+            if ($body === null) {
+                return $payment->refresh();
+            }
+
+            return $this->settleInlineStatus($payment, $body, 'checkout-verify');
+        }
+
         $reference = filled($payment->provider_reference)
             ? (string) $payment->provider_reference
             : (string) $payment->internal_reference;
@@ -50,10 +65,7 @@ class IkeePayGateway implements PaymentGateway
             return $payment->refresh();
         }
 
-        $inline = ($payment->metadata['flow'] ?? null) === 'inline';
-        $path = $inline
-            ? '/checkout/'.rawurlencode($reference)
-            : '/h2h-verify/'.rawurlencode($reference);
+        $path = '/h2h-verify/'.rawurlencode($reference);
 
         try {
             $response = Http::withHeaders($this->headers($secret))
@@ -116,7 +128,7 @@ class IkeePayGateway implements PaymentGateway
         // La documentation iKeePay ne fournit aucune signature webhook.
         $payload = json_decode($rawBody, true);
         if (is_array($payload) && ($payload['event'] ?? null) === 'payment.success' && ! array_key_exists('data', $payload)) {
-            return $this->inlineNotice($payload);
+            return $this->verifiedInlineNotice($payload);
         }
 
         $data = is_array($payload) ? ($payload['data'] ?? null) : null;
@@ -352,6 +364,59 @@ class IkeePayGateway implements PaymentGateway
         app(PaymentSettlement::class)->apply($this->provider(), $notice);
 
         return $payment->refresh();
+    }
+
+    /**
+     * Le corps payment.success n'est pas une preuve. La référence IKP sert uniquement
+     * à interroger GET /checkout/{ikeepay_ref} avec le secret du tenant.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function verifiedInlineNotice(array $payload): PaymentNotice
+    {
+        $claimed = $this->inlineNotice($payload);
+        $payment = Payment::withoutGlobalScope('tenant')
+            ->where('internal_reference', $claimed->internalReference)
+            ->where('provider', $this->provider())
+            ->first();
+
+        if (! $payment || ! $this->matchesMoney($payment->amount, $claimed->amount) || strtoupper((string) $payment->currency) !== $claimed->currency) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        $secret = $this->secretFor($payment);
+        $body = $secret === null ? null : $this->fetchCheckout($secret, $claimed->providerReference);
+        if ($body === null || ($body['ikeepay_ref'] ?? null) !== $claimed->providerReference) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        $verified = $this->inlineNotice($body);
+        if ($verified->internalReference !== $payment->internal_reference || ! $this->matchesMoney($payment->amount, $verified->amount) || strtoupper((string) $payment->currency) !== $verified->currency) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        return $verified;
+    }
+
+    private function fetchCheckout(string $secret, string $ikeepayRef): ?array
+    {
+        try {
+            $response = Http::withHeaders($this->headers($secret))
+                ->acceptJson()
+                ->timeout(20)
+                ->get($this->endpoint('/checkout/'.rawurlencode($ikeepayRef)));
+        } catch (ConnectionException) {
+            return null;
+        }
+
+        $body = $response->json();
+
+        return $response->successful() && is_array($body) ? $body : null;
+    }
+
+    private function matchesMoney(mixed $expected, mixed $given): bool
+    {
+        return $this->money($expected) === $this->money($given);
     }
 
     /**

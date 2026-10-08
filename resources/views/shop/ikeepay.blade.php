@@ -59,6 +59,10 @@
                     return;
                 }
                 if (event.data === 'ikeepay-success') {
+                    if (wait) {
+                        wait.hidden = false;
+                        wait.textContent = 'Paiement en cours de confirmation';
+                    }
                     document.getElementById('ikeepay-refresh').submit();
                     return;
                 }

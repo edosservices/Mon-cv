@@ -134,6 +134,12 @@
             <p class="help">Référence communiquée : {{ $payment->transaction_reference }}</p>
         @endif
         <p class="help">Confirmation du paiement…</p>
+        @if($payment?->provider === 'ikeepay' && ($payment->metadata['flow'] ?? 'inline') !== 'h2h')
+            <p class="help">Paiement en cours de confirmation</p>
+            @if(! filled($payment->provider_reference))
+                <p class="help">Nous attendons la confirmation du paiement.</p>
+            @endif
+        @endif
         <p class="help">Le serveur confirme le paiement. Cette page ne le transforme pas en succès.</p>
         <p class="help">Votre ticket WiFi apparaîtra lorsque le paiement sera confirmé.</p>
         @if($payment?->provider === 'ikeepay')
