@@ -5,7 +5,10 @@
     @forelse($vouchers as $voucher)
         <article class="rounded-2xl bg-white p-4">
             <h2 class="font-semibold">{{ $voucher->username }}</h2>
-            <p class="text-sm text-slate-500">{{ $voucher->tenant->name ?? 'Entreprise' }} · {{ $voucher->public_token }} · {{ $voucher->statusLabel() }}</p>
+            <p class="text-sm text-slate-500">{{ $voucher->tenant->name ?? 'Entreprise' }} · {{ $voucher->wifiZone->name ?? 'Zone' }} · {{ $voucher->public_token }} · {{ $voucher->statusLabel() }}</p>
+            @if($voucher->mac_address)
+                <p class="text-sm">Appareil : {{ $voucher->mac_address }}</p>
+            @endif
         </article>
     @empty
         <p class="rounded-2xl bg-white p-4 text-sm text-slate-500">Aucun ticket.</p>

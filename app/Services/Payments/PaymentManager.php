@@ -44,7 +44,6 @@ class PaymentManager
             'mpesa' => 'limete.payments.mpesa.api_key',
             'card' => 'limete.payments.card.secret',
             'unipay' => 'services.unipay.key',
-            'ikeepay' => 'services.ikeepay.public_key',
             default => null,
         };
 

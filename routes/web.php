@@ -70,6 +70,7 @@ Route::prefix('client')->name('client.')->group(function () {
 });
 
 Route::get('/wifi/{slug}', [WifiShopController::class, 'show'])->name('shop.show');
+Route::get('/wifi/{slug}/portail', [WifiShopController::class, 'portal'])->name('shop.portal');
 Route::get('/wifi/{slug}/marque', [WifiShopController::class, 'brand'])->name('shop.brand');
 Route::get('/wifi/{slug}/manifest.webmanifest', [WifiShopController::class, 'manifest'])->name('shop.manifest');
 Route::get('/wifi/{slug}/forfait/{plan}', [WifiShopController::class, 'plan'])->whereNumber('plan')->name('shop.plan');

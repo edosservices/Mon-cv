@@ -5,7 +5,7 @@
     @foreach($providers as $provider)
         <article class="rounded-2xl bg-white p-4 text-sm">
             <h2 class="font-semibold">{{ $provider['label'] }}</h2>
-            <p class="mt-1">{{ $provider['configured'] ? 'Configuré' : 'Non configuré' }}</p>
+            <p class="mt-1">{{ $provider['key'] === 'ikeepay' ? 'Clé par entrepreneur' : ($provider['configured'] ? 'Configuré' : 'Non configuré') }}</p>
             <p>{{ $provider['enabled'] ? 'Actif' : 'Désactivé' }}</p>
             <form method="POST" action="{{ route('admin.payments.providers', $provider['key']) }}" class="mt-3">
                 @csrf
@@ -17,14 +17,16 @@
 </section>
 <div class="overflow-x-auto rounded-2xl bg-white">
     <table class="w-full min-w-[720px] text-left text-sm">
-        <thead><tr><th class="p-3">Référence</th><th>Montant</th><th>Fournisseur</th><th>Statut</th><th></th></tr></thead>
+        <thead><tr><th class="p-3">Référence</th><th>Montant</th><th>Fournisseur</th><th>Opérateur</th><th>Bénéficiaire</th><th>Statut</th><th></th></tr></thead>
         <tbody>
         @foreach($payments as $payment)
             <tr class="border-t">
                 <td class="p-3">{{ $payment->internal_reference ?? $payment->transaction_reference }}<span class="block text-slate-500">{{ $payment->tenant->name ?? 'Plateforme' }}</span></td>
                 <td>{{ \App\Support\Money::format($payment->amount, $payment->currency) }}</td>
-                <td>{{ $payment->provider }}</td>
-                <td>{{ $payment->status }}</td>
+                <td>{{ $payment->provider }}<span class="block text-slate-500">{{ $payment->provider_reference }}</span></td>
+                <td>{{ $payment->metadata['operator'] ?? '—' }}</td>
+                <td>{{ $payment->beneficiary_phone ?: ($payment->metadata['beneficiary_phone'] ?? '—') }}<span class="block text-slate-500">{{ $payment->payer_phone ?: ($payment->metadata['payer_phone'] ?? '') }}</span></td>
+                <td>{{ \App\Enums\PaymentStatus::tryFrom($payment->status)?->label() ?? $payment->status }}</td>
                 <td>
                     @if($payment->status === 'pending' && $payment->payable_type === \App\Models\Subscription::class)
                         <form method="POST" action="{{ route('admin.payments.confirm', $payment->id) }}">@csrf<button class="text-electric">Confirmer</button></form>

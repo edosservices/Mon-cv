@@ -298,6 +298,16 @@ class ProductionCheck
 
                 continue;
             }
+            if ($provider === 'ikeepay') {
+                $rows[] = [
+                    'provider' => $provider,
+                    'label' => $label,
+                    'status' => 'PER TENANT',
+                    'detail' => 'Chaque entrepreneur utilise sa propre clé iKeePay. Aucune clé globale n’encaisse pour tous.',
+                ];
+
+                continue;
+            }
             if (! $this->payments->configured($provider)) {
                 $rows[] = [
                     'provider' => $provider,

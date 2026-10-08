@@ -69,7 +69,7 @@ class PlatformController extends Controller
     public function tickets()
     {
         return view('admin.tickets', [
-            'vouchers' => Voucher::withoutGlobalScope('tenant')->with(['tenant:id,name', 'plan:id,name'])->latest()->paginate(20),
+            'vouchers' => Voucher::withoutGlobalScope('tenant')->with(['tenant:id,name', 'plan:id,name', 'wifiZone:id,name'])->latest()->paginate(20),
         ]);
     }
 

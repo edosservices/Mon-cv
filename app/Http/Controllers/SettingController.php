@@ -35,6 +35,8 @@ class SettingController extends Controller
             'button_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'ticket_style' => ['nullable', Rule::in(TicketTemplates::keys())],
             'custom_domain' => ['nullable', 'string', 'max:160'],
+            'ikeepay_public_key' => ['nullable', 'string', 'max:255'],
+            'ikeepay_secret_key' => ['nullable', 'string', 'max:255'],
             'logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp', 'mimetypes:image/png,image/jpeg,image/webp', 'max:2048', 'dimensions:min_width=32,min_height=32,max_width=4096,max_height=4096'],
         ], [
             'logo.mimes' => 'Le logo doit être un fichier PNG, JPG, JPEG ou WEBP.',
@@ -51,10 +53,14 @@ class SettingController extends Controller
         }
         unset($data['logo']);
 
-        foreach (['slogan', 'phone', 'whatsapp', 'email', 'address', 'city', 'country', 'ticket_style', 'custom_domain'] as $field) {
+        foreach (['slogan', 'phone', 'whatsapp', 'email', 'address', 'city', 'country', 'ticket_style', 'custom_domain', 'ikeepay_public_key'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === '') {
                 $data[$field] = null;
             }
+        }
+
+        if (array_key_exists('ikeepay_secret_key', $data) && ! filled($data['ikeepay_secret_key'])) {
+            unset($data['ikeepay_secret_key']);
         }
 
         $tenant->update($data);

@@ -37,6 +37,17 @@
 
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body">
+                <h2 class="h5">iKeePay</h2>
+                <p class="text-secondary small">Clés de votre compte iKeePay uniquement. Elles ne sont jamais utilisées pour un autre entrepreneur, et la clé secrète n’est pas renvoyée au navigateur.</p>
+                <label class="form-label mt-2" for="ikeepay_public_key">Clé publique</label>
+                <input class="form-control" id="ikeepay_public_key" name="ikeepay_public_key" value="{{ old('ikeepay_public_key', $tenant->ikeepayPublicKey()) }}" maxlength="255" autocomplete="off">
+                <label class="form-label mt-3" for="ikeepay_secret_key">Clé secrète</label>
+                <input class="form-control" id="ikeepay_secret_key" name="ikeepay_secret_key" type="password" value="" maxlength="255" autocomplete="new-password" placeholder="{{ $tenant->ikeepaySecret() ? 'Clé enregistrée — laissez vide pour la conserver' : '' }}">
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body">
                 <h2 class="h5">Adresse</h2>
                 <label class="form-label mt-2" for="address">Adresse</label>
                 <input class="form-control" id="address" name="address" value="{{ old('address', $tenant->address) }}" maxlength="255">

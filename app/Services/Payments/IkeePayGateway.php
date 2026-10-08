@@ -37,8 +37,24 @@ class IkeePayGateway implements PaymentGateway
 
     public function verifyTransaction(Payment $payment): Payment
     {
-        if (! $this->configured()) {
+        $secret = $this->secretFor($payment);
+        if ($secret === null) {
             return $payment->refresh();
+        }
+
+        $inline = ($payment->metadata['flow'] ?? null) === 'inline';
+        if ($inline) {
+            $ikeepayRef = is_string($payment->provider_reference) ? trim($payment->provider_reference) : '';
+            if ($ikeepayRef === '') {
+                return $payment->refresh();
+            }
+
+            $body = $this->fetchCheckout($secret, $ikeepayRef);
+            if ($body === null) {
+                return $payment->refresh();
+            }
+
+            return $this->settleInlineStatus($payment, $body, 'checkout-verify');
         }
 
         $reference = filled($payment->provider_reference)
@@ -49,11 +65,13 @@ class IkeePayGateway implements PaymentGateway
             return $payment->refresh();
         }
 
+        $path = '/h2h-verify/'.rawurlencode($reference);
+
         try {
-            $response = Http::withHeaders($this->headers())
+            $response = Http::withHeaders($this->headers($secret))
                 ->acceptJson()
                 ->timeout(20)
-                ->get($this->endpoint('/h2h-verify/'.rawurlencode($reference)));
+                ->get($this->endpoint($path));
         } catch (ConnectionException) {
             return $payment->refresh();
         }
@@ -63,6 +81,10 @@ class IkeePayGateway implements PaymentGateway
         }
 
         $body = $response->json();
+        if ($inline) {
+            return $this->settleInlineStatus($payment, $body, 'checkout-verify');
+        }
+
         $data = is_array($body['data'] ?? null) ? $body['data'] : [];
         $status = $data['status'] ?? null;
         $external = $data['external_reference'] ?? null;
@@ -105,6 +127,10 @@ class IkeePayGateway implements PaymentGateway
     {
         // La documentation iKeePay ne fournit aucune signature webhook.
         $payload = json_decode($rawBody, true);
+        if (is_array($payload) && ($payload['event'] ?? null) === 'payment.success' && ! array_key_exists('data', $payload)) {
+            return $this->verifiedInlineNotice($payload);
+        }
+
         $data = is_array($payload) ? ($payload['data'] ?? null) : null;
         $event = is_array($payload) ? ($payload['event'] ?? null) : null;
 
@@ -179,15 +205,18 @@ class IkeePayGateway implements PaymentGateway
     {
         $country = strtoupper(trim((string) ($context['country'] ?? '')));
         $phone = PhoneNumbers::digits($context['customer_phone'] ?? null);
-        $email = (string) ($context['customer_email'] ?? '');
+        $email = trim((string) ($context['customer_email'] ?? ''));
         $catalog = app(IkeePayCatalog::class);
 
-        if (! $catalog->allows($country, $operator) || $phone === '' || $email === '') {
+        // Le contrat H2H n'exige customer_email pour aucun opérateur.
+        // Le champ n'est ajouté que lorsqu'un e-mail a été fourni.
+        if (! $catalog->allows($country, $operator) || $phone === '') {
             return $this->markFailed($payment, 'Les informations du paiement mobile sont incomplètes. Aucun ticket n’a été créé.');
         }
 
-        if (! $this->configured()) {
-            return $this->keepPending($payment, $context, $country, $operator, 'La clé iKeePay n’est pas configurée. Aucun ticket n’a été créé.');
+        $secret = $this->secretFor($payment);
+        if ($secret === null) {
+            return $this->keepPending($payment, $context, $country, $operator, 'La clé iKeePay de cet entrepreneur n’est pas configurée. Aucun ticket n’a été créé.');
         }
 
         $payload = [
@@ -197,8 +226,10 @@ class IkeePayGateway implements PaymentGateway
             'phoneNumber' => $phone,
             'operator' => $operator,
             'external_reference' => (string) $payment->internal_reference,
-            'customer_email' => $email,
         ];
+        if ($email !== '') {
+            $payload['customer_email'] = $email;
+        }
 
         $otp = trim((string) ($context['otp'] ?? ''));
         if ($otp !== '') {
@@ -206,7 +237,7 @@ class IkeePayGateway implements PaymentGateway
         }
 
         try {
-            $response = Http::withHeaders($this->headers())
+            $response = Http::withHeaders($this->headers($secret))
                 ->asJson()
                 ->acceptJson()
                 ->timeout(20)
@@ -305,6 +336,125 @@ class IkeePayGateway implements PaymentGateway
         return $payment->refresh();
     }
 
+    /**
+     * Réponse documentée du checkout inline : event, ikeepay_ref, order_id, amount, currency, status.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private function settleInlineStatus(Payment $payment, array $body, string $source): Payment
+    {
+        if (($body['order_id'] ?? null) !== $payment->internal_reference) {
+            return $payment->refresh();
+        }
+
+        try {
+            $notice = $this->inlineNotice($body);
+        } catch (\InvalidArgumentException) {
+            return $payment->refresh();
+        }
+
+        $notice = new PaymentNotice(
+            internalReference: $notice->internalReference,
+            providerReference: $notice->providerReference,
+            amount: $notice->amount,
+            currency: $notice->currency,
+            status: $notice->status,
+            raw: array_merge($notice->raw, ['source' => $source]),
+        );
+        app(PaymentSettlement::class)->apply($this->provider(), $notice);
+
+        return $payment->refresh();
+    }
+
+    /**
+     * Le corps payment.success n'est pas une preuve. La référence IKP sert uniquement
+     * à interroger GET /checkout/{ikeepay_ref} avec le secret du tenant.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function verifiedInlineNotice(array $payload): PaymentNotice
+    {
+        $claimed = $this->inlineNotice($payload);
+        $payment = Payment::withoutGlobalScope('tenant')
+            ->where('internal_reference', $claimed->internalReference)
+            ->where('provider', $this->provider())
+            ->first();
+
+        if (! $payment || ! $this->matchesMoney($payment->amount, $claimed->amount) || strtoupper((string) $payment->currency) !== $claimed->currency) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        $secret = $this->secretFor($payment);
+        $body = $secret === null ? null : $this->fetchCheckout($secret, $claimed->providerReference);
+        if ($body === null || ($body['ikeepay_ref'] ?? null) !== $claimed->providerReference) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        $verified = $this->inlineNotice($body);
+        if ($verified->internalReference !== $payment->internal_reference || ! $this->matchesMoney($payment->amount, $verified->amount) || strtoupper((string) $payment->currency) !== $verified->currency) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        return $verified;
+    }
+
+    private function fetchCheckout(string $secret, string $ikeepayRef): ?array
+    {
+        try {
+            $response = Http::withHeaders($this->headers($secret))
+                ->acceptJson()
+                ->timeout(20)
+                ->get($this->endpoint('/checkout/'.rawurlencode($ikeepayRef)));
+        } catch (ConnectionException) {
+            return null;
+        }
+
+        $body = $response->json();
+
+        return $response->successful() && is_array($body) ? $body : null;
+    }
+
+    private function matchesMoney(mixed $expected, mixed $given): bool
+    {
+        return $this->money($expected) === $this->money($given);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function inlineNotice(array $payload): PaymentNotice
+    {
+        $reference = $payload['order_id'] ?? null;
+        $providerReference = $payload['ikeepay_ref'] ?? null;
+        $currency = $payload['currency'] ?? null;
+        $status = $payload['status'] ?? null;
+
+        if (($payload['event'] ?? null) !== 'payment.success' || $status !== 'completed') {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        if (! is_string($reference) || $reference === '' || ! is_string($providerReference) || $providerReference === '') {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        if (! is_string($currency) || $currency === '' || ! isset($payload['amount']) || ! is_numeric($payload['amount'])) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        return new PaymentNotice(
+            internalReference: $reference,
+            providerReference: $providerReference,
+            amount: $this->money($payload['amount']),
+            currency: strtoupper($currency),
+            status: PaymentStatus::Success->value,
+            raw: [
+                'event' => 'payment.success',
+                'status' => 'completed',
+                'provider_reference' => $providerReference,
+            ],
+        );
+    }
+
     private function localStatus(string $status): string
     {
         return match ($status) {
@@ -349,18 +499,20 @@ class IkeePayGateway implements PaymentGateway
         return $value;
     }
 
-    private function configured(): bool
+    private function secretFor(Payment $payment): ?string
     {
-        return filled(config('services.ikeepay.secret_key'));
+        $tenant = $payment->relationLoaded('tenant') ? $payment->tenant : $payment->tenant()->first();
+
+        return $tenant?->ikeepaySecret();
     }
 
     /**
      * @return array<string, string>
      */
-    private function headers(): array
+    private function headers(string $secret): array
     {
         return [
-            'x-api-key' => (string) config('services.ikeepay.secret_key'),
+            'x-api-key' => $secret,
             'Accept' => 'application/json',
         ];
     }

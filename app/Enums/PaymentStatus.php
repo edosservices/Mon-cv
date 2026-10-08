@@ -10,6 +10,7 @@ enum PaymentStatus: string
     case Failed = 'failed';
     case Cancelled = 'cancelled';
     case Refunded = 'refunded';
+    case Expired = 'expired';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum PaymentStatus: string
             self::Failed => 'Échoué',
             self::Cancelled => 'Annulé',
             self::Refunded => 'Remboursé',
+            self::Expired => 'Expiré',
         };
     }
 
@@ -30,10 +32,10 @@ enum PaymentStatus: string
         }
 
         return match ($this) {
-            self::Pending => in_array($next, [self::Processing, self::Success, self::Failed, self::Cancelled], true),
-            self::Processing => in_array($next, [self::Success, self::Failed, self::Cancelled], true),
+            self::Pending => in_array($next, [self::Processing, self::Success, self::Failed, self::Cancelled, self::Expired], true),
+            self::Processing => in_array($next, [self::Success, self::Failed, self::Cancelled, self::Expired], true),
             self::Success => $next === self::Refunded,
-            self::Failed, self::Cancelled, self::Refunded => false,
+            self::Failed, self::Cancelled, self::Refunded, self::Expired => false,
         };
     }
 }
