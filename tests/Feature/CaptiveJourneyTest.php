@@ -149,14 +149,13 @@ class CaptiveJourneyTest extends TestCase
         ]);
 
         config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
-        $this->post('/wifi/'.$zone->slug, [
-            'plan_id' => $plan->id,
+        app(TenantManager::class)->set($zone->tenant_id);
+        $sale = app(\App\Services\SaleService::class)->placeOrder($zone, $plan, [
             'name' => 'Amina',
             'phone' => '+243810009111',
-            'provider' => 'airtel_money',
-        ])->assertRedirect();
-
-        $sale = Sale::withoutGlobalScope('tenant')->first();
+            'purchase_for' => 'self',
+        ], 'airtel_money');
+        app(TenantManager::class)->forget();
         $this->assertSame('pending', $sale->status);
         $this->assertDatabaseCount('vouchers', 0);
 
@@ -416,19 +415,19 @@ JS;
             ->assertSee('Durée')
             ->assertSee('1 000 FC')
             ->assertSee('+243810002424')
-            ->assertSee('Airtel Money')
-            ->assertSee('Orange Money')
-            ->assertSee('M-Pesa')
-            ->assertSee('Carte bancaire')
+            ->assertDontSee('Airtel Money')
+            ->assertDontSee('Orange Money')
+            ->assertDontSee('M-Pesa')
+            ->assertDontSee('Carte bancaire')
             ->assertSee('Paiement manuel / comptoir');
 
         config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
-        $this->post('/wifi/'.$zone->slug, [
-            'plan_id' => $plan->id,
+        app(TenantManager::class)->set($zone->tenant_id);
+        $sale = app(\App\Services\SaleService::class)->placeOrder($zone, $plan, [
             'phone' => '+243810002424',
-            'provider' => 'airtel_money',
-        ])->assertRedirect();
-        $sale = Sale::withoutGlobalScope('tenant')->latest('id')->first();
+            'purchase_for' => 'self',
+        ], 'airtel_money');
+        app(TenantManager::class)->forget();
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'?status=success')
             ->assertOk()
             ->assertDontSee('Votre ticket est prêt');

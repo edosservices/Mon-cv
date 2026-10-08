@@ -48,6 +48,7 @@ class ShopTest extends TestCase
             ->assertSee('Entrez votre numéro de téléphone')
             ->assertDontSee($plan->password ?? 'secret-router');
 
+        $user->tenant->forceFill(['ikeepay_public_key' => 'pk_shop_public'])->save();
         $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [
             'phone' => '+243810000222',
         ])->assertRedirect('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement');
@@ -55,10 +56,11 @@ class ShopTest extends TestCase
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertOk()
             ->assertSee('Comment souhaitez-vous payer')
-            ->assertSee('Airtel Money')
-            ->assertSee('Orange Money')
-            ->assertSee('M-Pesa')
-            ->assertSee('Carte bancaire')
+            ->assertSee('Payer avec iKeePay')
+            ->assertDontSee('Airtel Money')
+            ->assertDontSee('Orange Money')
+            ->assertDontSee('M-Pesa')
+            ->assertDontSee('Carte bancaire')
             ->assertSee('Paiement manuel / comptoir')
             ->assertSee('+243810000222');
 
@@ -77,6 +79,13 @@ class ShopTest extends TestCase
             'plan_id' => $plan->id,
             'phone' => '+243810000222',
             'provider' => 'airtel_money',
+        ])->assertSessionHasErrors('provider');
+        $this->assertDatabaseCount('sales', 0);
+
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'phone' => '+243810000222',
+            'provider' => 'manual',
         ])->assertRedirect();
 
         $sale = Sale::withoutGlobalScope('tenant')->first();
@@ -85,15 +94,12 @@ class ShopTest extends TestCase
 
         $this->assertSame('pending', $sale->status);
         $this->assertSame('pending', $sale->payment->status);
-        $this->assertSame('airtel_money', $sale->payment->provider);
-        $this->assertFalse($sale->payment->metadata['configured']);
-        $this->assertStringContainsString('pas configuré', $sale->payment->metadata['note']);
+        $this->assertSame('manual', $sale->payment->provider);
         $this->assertDatabaseCount('vouchers', 0);
 
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
             ->assertOk()
             ->assertSee('Paiement en attente')
-            ->assertSee('pas configuré')
             ->assertDontSee('Votre ticket est prêt');
 
         $this->actingAs($user)->post('/sales/'.$sale->id.'/confirm')->assertRedirect();

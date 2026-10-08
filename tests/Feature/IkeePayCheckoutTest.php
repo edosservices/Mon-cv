@@ -111,6 +111,7 @@ class IkeePayCheckoutTest extends TestCase
     public function test_ikeepay_requires_a_valid_email_and_ignores_a_browser_amount(): void
     {
         $owner = Platform::entrepreneur('Alice Wifi', 'alice-ikeepay-mail@example.com');
+        $owner->tenant->forceFill(['ikeepay_public_key' => $this->publicKey])->save();
         $zone = Platform::zone($owner, 'Limete');
         $plan = Platform::plan($owner, $zone);
 

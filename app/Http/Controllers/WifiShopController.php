@@ -30,7 +30,8 @@ class WifiShopController extends Controller
         return view('shop.show', [
             'zone' => $zone,
             'plans' => $this->plans($zone),
-            'providers' => app(PaymentManager::class)->enabledProviders(),
+            'providers' => $this->guestProviders(),
+            'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
             'knownPhone' => $phone,
             'activeVoucher' => $this->activeVoucher($zone, $phone),
             'step' => 0,
@@ -88,8 +89,9 @@ class WifiShopController extends Controller
             'zone' => $zone,
             'plan' => $plan,
             'customer' => $draft,
-            'providers' => app(PaymentManager::class)->enabledProviders(),
+            'providers' => $this->guestProviders(),
             'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
+            'ikeepayReady' => filled($zone->tenant?->ikeepayPublicKey()),
             'step' => 2,
         ]);
     }
@@ -97,6 +99,17 @@ class WifiShopController extends Controller
     public function checkout(Request $request, string $slug, SaleService $sales)
     {
         $zone = $this->zone($slug);
+        $rawProvider = (string) $request->input('provider');
+        if (str_starts_with($rawProvider, 'ikeepay|')) {
+            $parts = explode('|', $rawProvider);
+            if (count($parts) === 3) {
+                $request->merge([
+                    'provider' => 'ikeepay',
+                    'country' => strtoupper($parts[1]),
+                    'operator' => strtoupper($parts[2]),
+                ]);
+            }
+        }
 
         if (! filled($request->input('country')) && filled($request->input('ikeepay_method'))) {
             $parts = explode('|', (string) $request->input('ikeepay_method'), 2);
@@ -129,6 +142,49 @@ class WifiShopController extends Controller
         $plan = $this->plans($zone)->firstWhere('id', (int) $data['plan_id']);
         abort_unless($plan, 404);
         $data = $this->normalizeCustomer($data);
+        $catalog = app(IkeePayCatalog::class);
+
+        if (array_key_exists($data['provider'], $catalog->providerOperators())) {
+            $choice = $catalog->h2hChoiceFor($data['provider']);
+            if ($choice === null) {
+                $operator = $catalog->providerOperators()[$data['provider']];
+                $matches = 0;
+                foreach ($catalog->countries() as $operators) {
+                    if (in_array($operator, $operators, true)) {
+                        $matches++;
+                    }
+                }
+                $reason = $matches > 1
+                    ? 'Plusieurs pays iKeePay autorisent l’opérateur '.$operator.'. Choisissez le pays dans la liste iKeePay. Aucune demande n’a été envoyée.'
+                    : 'Ce moyen passe par iKeePay. L’opérateur '.$operator.' n’est autorisé pour aucun pays de la configuration H2H. Aucune demande n’a été envoyée.';
+
+                return back()->withErrors([
+                    'provider' => $reason,
+                ])->withInput();
+            }
+
+            $data['provider'] = 'ikeepay';
+            $data['country'] = $choice['country'];
+            $data['operator'] = $choice['operator'];
+        }
+
+        if (in_array($data['provider'], ['mpesa', 'card'], true)) {
+            return back()->withErrors([
+                'provider' => 'Ce connecteur n’envoie aucune demande à iKeePay. Aucun paiement n’a été créé.',
+            ])->withInput();
+        }
+
+        if ($data['provider'] === 'ikeepay' && filled($data['operator'] ?? null) && $zone->tenant?->ikeepaySecret() === null) {
+            return back()->withErrors([
+                'provider' => 'La clé iKeePay de cet entrepreneur n’est pas configurée. Aucune demande n’a été envoyée.',
+            ])->withInput();
+        }
+
+        if ($data['provider'] === 'ikeepay' && ! filled($data['operator'] ?? null) && $zone->tenant?->ikeepayPublicKey() === '') {
+            return back()->withErrors([
+                'provider' => 'Le checkout iKeePay de cet entrepreneur n’est pas configuré. Aucune demande n’a été envoyée.',
+            ])->withInput();
+        }
         $captive = app(CaptivePortal::class)->current($zone);
         if ($captive) {
             $data['captive_session_id'] = $captive->id;
@@ -486,6 +542,16 @@ class WifiShopController extends Controller
             'phone.required' => 'Indiquez le numéro du bénéficiaire.',
             'payer_phone.required_if' => 'Indiquez le numéro qui paie.',
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function guestProviders(): array
+    {
+        return collect(app(PaymentManager::class)->enabledProviders())
+            ->reject(fn ($label, string $key) => in_array($key, ['airtel_money', 'orange_money', 'mpesa', 'card'], true))
+            ->all();
     }
 
     /**

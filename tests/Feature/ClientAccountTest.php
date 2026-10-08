@@ -164,7 +164,7 @@ class ClientAccountTest extends TestCase
             'plan_id' => $plan->id,
             'name' => 'Passant',
             'phone' => '+243810009999',
-            'provider' => 'airtel_money',
+            'provider' => 'manual',
         ])->assertRedirect();
 
         $this->assertSame($users, User::count());

@@ -33,28 +33,32 @@
     @endif
 </section>
 
-<form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
-    @csrf
-    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-    <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
-    <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
-    <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
-    <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
-    <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
-    <h2>Payer avec iKeePay</h2>
-    <p class="help">Le montant vient du forfait. Le paiement reste en attente jusqu’à la confirmation du serveur.</p>
-    <button class="btn btn-primary" type="submit" name="provider" value="ikeepay">Payer avec iKeePay</button>
-</form>
+@if($ikeepayReady ?? false)
+    <form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
+        @csrf
+        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+        <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
+        <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
+        <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
+        <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
+        <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
+        <h2>Payer avec iKeePay</h2>
+        <p class="help">Le montant vient du forfait. Le checkout iKeePay s’ouvre ensuite. Le ticket attend la confirmation du serveur.</p>
+        <button class="btn btn-primary" type="submit" name="provider" value="ikeepay">Payer avec iKeePay</button>
+    </form>
+@endif
 
 @if(($ikeepayChoices ?? []) !== [])
     <form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
         @csrf
         <input type="hidden" name="plan_id" value="{{ $plan->id }}">
         <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
+        <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
+        <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
         <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
         <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
         <h2>Paiement mobile iKeePay</h2>
-        <p class="help">Choisissez un pays et un opérateur pris en charge. Le montant reste celui du forfait.</p>
+        <p class="help">La confirmation envoie la demande à iKeePay avec le montant du forfait. Le ticket est créé après la confirmation du serveur.</p>
         <label class="field" for="ikeepay_method">Pays et opérateur
             <select id="ikeepay_method" name="ikeepay_method" required>
                 @foreach($ikeepayChoices as $choice)
@@ -78,7 +82,7 @@
     <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
     <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
     <h2>Comment souhaitez-vous payer ?</h2>
-    <p class="help">Aucun ticket n’est créé avant la confirmation du paiement. Si l’opérateur n’est pas configuré, la commande reste en attente.</p>
+    <p class="help">Aucun ticket n’est créé avant la confirmation du paiement.</p>
     <div class="choices">
         @foreach($providers as $key => $label)
             @continue($key === 'ikeepay')

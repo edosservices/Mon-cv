@@ -78,11 +78,11 @@ class IkeePayCatalog
         $choices = [];
         foreach ($this->countries() as $country => $operators) {
             foreach ($operators as $operator) {
-                $choices[] = [
-                    'country' => $country,
-                    'operator' => $operator,
-                    'label' => $this->operators()[$operator],
-                ];
+            $choices[] = [
+                'country' => $country,
+                'operator' => $operator,
+                'label' => $this->shopLabel($operator),
+            ];
             }
         }
 
@@ -96,5 +96,62 @@ class IkeePayCatalog
         $operators = $this->countries()[$country] ?? [];
 
         return in_array($operator, $operators, true);
+    }
+
+    /**
+     * Ancien libellé de la boutique → code opérateur H2H déjà présent dans la configuration.
+     * Un code absent de cette configuration n'est jamais renvoyé.
+     *
+     * @return array<string, string>
+     */
+    public function providerOperators(): array
+    {
+        $known = $this->operators();
+        $map = [
+            'airtel_money' => 'AIRTEL',
+            'orange_money' => 'ORANGE',
+        ];
+
+        return array_filter(
+            $map,
+            fn (string $operator): bool => array_key_exists($operator, $known),
+        );
+    }
+
+    /**
+     * @return array{country: string, operator: string, label: string}|null
+     */
+    public function h2hChoiceFor(string $provider): ?array
+    {
+        $operator = $this->providerOperators()[$provider] ?? null;
+        if ($operator === null) {
+            return null;
+        }
+
+        $countries = [];
+        foreach ($this->countries() as $country => $operators) {
+            if (in_array($operator, $operators, true)) {
+                $countries[] = $country;
+            }
+        }
+
+        if (count($countries) !== 1) {
+            return null;
+        }
+
+        return [
+            'country' => $countries[0],
+            'operator' => $operator,
+            'label' => $this->shopLabel($operator),
+        ];
+    }
+
+    public function shopLabel(string $operator): string
+    {
+        return match ($operator) {
+            'AIRTEL' => 'Airtel Money',
+            'ORANGE' => 'Orange Money',
+            default => $this->operators()[$operator] ?? $operator,
+        };
     }
 }

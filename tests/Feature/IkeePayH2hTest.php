@@ -390,13 +390,60 @@ class IkeePayH2hTest extends TestCase
         $zone = Platform::zone($owner, 'Sans cle');
         $plan = Platform::plan($owner, $zone);
 
-        $this->post('/wifi/'.$zone->slug, $this->order($plan))->assertRedirect();
+        $this->from('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
+            ->post('/wifi/'.$zone->slug, $this->order($plan))
+            ->assertRedirect('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
+            ->assertSessionHasErrors('provider');
 
-        $payment = Payment::withoutGlobalScope('tenant')->first();
-        $this->assertSame('pending', $payment->status);
-        $this->assertStringContainsString('n’est pas configurée', (string) ($payment->metadata['note'] ?? ''));
+        $this->assertSame(0, Payment::withoutGlobalScope('tenant')->count());
         $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
         Http::assertNothingSent();
+    }
+
+    public function test_airtel_money_is_sent_to_ikeepay_h2h_with_the_documented_operator(): void
+    {
+        config([
+            'services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED',
+            'ikeepay.countries' => ['CI' => ['AIRTEL']],
+        ]);
+        $this->fakePayin();
+        [$zone, $plan] = $this->shop('airtel-h2h@example.com');
+
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'phone' => '+2250700000000',
+            'provider' => 'airtel_money',
+            'amount' => '5.00',
+            'currency' => 'USD',
+        ])->assertRedirect('https://pay.example/wave');
+
+        $sale = Sale::withoutGlobalScope('tenant')->with('payment')->first();
+        $this->assertSame('ikeepay', $sale->payment->provider);
+        $this->assertSame('pending', $sale->payment->status);
+        $this->assertSame('AIRTEL', $sale->payment->metadata['operator']);
+        $this->assertSame('1000.00', number_format((float) $sale->payment->amount, 2, '.', ''));
+        $this->assertSame('CDF', $sale->payment->currency);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Http::assertSent(function ($request) use ($sale) {
+            $body = $request->data();
+
+            return $request->url() === 'https://api.ikeepay.com/h2h-payin'
+                && $request->hasHeader('x-api-key', $this->secret)
+                && $body['operator'] === 'AIRTEL'
+                && $body['country'] === 'CI'
+                && $body['amount'] === 1000
+                && $body['currency'] === 'CDF'
+                && $body['phoneNumber'] === '2250700000000'
+                && $body['external_reference'] === $sale->payment->internal_reference
+                && ! array_key_exists('customer_email', $body);
+        });
+        Http::assertNotSent(fn ($request) => $request->hasHeader('x-api-key', 'GLOBAL-KEY-MUST-NOT-BE-USED'));
+
+        $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
+            ->assertOk()
+            ->assertSee('Paiement envoyé à iKeePay', false)
+            ->assertDontSee('pas configuré', false)
+            ->assertDontSee('Votre ticket est prêt', false);
     }
 
     public function test_webhook_expired_is_rejected_and_a_local_expiry_creates_no_ticket(): void

@@ -157,6 +157,12 @@
                     <fieldset class="pay-choices">
                         <legend>Moyen de paiement</legend>
                         <div class="d-grid gap-2 mt-2">
+                            @foreach($ikeepayChoices ?? [] as $choice)
+                                <label class="pay-option d-flex align-items-center gap-3">
+                                    <input class="form-check-input m-0" type="radio" name="provider" value="ikeepay|{{ $choice['country'] }}|{{ $choice['operator'] }}" @checked(old('provider') === 'ikeepay|'.$choice['country'].'|'.$choice['operator']) required>
+                                    <span class="fw-semibold">{{ $choice['label'] }}</span>
+                                </label>
+                            @endforeach
                             @foreach($providers as $key => $label)
                                 <label class="pay-option d-flex align-items-center gap-3">
                                     <input class="form-check-input m-0" type="radio" name="provider" value="{{ $key }}" @checked(old('provider', array_key_first($providers)) === $key) required>

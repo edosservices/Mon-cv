@@ -127,7 +127,7 @@
             </div>
             <div>
                 <dt>Moyen de paiement</dt>
-                <dd>{{ $provider }}</dd>
+                <dd>{{ $provider }}@if(filled($payment->metadata['operator'] ?? null)) — {{ $payment->metadata['operator'] }}@endif</dd>
             </div>
         </dl>
         @if($payment?->transaction_reference)
