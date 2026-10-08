@@ -16,6 +16,7 @@ class PaymentManager
             'mpesa' => new MpesaGateway,
             'card' => new CardGateway,
             'unipay' => new UniPayGateway,
+            'ikeepay' => new IkeePayGateway,
             default => throw new InvalidArgumentException('Moyen de paiement inconnu.'),
         };
     }

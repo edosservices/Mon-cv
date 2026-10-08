@@ -27,17 +27,28 @@
 <form class="panel" method="POST" action="{{ route('shop.customer', [$zone->slug, $plan->id]) }}" data-wait>
     @csrf
     <h2>Entrez votre numéro de téléphone</h2>
-    <p class="help">Achat sans compte. Le numéro et le nom sont facultatifs. Le numéro sert seulement à retrouver le ticket.</p>
-    <label class="field" for="phone">Téléphone <span>(facultatif)</span>
+    <p class="help">Achat sans compte. Le numéro du bénéficiaire suffit. Le nom et l’e-mail sont facultatifs.</p>
+    <fieldset>
+        <legend class="field">Pour qui ?</legend>
+        <label class="choice"><input type="radio" name="purchase_for" value="self" @checked(old('purchase_for', 'self') === 'self')> <span>Pour moi</span></label>
+        <label class="choice"><input type="radio" name="purchase_for" value="other" @checked(old('purchase_for') === 'other')> <span>Pour quelqu’un d’autre</span></label>
+    </fieldset>
+    <label class="field" for="phone">Numéro du bénéficiaire
         <span class="phone-line">
             <span class="phone-prefix">+243</span>
-            <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone', auth()->user()?->isClient() ? auth()->user()->client_phone : '') }}" placeholder="812 345 678">
+            <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required value="{{ old('phone', auth()->user()?->isClient() ? auth()->user()->client_phone : '') }}" placeholder="812 345 678">
         </span>
+    </label>
+    <label class="field" for="payer_phone">Numéro qui paie <span>(si c’est pour quelqu’un d’autre)</span>
+        <input id="payer_phone" name="payer_phone" type="tel" inputmode="tel" value="{{ old('payer_phone') }}" placeholder="+243">
     </label>
     <label class="field" for="name">Nom <span>(facultatif)</span>
         <input id="name" name="name" type="text" autocomplete="name" value="{{ old('name') }}" maxlength="120">
     </label>
+    <label class="field" for="email">E-mail <span>(facultatif, ce n’est pas un compte)</span>
+        <input id="email" name="email" type="email" autocomplete="email" value="{{ old('email') }}" maxlength="160" placeholder="client@mail.com">
+    </label>
     <button class="btn btn-primary" type="submit">Continuer</button>
-    <p class="help"><a href="{{ route('client.register') }}">Créer un compte</a> pour retrouver vos tickets plus tard.</p>
+    <p class="help">Un compte reste facultatif pour <a href="{{ route('client.login') }}">retrouver ses tickets</a>.</p>
 </form>
 @endsection

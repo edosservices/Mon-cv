@@ -78,7 +78,10 @@ class MikrotikController extends Controller
                 $secure,
             );
         } catch (RuntimeException $exception) {
-            return back()->withInput($request->except('password'))->with('probe_error', $exception->getMessage());
+            return back()->withInput($request->except('password'))->with(
+                'probe_error',
+                $service->explainFailure($exception->getMessage(), $data['host'], $secure),
+            );
         }
 
         return back()->withInput($request->except('password'))->with('probe', $found);
@@ -162,10 +165,13 @@ class MikrotikController extends Controller
             'status' => $mikrotik->status,
             'last_error' => $mikrotik->last_error,
         ]);
-        $label = $service->statusLabel($mikrotik);
+        if ($mikrotik->status === 'online') {
+            return back()->with('status', 'Connexion réussie');
+        }
+
         $detail = $mikrotik->last_error ? ' — '.$mikrotik->last_error : '';
 
-        return back()->with($mikrotik->status === 'online' ? 'status' : 'warning', $label.$detail);
+        return back()->with('warning', $service->statusLabel($mikrotik).$detail);
     }
 
     public function sync(Mikrotik $mikrotik, MikrotikService $service, AuditLogger $audit)

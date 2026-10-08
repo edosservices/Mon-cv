@@ -46,7 +46,11 @@ class MikrotikService
             $router->forceFill([
                 'status' => $this->isOffline($exception) ? 'offline' : 'error',
                 'last_seen_at' => now(),
-                'last_error' => $this->redact($exception->getMessage(), [$router->password]),
+                'last_error' => $this->explainFailure(
+                    $this->redact($exception->getMessage(), [$router->password]),
+                    $router->host,
+                    $router->usesSecureApi(),
+                ),
             ])->save();
         }
 
@@ -434,6 +438,7 @@ class MikrotikService
             try {
                 $this->createHotspotUser($router, $voucher, ! $remembered, $profile, $server);
                 $remembered = true;
+                $this->bindVerifiedDevice($router, $voucher);
             } catch (Throwable $exception) {
                 $error = $this->redact($exception->getMessage(), [$router->password, $voucher->password]);
             }
@@ -592,19 +597,107 @@ class MikrotikService
         return 'real';
     }
 
-    public function explainFailure(string $message): string
+    public function explainFailure(string $message, ?string $host = null, bool $secure = false): string
     {
+        foreach ([
+            'Connexion réussie',
+            'MikroTik non joignable depuis le serveur',
+            'Identifiants RouterOS incorrects',
+            'API RouterOS inaccessible',
+            'Délai de connexion dépassé',
+            'Adresse inaccessible',
+            'Port inaccessible',
+            'Erreur API-SSL',
+            'Autre erreur réseau',
+        ] as $known) {
+            if (str_contains($message, $known)) {
+                return $known;
+            }
+        }
+
         $lower = strtolower($message);
 
-        if (str_contains($lower, 'password') || str_contains($lower, 'invalid user') || str_contains($lower, 'bad credentials')) {
-            return 'Le nom d’utilisateur ou le mot de passe est incorrect.';
+        if ($this->mentions($lower, ['password', 'invalid user', 'bad credentials'])) {
+            return 'Identifiants RouterOS incorrects';
         }
 
-        if (str_contains($lower, 'timed out') || str_contains($lower, 'time out') || str_contains($lower, 'timeout')) {
-            return 'Le routeur ne répond pas à temps. Vérifiez qu’il est allumé et que l’adresse est la bonne.';
+        if ($this->mentions($lower, ['ssl', 'tls', 'certificate', 'handshake'])) {
+            return 'Erreur API-SSL';
         }
 
-        return 'Connexion impossible. Le routeur ne répond pas.';
+        if ($this->mentions($lower, ['connection refused', 'actively refused', 'connection reset'])) {
+            return 'Port inaccessible';
+        }
+
+        if ($this->mentions($lower, ['getaddrinfo', 'name or service not known', 'could not resolve', 'php_network_getaddresses', 'nodename nor servname', 'name resolution'])) {
+            return 'Adresse inaccessible';
+        }
+
+        $unreachable = $this->mentions($lower, [
+            'timed out', 'time out', 'timeout', 'no route', 'unreachable', 'connexion impossible',
+            'connection attempt failed', 'failed to respond', 'n’a pas répondu', 'tentative de connexion',
+        ]);
+
+        if ($host !== null && $this->isPrivateHost($host) && $unreachable) {
+            return 'MikroTik non joignable depuis le serveur';
+        }
+
+        if ($this->mentions($lower, ['timed out', 'time out', 'timeout'])) {
+            return 'Délai de connexion dépassé';
+        }
+
+        if ($this->mentions($lower, ['no route', 'unreachable'])) {
+            return 'Adresse inaccessible';
+        }
+
+        if ($this->mentions($lower, ['routeros 6.43', 'ancien mode de connexion', 'legacy login', 'unknown reply', 'expected !done', 'api inaccessible'])) {
+            return 'API RouterOS inaccessible';
+        }
+
+        if ($secure) {
+            return 'Erreur API-SSL';
+        }
+
+        return 'Autre erreur réseau';
+    }
+
+    public function isPrivateHost(string $host): bool
+    {
+        $host = strtolower(rtrim(trim($host), '.'));
+
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            $packed = inet_pton($host);
+            if ($packed === false) {
+                return false;
+            }
+            $first = ord($packed[0]);
+            if (($first & 0xFE) === 0xFC) {
+                return true;
+            }
+            if ($first === 0xFE && (ord($packed[1]) & 0xC0) === 0x80) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<int, string>  $needles
+     */
+    private function mentions(string $message, array $needles): bool
+    {
+        foreach ($needles as $needle) {
+            if (str_contains($message, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -679,6 +772,23 @@ class MikrotikService
         }
 
         return $applied;
+    }
+
+    public function hotspotHostMatches(Mikrotik $router, string $mac, string $ip): bool
+    {
+        $this->assertOwned($router);
+        $mac = strtoupper($mac);
+        $rows = $this->records($this->command($router, ['/ip/hotspot/host/print', '?mac-address='.$mac]));
+
+        foreach ($rows as $row) {
+            $rowMac = strtoupper(str_replace('-', ':', (string) ($row['mac-address'] ?? '')));
+            $rowIp = (string) ($row['address'] ?? '');
+            if ($rowMac === $mac && $rowIp === $ip) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function createUser(Mikrotik $router, Voucher $voucher): void
@@ -980,6 +1090,9 @@ class MikrotikService
     }
 
     /**
+     * Hôtes autorisés avant paiement : portail Limete, DNS du routeur, API et widget iKeePay.
+     * Aucun accès Internet général, et aucun hôte qui n'est pas nécessaire au paiement.
+     *
      * @return array<int, string>
      */
     private function portalHosts(Mikrotik $router): array
@@ -988,6 +1101,8 @@ class MikrotikService
         $hosts = [];
         foreach ([
             parse_url((string) config('app.url'), PHP_URL_HOST),
+            parse_url((string) config('services.ikeepay.base_url'), PHP_URL_HOST),
+            parse_url((string) config('services.ikeepay.checkout_url'), PHP_URL_HOST),
             $router->dns,
             $router->detail('dns_name'),
         ] as $host) {
@@ -995,11 +1110,21 @@ class MikrotikService
                 $hosts[] = strtolower((string) $host);
             }
         }
-        foreach (['wa.me', 'api.whatsapp.com', 'web.whatsapp.com'] as $host) {
-            $hosts[] = $host;
+        return array_values(array_unique($hosts));
+    }
+
+    private function bindVerifiedDevice(Mikrotik $router, Voucher $voucher): void
+    {
+        $mac = strtoupper(str_replace('-', ':', (string) $voucher->mac_address));
+        if (! preg_match('/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/', $mac)) {
+            return;
         }
 
-        return array_values(array_unique($hosts));
+        try {
+            $this->updateHotspotUser($router, $voucher->username, ['mac-address' => $mac]);
+        } catch (Throwable) {
+            // Le compte hotspot existe déjà. L'accès reste possible avec l'identifiant du ticket.
+        }
     }
 
     private function safeHost(string $host): bool
@@ -1138,7 +1263,7 @@ class MikrotikService
     {
         $message = strtolower((string) $message);
 
-        foreach (['connexion impossible', 'timed out', 'time out', 'timeout', 'connection refused', 'no route', 'unreachable', 'name or service not known', 'failed to respond', 'connection attempt failed', 'n’a pas répondu', 'tentative de connexion'] as $needle) {
+        foreach (['connexion impossible', 'timed out', 'time out', 'timeout', 'connection refused', 'no route', 'unreachable', 'name or service not known', 'failed to respond', 'connection attempt failed', 'n’a pas répondu', 'tentative de connexion', 'non joignable depuis le serveur', 'délai de connexion dépassé', 'adresse inaccessible', 'port inaccessible', 'autre erreur réseau', 'erreur api-ssl'] as $needle) {
             if ($message !== '' && str_contains($message, $needle)) {
                 return true;
             }

@@ -149,14 +149,13 @@ class CaptiveJourneyTest extends TestCase
         ]);
 
         config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
-        $this->post('/wifi/'.$zone->slug, [
-            'plan_id' => $plan->id,
+        app(TenantManager::class)->set($zone->tenant_id);
+        $sale = app(\App\Services\SaleService::class)->placeOrder($zone, $plan, [
             'name' => 'Amina',
             'phone' => '+243810009111',
-            'provider' => 'airtel_money',
-        ])->assertRedirect();
-
-        $sale = Sale::withoutGlobalScope('tenant')->first();
+            'purchase_for' => 'self',
+        ], 'airtel_money');
+        app(TenantManager::class)->forget();
         $this->assertSame('pending', $sale->status);
         $this->assertDatabaseCount('vouchers', 0);
 
@@ -363,7 +362,7 @@ JS;
         $this->assertTrue($result->successful(), $result->errorOutput().$result->output());
     }
 
-    public function test_the_walled_garden_stays_limited_to_the_portal_shop_and_whatsapp(): void
+    public function test_the_walled_garden_stays_limited_to_the_portal_and_the_payment_hosts(): void
     {
         $user = Platform::entrepreneur('Alice Wifi', 'alice-garden@example.com');
         $zone = Platform::zone($user, 'Limete');
@@ -371,14 +370,23 @@ JS;
         $router->update(['dns' => 'limete.example']);
         app(TenantManager::class)->set($user->tenant_id);
 
+        config(['services.ikeepay.checkout_url' => 'https://ikeepay.com/checkout/v1/inline']);
         $hosts = app(MikrotikService::class)->portalHostsFor($router->fresh('wifiZone'));
 
         $this->assertContains(parse_url((string) config('app.url'), PHP_URL_HOST), $hosts);
         $this->assertContains('limete.example', $hosts);
-        $this->assertContains('wa.me', $hosts);
-        $this->assertContains('api.whatsapp.com', $hosts);
+        $this->assertContains('api.ikeepay.com', $hosts);
+        $this->assertContains('ikeepay.com', $hosts);
+        $this->assertNotContains('www.ikeepay.com', $hosts);
+        $this->assertNotContains('wa.me', $hosts);
+        $this->assertNotContains('api.whatsapp.com', $hosts);
+        $this->assertNotContains('web.whatsapp.com', $hosts);
         $this->assertNotContains('*', $hosts);
         $this->assertNotContains('0.0.0.0/0', $hosts);
+        foreach ($hosts as $host) {
+            $this->assertFalse(str_contains($host, '*'));
+            $this->assertFalse(str_contains($host, '/'));
+        }
     }
 
     public function test_the_full_simulated_journey_keeps_the_zone_and_the_commercial_clock(): void
@@ -409,19 +417,19 @@ JS;
             ->assertSee('Durée')
             ->assertSee('1 000 FC')
             ->assertSee('+243810002424')
-            ->assertSee('Airtel Money')
-            ->assertSee('Orange Money')
-            ->assertSee('M-Pesa')
-            ->assertSee('Carte bancaire')
-            ->assertSee('Paiement manuel / comptoir');
+            ->assertSee('n’est pas encore disponible', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
+            ->assertDontSee('M-Pesa')
+            ->assertDontSee('Carte bancaire');
 
         config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
-        $this->post('/wifi/'.$zone->slug, [
-            'plan_id' => $plan->id,
+        app(TenantManager::class)->set($zone->tenant_id);
+        $sale = app(\App\Services\SaleService::class)->placeOrder($zone, $plan, [
             'phone' => '+243810002424',
-            'provider' => 'airtel_money',
-        ])->assertRedirect();
-        $sale = Sale::withoutGlobalScope('tenant')->latest('id')->first();
+            'purchase_for' => 'self',
+        ], 'airtel_money');
+        app(TenantManager::class)->forget();
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'?status=success')
             ->assertOk()
             ->assertDontSee('Votre ticket est prêt');

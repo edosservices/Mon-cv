@@ -477,3 +477,38 @@ html {
     70% { transform: scale(1.08); }
     100% { transform: scale(1); opacity: 1; }
 }
+
+.ikeepay-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.ikeepay-bar h1 { margin: 0; }
+.ikeepay-close {
+    flex: none;
+    min-height: 2.75rem;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    background: #10233f;
+    color: white;
+    text-decoration: none;
+}
+.ikeepay-frame {
+    display: none;
+    width: min(100%, 28.125rem);
+    height: min(90vh, 46rem);
+    margin: 1rem auto 0;
+    border: 0;
+    background: transparent;
+}
+.ikeepay-frame.is-ready { display: block; }
+@media (max-width: 720px) {
+    .ikeepay-panel { padding-inline: 0.6rem; }
+    .ikeepay-frame {
+        width: 100%;
+        height: calc(100vh - 9.5rem);
+        min-height: 28rem;
+        border-radius: 0.75rem;
+    }
+}

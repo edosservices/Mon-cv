@@ -87,6 +87,7 @@ class EntrepreneurBusinessTest extends TestCase
 
         $user->tenant->refresh();
         $this->assertSame('Alice Market', $user->tenant->name);
+        $this->assertNull($user->tenant->ikeepaySecret());
         $this->assertSame('Le wifi du quartier', $user->tenant->slogan);
         $this->assertSame('+243810001122', $user->tenant->whatsapp);
         $this->assertEquals(-4.321, (float) $user->tenant->latitude);
@@ -343,5 +344,39 @@ class EntrepreneurBusinessTest extends TestCase
         app(SaleService::class)->sellExisting($voucher);
 
         $this->actingAs($user)->get('/dashboard')->assertOk()->assertDontSee('Continuer la configuration');
+    }
+
+    public function test_ikeepay_keys_stay_on_the_entrepreneur_and_the_secret_is_not_shown(): void
+    {
+        $user = Platform::entrepreneur('Alice Wifi', 'alice-ikee-key@example.com');
+        $other = Platform::entrepreneur('Bob Wifi', 'bob-ikee-key@example.com');
+
+        $this->actingAs($user)->put('/business', [
+            'name' => 'Alice Wifi',
+            'ikeepay_public_key' => 'pk_alice',
+            'ikeepay_secret_key' => 'sk_alice_secret',
+        ])->assertRedirect();
+
+        $user->tenant->refresh();
+        $this->assertSame('pk_alice', $user->tenant->ikeepayPublicKey());
+        $this->assertSame('sk_alice_secret', $user->tenant->ikeepaySecret());
+        $raw = \Illuminate\Support\Facades\DB::table('tenants')->where('id', $user->tenant_id)->value('ikeepay_secret_key');
+        $this->assertIsString($raw);
+        $this->assertStringNotContainsString('sk_alice_secret', $raw);
+        $this->assertNull($other->tenant->fresh()->ikeepaySecret());
+
+        $this->actingAs($user)->get('/business')
+            ->assertOk()
+            ->assertSee('pk_alice', false)
+            ->assertSee('Clé enregistrée', false)
+            ->assertDontSee('sk_alice_secret', false);
+
+        $this->actingAs($user)->put('/business', [
+            'name' => 'Alice Wifi',
+            'ikeepay_public_key' => 'pk_alice',
+            'ikeepay_secret_key' => '',
+        ])->assertRedirect();
+
+        $this->assertSame('sk_alice_secret', $user->tenant->fresh()->ikeepaySecret());
     }
 }

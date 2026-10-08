@@ -16,7 +16,11 @@ class Tenant extends Model
     protected $fillable = [
         'name', 'slug', 'slogan', 'phone', 'whatsapp', 'email', 'address', 'city', 'country',
         'latitude', 'longitude', 'status', 'logo_path', 'primary_color', 'secondary_color',
-        'button_color', 'ticket_style', 'custom_domain',
+        'button_color', 'ticket_style', 'custom_domain', 'ikeepay_public_key', 'ikeepay_secret_key',
+    ];
+
+    protected $hidden = [
+        'ikeepay_secret_key',
     ];
 
     protected function casts(): array
@@ -24,7 +28,23 @@ class Tenant extends Model
         return [
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
+            'ikeepay_public_key' => 'encrypted',
+            'ikeepay_secret_key' => 'encrypted',
         ];
+    }
+
+    public function ikeepayPublicKey(): string
+    {
+        return is_string($this->ikeepay_public_key) && $this->ikeepay_public_key !== ''
+            ? $this->ikeepay_public_key
+            : '';
+    }
+
+    public function ikeepaySecret(): ?string
+    {
+        return is_string($this->ikeepay_secret_key) && $this->ikeepay_secret_key !== ''
+            ? $this->ikeepay_secret_key
+            : null;
     }
 
     public function logoUrl(): ?string

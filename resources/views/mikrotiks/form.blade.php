@@ -31,6 +31,7 @@
 
     <fieldset class="min-w-0 space-y-3 rounded-2xl bg-white p-4 shadow-sm sm:p-5">
         <legend class="px-1 text-sm font-semibold">Connexion RouterOS</legend>
+        <p class="text-sm text-slate-600">Le test de connexion est effectué depuis le serveur Limete WiFi. Une adresse privée comme 192.168.x.x peut être accessible depuis votre téléphone ou ordinateur connecté au MikroTik, mais inaccessible depuis le serveur.</p>
         <label class="block text-sm font-semibold">Host / Adresse IP
             <input class="mt-1 w-full rounded-xl border px-3 py-3" name="host" value="{{ old('host', $router->host) }}" required autocomplete="off">
         </label>
@@ -55,7 +56,7 @@
             <input class="mt-1 w-full rounded-xl border px-3 py-3" name="username" value="{{ old('username', $router->username) }}" required autocomplete="off">
         </label>
         <label class="block text-sm font-semibold">Password
-            <input class="mt-1 w-full rounded-xl border px-3 py-3" type="password" name="password" {{ $router->exists ? '' : 'required' }} autocomplete="new-password" placeholder="{{ $router->exists ? 'Laisser vide pour conserver' : '' }}">
+            <input class="mt-1 w-full rounded-xl border px-3 py-3" type="password" name="password" value="" {{ $router->exists ? '' : 'required' }} autocomplete="new-password" placeholder="{{ $router->exists ? 'Laisser vide pour conserver' : '' }}">
         </label>
         <label class="block text-sm font-semibold">Timeout
             <input class="mt-1 w-full rounded-xl border px-3 py-3" name="timeout" inputmode="numeric" value="{{ old('timeout', $router->timeout ?: 5) }}">
@@ -72,14 +73,22 @@
     </fieldset>
 </form>
 
+@if($router->exists)
+    <form method="POST" action="{{ route('mikrotiks.test', $router) }}" class="mt-3">
+        @csrf
+        <button class="rounded-xl border bg-white px-4 py-3 text-sm font-semibold">Tester la connexion</button>
+        <p class="mt-2 text-xs text-slate-500">Le test utilise l’adresse déjà enregistrée. Enregistrez d’abord une adresse modifiée.</p>
+    </form>
+@endif
+
 @if(session('probe'))
     @include('mikrotiks.partials.detected', ['probe' => session('probe')])
 @endif
 
 @if(session('probe_error'))
     <section class="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm">
-        <p class="font-semibold">✗ Impossible de joindre le MikroTik</p>
-        <p class="mt-2 break-words">{{ session('probe_error') }}</p>
+        <p class="font-semibold">✗ {{ session('probe_error') }}</p>
+        <p class="mt-2">Impossible de joindre le MikroTik depuis le serveur Limete WiFi.</p>
     </section>
 @endif
 

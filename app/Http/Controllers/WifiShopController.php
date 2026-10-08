@@ -8,7 +8,10 @@ use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Rules\CustomerPhone;
 use App\Services\AuditLogger;
+use App\Services\CaptivePortal;
 use App\Services\Mikrotik\MikrotikService;
+use App\Services\Payments\IkeePayCatalog;
+use App\Services\Payments\IkeePayGateway;
 use App\Services\Payments\PaymentManager;
 use App\Services\SaleService;
 use App\Support\QrCodes;
@@ -18,18 +21,28 @@ use Illuminate\Http\Request;
 
 class WifiShopController extends Controller
 {
-    public function show(string $slug)
+    public function show(Request $request, string $slug, CaptivePortal $portal)
     {
         $zone = $this->zone($slug);
+        $portal->capture($request, $zone);
+        $phone = $this->rememberedPhone($zone);
 
         return view('shop.show', [
             'zone' => $zone,
             'plans' => $this->plans($zone),
-            'providers' => app(PaymentManager::class)->enabledProviders(),
-            'knownPhone' => $this->rememberedPhone($zone),
-            'activeVoucher' => $this->rememberedVouchers($zone)->first(fn ($voucher) => $voucher->status === 'active'),
+            'ikeepayReady' => filled($zone->tenant?->ikeepayPublicKey()),
+            'knownPhone' => $phone,
+            'activeVoucher' => $this->activeVoucher($zone, $phone),
             'step' => 0,
         ]);
+    }
+
+    public function portal(Request $request, string $slug, CaptivePortal $portal)
+    {
+        $zone = $this->zone($slug);
+        $portal->capture($request, $zone);
+
+        return redirect()->route('shop.show', $zone->slug);
     }
 
     public function plan(string $slug, int $plan)
@@ -51,12 +64,8 @@ class WifiShopController extends Controller
         $plan = $this->plans($zone)->firstWhere('id', $plan);
         abort_unless($plan, 404);
 
-        $data = $request->validate([
-            'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
-        ]);
-
-        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
+        $data = $request->validate($this->customerRules(true), $this->customerMessages());
+        $data = $this->normalizeCustomer($data);
         session([$this->draftKey($zone, $plan) => $data]);
 
         return redirect()->route('shop.pay', [$zone->slug, $plan->id]);
@@ -79,7 +88,7 @@ class WifiShopController extends Controller
             'zone' => $zone,
             'plan' => $plan,
             'customer' => $draft,
-            'providers' => app(PaymentManager::class)->enabledProviders(),
+            'ikeepayReady' => filled($zone->tenant?->ikeepayPublicKey()),
             'step' => 2,
         ]);
     }
@@ -87,24 +96,104 @@ class WifiShopController extends Controller
     public function checkout(Request $request, string $slug, SaleService $sales)
     {
         $zone = $this->zone($slug);
+        $rawProvider = (string) $request->input('provider');
+        if (str_starts_with($rawProvider, 'ikeepay|')) {
+            $parts = explode('|', $rawProvider);
+            if (count($parts) === 3) {
+                $request->merge([
+                    'provider' => 'ikeepay',
+                    'country' => strtoupper($parts[1]),
+                    'operator' => strtoupper($parts[2]),
+                ]);
+            }
+        }
+
+        if (! filled($request->input('country')) && filled($request->input('ikeepay_method'))) {
+            $parts = explode('|', (string) $request->input('ikeepay_method'), 2);
+            $request->merge([
+                'country' => $parts[0] ?? '',
+                'operator' => $parts[1] ?? '',
+            ]);
+        }
+
         $data = $request->validate([
             'plan_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
-            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay'],
+            'phone' => ['required', 'string', 'max:30', new CustomerPhone],
+            'payer_phone' => ['required_if:purchase_for,other', 'nullable', 'string', 'max:30', new CustomerPhone],
+            'purchase_for' => ['nullable', 'in:self,other'],
+            'email' => ['nullable', 'email', 'max:160'],
+            'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay,ikeepay'],
             'transaction_reference' => ['nullable', 'string', 'max:80'],
+            'country' => ['nullable', 'string', 'size:2'],
+            'operator' => ['nullable', 'string', 'max:40'],
+            'otp' => ['nullable', 'string', 'max:12'],
         ], [
             'provider.required' => 'Choisissez un moyen de paiement.',
             'provider.in' => 'Ce moyen de paiement n’est pas disponible.',
+            'email.email' => 'Indiquez une adresse e-mail valide.',
+            'phone.required' => 'Indiquez le numéro du bénéficiaire.',
+            'payer_phone.required_if' => 'Indiquez le numéro qui paie.',
         ]);
 
         $plan = $this->plans($zone)->firstWhere('id', (int) $data['plan_id']);
         abort_unless($plan, 404);
-        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
+        $data = $this->normalizeCustomer($data);
+
+        if (in_array($data['provider'], ['airtel_money', 'orange_money', 'mpesa', 'card'], true)) {
+            return back()->withErrors([
+                'provider' => 'Ce moyen n’est pas envoyé à iKeePay. Aucune commande n’a été créée.',
+            ])->withInput();
+        }
+
+        if ($data['provider'] === 'ikeepay' && filled($data['operator'] ?? null) && $zone->tenant?->ikeepaySecret() === null) {
+            return back()->withErrors([
+                'provider' => 'La clé iKeePay de cet entrepreneur n’est pas configurée. Aucune demande n’a été envoyée.',
+            ])->withInput();
+        }
+
+        if ($data['provider'] === 'ikeepay' && ! filled($data['operator'] ?? null) && $zone->tenant?->ikeepayPublicKey() === '') {
+            return back()->withErrors([
+                'provider' => 'Le checkout iKeePay de cet entrepreneur n’est pas configuré. Aucune demande n’a été envoyée.',
+            ])->withInput();
+        }
+
+        if ($data['provider'] === 'ikeepay' && ! filled($data['operator'] ?? null)) {
+            $existing = $this->openInlineSale($zone, $plan, $data);
+            if ($existing) {
+                return redirect()->route('shop.ikeepay', [$zone->slug, $existing->public_token]);
+            }
+        }
+
+        $captive = app(CaptivePortal::class)->current($zone);
+        if ($captive) {
+            $data['captive_session_id'] = $captive->id;
+        }
+
+        if (filled($data['operator'] ?? null) || filled($data['country'] ?? null)) {
+            $data['country'] = strtoupper((string) ($data['country'] ?? ''));
+            $data['operator'] = strtoupper((string) ($data['operator'] ?? ''));
+
+            if (! app(IkeePayCatalog::class)->allows($data['country'], $data['operator'])) {
+                return back()->withErrors([
+                    'operator' => 'Cet opérateur n’est pas disponible pour ce pays.',
+                ])->withInput();
+            }
+
+            if (! filled($data['phone'] ?? null)) {
+                return back()->withErrors([
+                    'phone' => 'Indiquez un numéro de téléphone pour ce paiement.',
+                ])->withInput();
+            }
+        }
 
         try {
             $sale = $sales->placeOrder($zone, $plan, $data, $data['provider'], $data['transaction_reference'] ?? null);
         } catch (\RuntimeException $exception) {
+            if ($exception instanceof \Illuminate\Database\QueryException) {
+                throw $exception;
+            }
+
             return back()->with('warning', $exception->getMessage())->withInput();
         }
 
@@ -112,7 +201,62 @@ class WifiShopController extends Controller
         session(['shop_phone.'.$zone->id => $data['phone']]);
         $this->remember($zone, 'customer_sales', $sale->public_token);
 
+        if ($data['provider'] === 'ikeepay') {
+            $sale->load('payment');
+            $payment = $sale->payment;
+
+            if (($payment?->metadata['flow'] ?? null) === 'h2h') {
+                if (($payment->metadata['remote_status'] ?? null) === 'completed') {
+                    app(IkeePayGateway::class)->verifyTransaction($payment);
+                    $sale->refresh();
+                    $payment->refresh();
+                }
+
+                if ($sale->status !== 'paid') {
+                    $link = $payment->metadata['payment_link'] ?? null;
+                    if (is_string($link) && str_starts_with($link, 'https://')) {
+                        return redirect()->away($link);
+                    }
+                }
+
+                return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
+            }
+
+            return redirect()->route('shop.ikeepay', [$zone->slug, $sale->public_token]);
+        }
+
         return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
+    }
+
+    public function ikeepay(string $slug, string $token)
+    {
+        $zone = $this->zone($slug);
+        $sale = Sale::where('public_token', $token)
+            ->where('wifi_zone_id', $zone->id)
+            ->with('payment', 'customer')
+            ->firstOrFail();
+        $payment = $sale->payment;
+        abort_unless($payment?->provider === 'ikeepay', 404);
+        if (($payment->metadata['flow'] ?? null) === 'h2h') {
+            return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
+        }
+
+        $checkoutUrl = (string) config('services.ikeepay.checkout_url');
+        $scheme = parse_url($checkoutUrl, PHP_URL_SCHEME);
+        $host = parse_url($checkoutUrl, PHP_URL_HOST);
+
+        return view('shop.ikeepay', [
+            'zone' => $zone,
+            'sale' => $sale,
+            'amount' => number_format((float) $payment->amount, 2, '.', ''),
+            'currency' => strtoupper((string) $payment->currency),
+            'orderId' => (string) $payment->internal_reference,
+            'publicKey' => $zone->tenant?->ikeepayPublicKey() ?? '',
+            'checkoutUrl' => $checkoutUrl,
+            'checkoutOrigin' => is_string($scheme) && is_string($host) ? $scheme.'://'.$host : '',
+            'returnUrl' => route('shop.order', [$zone->slug, $sale->public_token]),
+            'refreshUrl' => route('shop.payment.refresh', [$zone->slug, $sale->public_token]),
+        ]);
     }
 
     public function order(string $slug, string $token)
@@ -357,6 +501,90 @@ class WifiShopController extends Controller
         $key = $bucket.'.'.$zone->id;
         $tokens = array_values(array_unique([...session($key, []), $token]));
         session([$key => array_slice($tokens, -20)]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerRules(bool $phoneRequired): array
+    {
+        return [
+            'name' => ['nullable', 'string', 'max:120'],
+            'phone' => [$phoneRequired ? 'required' : 'nullable', 'string', 'max:30', new CustomerPhone],
+            'payer_phone' => ['required_if:purchase_for,other', 'nullable', 'string', 'max:30', new CustomerPhone],
+            'purchase_for' => ['nullable', 'in:self,other'],
+            'email' => ['nullable', 'email', 'max:160'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function customerMessages(): array
+    {
+        return [
+            'email.email' => 'Indiquez une adresse e-mail valide.',
+            'phone.required' => 'Indiquez le numéro du bénéficiaire.',
+            'payer_phone.required_if' => 'Indiquez le numéro qui paie.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function openInlineSale(WifiZone $zone, Plan $plan, array $data): ?Sale
+    {
+        return Sale::query()
+            ->where('wifi_zone_id', $zone->id)
+            ->where('status', 'pending')
+            ->where('beneficiary_phone', $data['phone'])
+            ->where('payer_phone', $data['payer_phone'] ?? $data['phone'])
+            ->where('created_at', '>=', now()->subMinutes(20))
+            ->whereHas('items', fn ($query) => $query->where('plan_id', $plan->id)->whereNull('voucher_id'))
+            ->whereHas('payment', function ($query): void {
+                $query->where('provider', 'ikeepay')->where('status', 'pending');
+            })
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeCustomer(array $data): array
+    {
+        $data['purchase_for'] = ($data['purchase_for'] ?? 'self') === 'other' ? 'other' : 'self';
+        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone((string) $data['phone']) : null;
+        $data['payer_phone'] = filled($data['payer_phone'] ?? null) ? $this->normalizePhone((string) $data['payer_phone']) : null;
+        if ($data['purchase_for'] === 'self') {
+            $data['payer_phone'] = $data['phone'];
+        }
+
+        return $data;
+    }
+
+    private function activeVoucher(WifiZone $zone, ?string $phone): ?Voucher
+    {
+        $remembered = $this->rememberedVouchers($zone)->first(fn ($voucher) => $voucher->status === 'active' && ($voucher->expires_at === null || $voucher->expires_at->isFuture()));
+        if ($remembered) {
+            return $remembered;
+        }
+
+        if (! filled($phone)) {
+            return null;
+        }
+
+        return Voucher::query()
+            ->where('wifi_zone_id', $zone->id)
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->whereHas('customer', fn ($query) => $query->where('phone', $phone))
+            ->with('plan')
+            ->latest('id')
+            ->first();
     }
 
     private function rememberedPhone(WifiZone $zone): ?string

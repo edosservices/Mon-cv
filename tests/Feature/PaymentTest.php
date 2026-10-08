@@ -307,7 +307,7 @@ class PaymentTest extends TestCase
         $page = $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token);
         $page->assertOk()
             ->assertSee('Paiement confirmé')
-            ->assertSee('Votre ticket est prêt.')
+            ->assertSee('Votre ticket WiFi est prêt.')
             ->assertSee('24 HEURES')
             ->assertSee('Identifiant')
             ->assertSee($voucher->username)
@@ -348,7 +348,7 @@ class PaymentTest extends TestCase
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
             ->assertOk()
             ->assertSee('Paiement confirmé')
-            ->assertSee('Votre ticket est prêt.')
+            ->assertSee('Votre ticket WiFi est prêt.')
             ->assertSee('Synchronisation en attente')
             ->assertSee('Réessayer')
             ->assertSee($voucher->username);
@@ -382,18 +382,22 @@ $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
     ->assertOk()
     ->assertSee('Sélection du forfait');
 
-        $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [])->assertRedirect();
+        $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [
+            'phone' => '+243810004444',
+        ])->assertRedirect();
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertOk()
             ->assertSee('Paiement')
-            ->assertSee('Airtel Money')
-            ->assertSee('Orange Money')
-            ->assertSee('M-Pesa')
-            ->assertSee('UniPay')
-            ->assertSee('Carte');
+            ->assertSee('n’est pas encore disponible', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
+            ->assertDontSee('Paiement manuel / comptoir')
+            ->assertDontSee('M-Pesa')
+            ->assertDontSee('UniPay');
         $this->post('/wifi/'.$zone->slug, [
             'plan_id' => $plan->id,
-            'provider' => 'airtel_money',
+            'phone' => '+243810004444',
+            'provider' => 'manual',
         ])->assertRedirect();
 
         $sale = Sale::withoutGlobalScope('tenant')->latest('id')->first();
@@ -419,20 +423,20 @@ $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
         ])->assertRedirect(route('client.dashboard'));
 
         $this->get('/client/acheter')->assertOk()->assertSee($zone->name);
-        $this->post('/wifi/'.$zone->slug, [
-            'plan_id' => $plan->id,
+        config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
+        app(TenantManager::class)->set($zone->tenant_id);
+        $sale = app(\App\Services\SaleService::class)->placeOrder($zone, $plan, [
             'phone' => '+243812000911',
             'name' => 'Amina',
-            'provider' => 'airtel_money',
-        ])->assertRedirect();
-
-        $sale = Sale::withoutGlobalScope('tenant')->latest('id')->first()->load('payment');
+            'purchase_for' => 'self',
+        ], 'airtel_money');
+        $sale->load('payment');
+        app(TenantManager::class)->forget();
         $this->assertDatabaseCount('vouchers', 0);
         $this->get('/client/dashboard')
             ->assertOk()
             ->assertSee('Aucun ticket actif.');
 
-        config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
         app(TenantManager::class)->forget();
         $this->notify($sale->payment, ['status' => 'success', 'provider_reference' => 'OP-CLIENT'])->assertOk();
 
@@ -472,16 +476,17 @@ $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
     private function order($zone, string $provider, ?string $reference = null): Sale
     {
         config(['limete.payments.'.$provider.'.webhook_secret' => 'whsec-test']);
+        app(TenantManager::class)->set($zone->tenant_id);
         $plan = $zone->plans()->first();
-        $this->post('/wifi/'.$zone->slug, [
-            'plan_id' => $plan->id,
+        $sale = app(\App\Services\SaleService::class)->placeOrder($zone, $plan, [
             'name' => 'Amina',
             'phone' => '+243810009000',
-            'provider' => $provider,
-            'transaction_reference' => $reference,
-        ])->assertRedirect();
+            'purchase_for' => 'self',
+        ], $provider, $reference);
+        $sale->load('payment');
+        app(TenantManager::class)->forget();
 
-        return Sale::withoutGlobalScope('tenant')->latest('id')->first()->load('payment');
+        return $sale;
     }
 
     private function notify(Payment $payment, array $overrides = [], string $provider = 'airtel_money', ?string $signature = null)

@@ -33,7 +33,16 @@ class ShopTest extends TestCase
             ->assertSee('NUIT TEST')
             ->assertSee('2 750 FC')
             ->assertSee('Acheter')
+            ->assertSee('n’est pas encore disponible', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
+            ->assertDontSee('value="ikeepay"', false)
             ->assertDontSee('500 FC');
+
+        $user->tenant->forceFill(['ikeepay_public_key' => 'pk_shop_public'])->save();
+        $this->get('/wifi/'.$zone->slug)
+            ->assertOk()
+            ->assertSee('value="ikeepay"', false);
     }
 
     public function test_buying_opens_a_confirmation_step(): void
@@ -48,18 +57,20 @@ class ShopTest extends TestCase
             ->assertSee('Entrez votre numéro de téléphone')
             ->assertDontSee($plan->password ?? 'secret-router');
 
+        $user->tenant->forceFill(['ikeepay_public_key' => 'pk_shop_public'])->save();
         $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [
             'phone' => '+243810000222',
         ])->assertRedirect('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement');
 
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertOk()
-            ->assertSee('Comment souhaitez-vous payer')
-            ->assertSee('Airtel Money')
-            ->assertSee('Orange Money')
-            ->assertSee('M-Pesa')
-            ->assertSee('Carte bancaire')
-            ->assertSee('Paiement manuel / comptoir')
+            ->assertSee('Choisissez votre mode de paiement')
+            ->assertSee('moyens disponibles', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
+            ->assertDontSee('M-Pesa')
+            ->assertDontSee('Carte bancaire')
+            ->assertDontSee('Paiement manuel / comptoir')
             ->assertSee('+243810000222');
 
         $other = Platform::entrepreneur('Bob Wifi', 'bob-shop@example.com');
@@ -77,6 +88,13 @@ class ShopTest extends TestCase
             'plan_id' => $plan->id,
             'phone' => '+243810000222',
             'provider' => 'airtel_money',
+        ])->assertSessionHasErrors('provider');
+        $this->assertDatabaseCount('sales', 0);
+
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'phone' => '+243810000222',
+            'provider' => 'manual',
         ])->assertRedirect();
 
         $sale = Sale::withoutGlobalScope('tenant')->first();
@@ -85,15 +103,12 @@ class ShopTest extends TestCase
 
         $this->assertSame('pending', $sale->status);
         $this->assertSame('pending', $sale->payment->status);
-        $this->assertSame('airtel_money', $sale->payment->provider);
-        $this->assertFalse($sale->payment->metadata['configured']);
-        $this->assertStringContainsString('pas configuré', $sale->payment->metadata['note']);
+        $this->assertSame('manual', $sale->payment->provider);
         $this->assertDatabaseCount('vouchers', 0);
 
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
             ->assertOk()
             ->assertSee('Paiement en attente')
-            ->assertSee('pas configuré')
             ->assertDontSee('Votre ticket est prêt');
 
         $this->actingAs($user)->post('/sales/'.$sale->id.'/confirm')->assertRedirect();

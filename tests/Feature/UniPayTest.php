@@ -47,8 +47,10 @@ class UniPayTest extends TestCase
         $this->assertDatabaseCount('vouchers', 0);
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'?payment_status=success')
             ->assertOk()
-            ->assertSee('UniPay non configuré')
+            ->assertSee('Paiement en cours…')
+            ->assertSee('Confirmation du paiement…')
             ->assertSee('Paiement en attente')
+            ->assertDontSee('UniPay non configuré', false)
             ->assertDontSee('Votre ticket est prêt')
             ->assertDontSee($this->key, false);
     }

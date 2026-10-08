@@ -14,6 +14,7 @@ class Sale extends Model
     protected $fillable = [
         'tenant_id', 'wifi_zone_id', 'customer_id', 'payment_id', 'public_token',
         'total_amount', 'currency', 'status', 'channel',
+        'purchase_for', 'payer_phone', 'beneficiary_phone', 'captive_session_id',
     ];
 
     protected function casts(): array
@@ -44,5 +45,10 @@ class Sale extends Model
     public function items(): HasMany
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function captiveSession(): BelongsTo
+    {
+        return $this->belongsTo(CaptiveSession::class);
     }
 }

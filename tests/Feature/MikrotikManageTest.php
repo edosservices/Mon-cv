@@ -141,7 +141,7 @@ class MikrotikManageTest extends TestCase
         $this->assertStringNotContainsString($secret, (string) $router->last_error);
         $this->actingAs($user)->get('/mikrotiks/'.$router->id)
             ->assertSee('● HORS LIGNE')
-            ->assertSee('Connexion impossible')
+            ->assertSee('Autre erreur réseau')
             ->assertDontSee($secret, false);
         $this->assertLogsHideSecrets($lines, [$secret, 'should-not-leak']);
     }
@@ -416,6 +416,139 @@ class MikrotikManageTest extends TestCase
         $paths = array_map(fn (array $call) => $call['words'][0], array_slice(app(HotspotRouter::class)->commands, $before));
         $this->assertContains('/ip/hotspot/walled-garden/add', $paths);
         $this->assertNotContains('/system/reset-configuration', $paths);
+    }
+
+    public function test_the_fiche_can_be_edited_and_the_connection_test_names_the_cause(): void
+    {
+        [$user, $zone, , $router] = $this->ready();
+        $lines = $this->captureLogs();
+        $secret = $router->password;
+        $router->forceFill([
+            'name' => 'Kingabwa',
+            'description' => 'Routeur du marché',
+            'host' => '192.168.88.1',
+            'dns' => 'wifi.kingabwa.test',
+            'api_port' => 8728,
+            'api_ssl_port' => 8729,
+            'connection_type' => 'api',
+            'username' => 'limete',
+            'timeout' => 7,
+            'identity' => 'KINGABWA',
+            'last_seen_at' => now(),
+            'last_synced_at' => now(),
+            'last_error' => null,
+        ])->save();
+
+        $this->actingAs($user)->get('/mikrotiks/create')
+            ->assertOk()
+            ->assertSee('Le test de connexion est effectué depuis le serveur Limete WiFi. Une adresse privée comme 192.168.x.x peut être accessible depuis votre téléphone ou ordinateur connecté au MikroTik, mais inaccessible depuis le serveur.')
+            ->assertSee('Tester la connexion');
+
+        $fiche = $this->actingAs($user)->get('/mikrotiks/'.$router->id);
+        $fiche->assertOk()
+            ->assertSee('Fiche MikroTik')
+            ->assertSee('Kingabwa')
+            ->assertSee('Routeur du marché')
+            ->assertSee('192.168.88.1')
+            ->assertSee('wifi.kingabwa.test')
+            ->assertSee('8728')
+            ->assertSee('8729')
+            ->assertSee('Type de connexion')
+            ->assertSee('limete')
+            ->assertSee('Timeout')
+            ->assertSee('Identity')
+            ->assertSee('KINGABWA')
+            ->assertSee('last_seen_at')
+            ->assertSee('last_error')
+            ->assertSee('last_synced_at')
+            ->assertSee('Modifier')
+            ->assertSee('Tester la connexion')
+            ->assertDontSee($secret, false);
+
+        $this->actingAs($user)->get('/mikrotiks/'.$router->id.'/edit')
+            ->assertOk()
+            ->assertSee('Tester la connexion')
+            ->assertSee('value=""', false)
+            ->assertDontSee($secret, false);
+
+        $this->actingAs($user)->put('/mikrotiks/'.$router->id, [
+            'name' => 'Kingabwa Nord',
+            'description' => 'Mis à jour',
+            'wifi_zone_id' => $zone->id,
+            'host' => '192.168.88.1',
+            'dns' => 'wifi.kingabwa.test',
+            'api_port' => 8728,
+            'api_ssl_port' => 8729,
+            'connection_type' => 'api',
+            'username' => 'limete',
+            'password' => '',
+            'timeout' => 9,
+            'is_active' => '1',
+        ])->assertRedirect('/mikrotiks/'.$router->id);
+
+        $router->refresh();
+        $this->assertSame('Kingabwa Nord', $router->name);
+        $this->assertSame('Mis à jour', $router->description);
+        $this->assertSame('192.168.88.1', $router->host);
+        $this->assertSame(9, $router->timeout);
+        $this->assertSame($secret, $router->password);
+
+        $this->actingAs($user)->get('/mikrotiks/'.$router->id)
+            ->assertSee('Kingabwa Nord')
+            ->assertSee('Mis à jour')
+            ->assertSee('Tester la connexion')
+            ->assertDontSee($secret, false);
+
+        $this->actingAs($user)->post('/mikrotiks/'.$router->id.'/test')
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Connexion réussie');
+        $this->assertSame('online', $router->fresh()->status);
+        $this->assertNull($router->fresh()->last_error);
+        $this->assertSame('192.168.88.1', $router->fresh()->host);
+
+        app(HotspotRouter::class)->fail('Connection timed out. '.$secret);
+        $this->actingAs($user)->post('/mikrotiks/'.$router->id.'/test')->assertRedirect();
+        $router->refresh();
+        $this->assertSame('192.168.88.1', $router->host);
+        $this->assertSame('offline', $router->status);
+        $this->assertSame('MikroTik non joignable depuis le serveur', $router->last_error);
+        $this->actingAs($user)->get('/mikrotiks/'.$router->id)
+            ->assertSee('MikroTik non joignable depuis le serveur')
+            ->assertDontSee($secret, false)
+            ->assertDontSee('Connection timed out', false);
+
+        $router->forceFill(['host' => '1.2.3.4'])->save();
+        app(HotspotRouter::class)->fail('Connection timed out. '.$secret);
+        $this->actingAs($user)->post('/mikrotiks/'.$router->id.'/test')->assertRedirect();
+        $router->refresh();
+        $this->assertSame('1.2.3.4', $router->host);
+        $this->assertSame('Délai de connexion dépassé', $router->last_error);
+        $this->assertStringNotContainsString($secret, (string) $router->last_error);
+
+        $service = app(MikrotikService::class);
+        $this->assertSame('Port inaccessible', $service->explainFailure('Connection refused', '192.168.88.1'));
+        $this->assertSame('Adresse inaccessible', $service->explainFailure('getaddrinfo failed: Name or service not known', 'wifi.absent.test'));
+        $this->assertSame('Identifiants RouterOS incorrects', $service->explainFailure('invalid user name or password ('.$secret.')', '192.168.88.1'));
+        $this->assertSame('Erreur API-SSL', $service->explainFailure('SSL handshake failure', '1.2.3.4', true));
+        $this->assertSame('API RouterOS inaccessible', $service->explainFailure('Ce routeur utilise un ancien mode de connexion. RouterOS 6.43 ou plus récent est requis.', '1.2.3.4'));
+        $this->assertSame('Autre erreur réseau', $service->explainFailure('Connexion impossible au routeur. '.$secret, '1.2.3.4'));
+        $this->assertTrue($service->isPrivateHost('192.168.88.1'));
+        $this->assertFalse($service->isPrivateHost('1.2.3.4'));
+
+        $fake = new FakeHotspotRouter;
+        $fake->fail('Connexion impossible au routeur. '.$secret);
+        $this->app->instance(HotspotRouter::class, $fake);
+        $this->actingAs($user)->from('/mikrotiks/create')->followingRedirects()->post('/mikrotiks/probe', [
+            'host' => '192.168.88.1',
+            'api_port' => 8728,
+            'username' => 'limete',
+            'password' => $secret,
+        ])->assertOk()
+            ->assertSee('MikroTik non joignable depuis le serveur')
+            ->assertSee('192.168.88.1')
+            ->assertDontSee($secret, false);
+
+        $this->assertLogsHideSecrets($lines, [$secret, 'should-not-leak']);
     }
 
     public function test_api_ssl_uses_the_same_client_with_the_secure_flag(): void

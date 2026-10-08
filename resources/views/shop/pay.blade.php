@@ -23,28 +23,35 @@
     </dl>
     <p class="plan-offer">{{ $plan->internetLabel() }}</p>
     <p class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
-    <p class="help">Client : {{ $customer['phone'] ?: 'Achat sans compte' }}</p>
+    <p class="help">Achat sans compte.</p>
+    <p class="help">Bénéficiaire : {{ $customer['phone'] ?: '—' }}</p>
+    @if(($customer['purchase_for'] ?? 'self') === 'other')
+        <p class="help">Paiement depuis : {{ $customer['payer_phone'] ?? '—' }}</p>
+    @endif
+    @if(filled($customer['email'] ?? null))
+        <p class="help">E-mail : {{ $customer['email'] }}</p>
+    @endif
 </section>
 
-<form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
-    @csrf
-    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-    <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
-    <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
-    <h2>Comment souhaitez-vous payer ?</h2>
-    <p class="help">Aucun ticket n’est créé avant la confirmation du paiement. Si l’opérateur n’est pas configuré, la commande reste en attente.</p>
-    <div class="choices">
-        @foreach($providers as $key => $label)
-            <label class="choice">
-                <input type="radio" name="provider" value="{{ $key }}" @checked(old('provider', 'manual') === $key) required>
-                <span>{{ $label }}</span>
-            </label>
-        @endforeach
-    </div>
-    <label class="field" for="transaction_reference">Référence <span>(si vous l’avez)</span>
-        <input id="transaction_reference" name="transaction_reference" type="text" value="{{ old('transaction_reference') }}" maxlength="80" placeholder="Reçu ou référence comptoir">
-    </label>
-    <p class="help">Confirmation : le ticket n’est créé qu’après la réponse officielle du moyen de paiement.</p>
-    <button class="btn btn-primary" type="submit">Confirmer et payer</button>
-</form>
+@if($ikeepayReady ?? false)
+    <form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
+        @csrf
+        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
+        <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
+        <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
+        <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
+        <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
+        <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
+        <input type="hidden" name="provider" value="ikeepay">
+        <h2>Choisissez votre mode de paiement</h2>
+        <p class="help">La page de paiement sécurisée affiche les moyens disponibles. Votre ticket WiFi sera créé après confirmation.</p>
+        <button class="btn btn-primary" type="submit">Payer</button>
+    </form>
+@else
+    <section class="panel">
+        <h2>Paiement indisponible</h2>
+        <p class="help">Le paiement en ligne de cette zone n’est pas encore disponible. Aucune commande ne sera créée.</p>
+        <button class="btn btn-primary" type="button" disabled>Payer</button>
+    </section>
+@endif
 @endsection

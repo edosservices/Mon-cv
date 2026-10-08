@@ -46,4 +46,18 @@ return [
         'mode' => env('UNIPAY_MODE', 'test'),
     ],
 
+    /*
+    | iKeePay. Les clés marchandes sont enregistrées par entrepreneur.
+    | IKPAY_PUBLIC_KEY et IKPAY_SECRET_KEY ne sont pas utilisées pour encaisser.
+    | Seuls le domaine de l'API et l'URL du widget inline sont communs.
+    | Le widget documenté envoie pk, amount, currency, order_id et, si besoin, redirect_url.
+    | Le H2H envoie customer_email seulement lorsqu'un e-mail a été fourni.
+    */
+    'ikeepay' => [
+        'public_key' => env('IKPAY_PUBLIC_KEY'),
+        'secret_key' => env('IKPAY_SECRET_KEY'),
+        'base_url' => env('IKPAY_BASE_URL', 'https://api.ikeepay.com'),
+        'checkout_url' => env('IKPAY_CHECKOUT_URL', 'https://ikeepay.com/checkout/v1/inline'),
+    ],
+
 ];
