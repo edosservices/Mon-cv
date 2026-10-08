@@ -33,6 +33,7 @@ class WifiShopController extends Controller
             'providers' => $this->guestProviders(),
             'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
             'unavailableH2h' => app(IkeePayCatalog::class)->unavailableShopMethods(),
+            'ikeepayReady' => filled($zone->tenant?->ikeepayPublicKey()),
             'knownPhone' => $phone,
             'activeVoucher' => $this->activeVoucher($zone, $phone),
             'step' => 0,

@@ -171,6 +171,7 @@
                                 </label>
                             @endforeach
                             @foreach($providers as $key => $label)
+                                @continue($key === 'ikeepay' && ! ($ikeepayReady ?? false))
                                 <label class="pay-option d-flex align-items-center gap-3">
                                     <input class="form-check-input m-0" type="radio" name="provider" value="{{ $key }}" @checked(old('provider', array_key_first($providers)) === $key) required>
                                     <span class="fw-semibold">{{ $label }}</span>

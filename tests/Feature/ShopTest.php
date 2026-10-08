@@ -33,7 +33,15 @@ class ShopTest extends TestCase
             ->assertSee('NUIT TEST')
             ->assertSee('2 750 FC')
             ->assertSee('Acheter')
+            ->assertSee('Airtel Money — Indisponible', false)
+            ->assertSee('Orange Money — Indisponible', false)
+            ->assertDontSee('value="ikeepay"', false)
             ->assertDontSee('500 FC');
+
+        $user->tenant->forceFill(['ikeepay_public_key' => 'pk_shop_public'])->save();
+        $this->get('/wifi/'.$zone->slug)
+            ->assertOk()
+            ->assertSee('value="ikeepay"', false);
     }
 
     public function test_buying_opens_a_confirmation_step(): void
