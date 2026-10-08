@@ -1,4 +1,5 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
+@import './plan-offers.css';
 @import './limete.css';
 @import './limete-background.css';
 @import './limete-finish.css';
@@ -100,6 +101,23 @@
 @media (min-width: 992px) {
     .biz-shell { grid-template-columns: 230px minmax(0, 1fr); align-items: start; max-width: 1180px; margin: 0 auto; }
     .biz-nav { flex-direction: column; overflow: visible; position: sticky; top: 84px; }
+}
+
+#zoneUpgradeModal {
+    --bs-primary: var(--biz-btn, #0b5ed7);
+}
+
+#zoneUpgradeModal .modal-body {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#zoneUpgradeModal .modal-footer {
+    position: relative;
+    z-index: 2;
+    background: #fff;
+    border-top: 1px solid rgba(18, 32, 51, .08);
 }
 
 @media print {

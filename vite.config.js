@@ -18,6 +18,10 @@ export default defineConfig({
     'resources/css/landing.css',
     'resources/js/landing.js',
     'resources/css/bulk-ticket.css',
+    'resources/css/dashboard.css',
+    'resources/js/dashboard.js',
+    'resources/css/subscription.css',
+    'resources/js/subscription.js',
 ],
             refresh: true,
             fonts: [

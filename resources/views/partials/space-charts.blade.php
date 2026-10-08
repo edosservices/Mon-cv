@@ -1,100 +1,90 @@
-<section class="lm-panel" aria-label="Graphiques">
-    <div class="flex flex-wrap items-end justify-between gap-3">
-        <h2 class="font-semibold">Activité</h2>
-        <form class="flex flex-wrap gap-2" method="GET">
-            @foreach(request()->except(['chart', 'chart_from', 'chart_to', 'page']) as $key => $value)
-                @if(is_string($value) || is_numeric($value))
-                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                @endif
-            @endforeach
-            <select class="rounded-xl border px-3 py-3 text-sm" name="chart" onchange="this.form.submit()">
-                @foreach(['today' => 'Aujourd’hui', '7' => '7 jours', '30' => '30 jours', '90' => '90 jours', 'year' => 'Cette année', 'custom' => 'Dates'] as $value => $label)
-                    <option value="{{ $value }}" @selected($charts['range']['preset'] === $value)>{{ $label }}</option>
+<section class="card border-0 en-chart-card" aria-label="Graphiques">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
+            <h2>Activité</h2>
+            <form class="d-flex flex-wrap gap-2" method="GET">
+                @foreach(request()->except(['chart', 'chart_from', 'chart_to', 'page']) as $key => $value)
+                    @if(is_string($value) || is_numeric($value))
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endif
                 @endforeach
-            </select>
-            @if($charts['range']['preset'] === 'custom')
-                <input class="rounded-xl border px-3 py-3 text-sm" type="date" name="chart_from" value="{{ $charts['range']['from']->toDateString() }}">
-                <input class="rounded-xl border px-3 py-3 text-sm" type="date" name="chart_to" value="{{ $charts['range']['to']->toDateString() }}">
-                <button class="rounded-xl border px-3 py-3 text-sm font-semibold" type="submit">Appliquer</button>
-            @endif
-        </form>
-    </div>
-
-    <div class="lm-grid">
-        @foreach($charts['kpis'] as $label => $value)
-            <article class="rounded-2xl border p-3">
-                <p class="text-sm text-slate-500">{{ $label }}</p>
-                <p class="text-2xl font-semibold">{{ $value }}</p>
-            </article>
-        @endforeach
-        @forelse($charts['revenue'] as $currency)
-            <article class="rounded-2xl border p-3">
-                <p class="text-sm text-slate-500">Revenus {{ $currency['currency'] }}</p>
-                <p class="text-2xl font-semibold">{{ $currency['label'] }}</p>
-            </article>
-        @empty
-            <article class="rounded-2xl border p-3">
-                <p class="text-sm text-slate-500">Revenus</p>
-                <p class="text-2xl font-semibold">—</p>
-            </article>
-        @endforelse
-    </div>
-
-    <div class="mt-6 grid gap-4 lg:grid-cols-2">
-        <article>
-            <h3 class="font-semibold">Ventes par devise</h3>
-            @forelse($charts['revenue'] as $currency)
-                <p class="mt-2 text-sm font-semibold">{{ $currency['label'] }} · {{ $currency['count'] }} vente(s)</p>
-                @php $max = max(1, collect($currency['days'])->max('amount')); @endphp
-                <div class="mt-2 flex h-24 items-end gap-1">
-                    @foreach($currency['days'] as $day)
-                        <div class="min-w-2 flex-1 rounded-t bg-electric" style="height: {{ max(4, ($day['amount'] / $max) * 96) }}px" title="{{ $day['day'] }}"></div>
+                <select class="form-select form-select-sm" name="chart" onchange="this.form.submit()" aria-label="Période des graphiques">
+                    @foreach(['today' => 'Aujourd’hui', '7' => '7 jours', '30' => '30 jours', '90' => '90 jours', 'year' => 'Cette année', 'custom' => 'Dates'] as $value => $label)
+                        <option value="{{ $value }}" @selected($charts['range']['preset'] === $value)>{{ $label }}</option>
                     @endforeach
-                </div>
-            @empty
-                <p class="mt-2 text-sm text-slate-500">Pas encore de vente confirmée sur cette période.</p>
-            @endforelse
-        </article>
-        <article>
-            <h3 class="font-semibold">Tickets</h3>
-            @php $statusMax = max(1, max($charts['statuses'])); @endphp
-            <ul class="mt-2 space-y-2">
-                @foreach($charts['statuses'] as $label => $value)
-                    <li>
-                        <div class="flex justify-between text-sm"><span>{{ $label }}</span><span>{{ $value }}</span></div>
-                        <div class="mt-1 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-electric" style="width: {{ ($value / $statusMax) * 100 }}%"></div></div>
-                    </li>
-                @endforeach
-            </ul>
-        </article>
-        <article>
-            <h3 class="font-semibold">Profils utilisés</h3>
-            @forelse($charts['profiles'] as $profile)
-                <p class="mt-2 text-sm">{{ $profile['name'] }} · {{ $profile['total'] }}</p>
-            @empty
-                <p class="mt-2 text-sm text-slate-500">Aucun ticket sur cette période.</p>
-            @endforelse
-        </article>
-        <article>
-            <h3 class="font-semibold">Paiements</h3>
-            @forelse($charts['payments'] as $payment)
-                <p class="mt-2 text-sm">{{ $payment['provider'] }} · {{ $payment['label'] }} · {{ $payment['total'] }}</p>
-            @empty
-                <p class="mt-2 text-sm text-slate-500">Aucun paiement confirmé sur cette période.</p>
-            @endforelse
-            <h3 class="mt-4 font-semibold">Utilisateurs créés</h3>
-            <p class="mt-2 text-sm">{{ array_sum(array_column($charts['created'], 'total')) }} sur la période</p>
-        </article>
-    </div>
+                </select>
+                @if($charts['range']['preset'] === 'custom')
+                    <input class="form-control form-control-sm" type="date" name="chart_from" value="{{ $charts['range']['from']->toDateString() }}">
+                    <input class="form-control form-control-sm" type="date" name="chart_to" value="{{ $charts['range']['to']->toDateString() }}">
+                    <button class="btn btn-sm btn-primary" type="submit">Appliquer</button>
+                @endif
+            </form>
+        </div>
 
-    <article class="mt-6">
-        <h3 class="font-semibold">Activité récente</h3>
-        <ul class="mt-2 space-y-2 text-sm">
-            @forelse($charts['activity'] as $item)
-                <li class="flex justify-between gap-3"><span class="min-w-0">{{ $item['text'] }}</span><time class="shrink-0 text-slate-500">{{ $item['at'] }}</time></li>
+        <ul class="en-legend">
+            @foreach($charts['kpis'] as $label => $value)
+                <li>{{ $label }} · {{ $value }}</li>
+            @endforeach
+            @forelse($charts['revenue'] as $currency)
+                <li>Revenus {{ $currency['currency'] }} · {{ $currency['label'] }} · {{ $currency['count'] }} vente(s)</li>
             @empty
-                <li class="text-slate-500">Aucune activité récente.</li>
+                <li>Revenus · —</li>
             @endforelse
         </ul>
-    </article>
+
+        <div class="row g-3 mt-1">
+            <div class="col-lg-4">
+                <h3 class="h6 mt-2">Tickets</h3>
+                <div class="en-chart is-short">
+                    <canvas data-en-chart="statuses" data-en-source="en-statuses" aria-label="Répartition des tickets"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <h3 class="h6 mt-2">Profils utilisés</h3>
+                @if($charts['profiles'] === [])
+                    <p class="text-secondary small mt-2 mb-0">Aucun ticket sur cette période.</p>
+                @else
+                    <div class="en-chart is-short">
+                        <canvas data-en-chart="profiles" data-en-source="en-profiles" aria-label="Profils utilisés"></canvas>
+                    </div>
+                    <ul class="en-legend">
+                        @foreach($charts['profiles'] as $profile)
+                            <li>{{ $profile['name'] }} · {{ $profile['total'] }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+            <div class="col-lg-4">
+                <h3 class="h6 mt-2">Paiements</h3>
+                @if($charts['payments'] === [])
+                    <p class="text-secondary small mt-2 mb-0">Aucun paiement confirmé sur cette période.</p>
+                @else
+                    <div class="en-chart is-short">
+                        <canvas data-en-chart="providers" data-en-source="en-providers" aria-label="Paiements par moyen"></canvas>
+                    </div>
+                    <ul class="en-legend">
+                        @foreach($charts['payments'] as $payment)
+                            <li>{{ $payment['provider'] }} · {{ $payment['label'] }} · {{ $payment['total'] }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p class="small text-secondary mt-2 mb-0">Utilisateurs créés · {{ array_sum(array_column($charts['created'], 'total')) }} sur la période</p>
+            </div>
+        </div>
+
+        <h3 class="h6 mt-3">Activité récente</h3>
+        <ul class="list-unstyled mb-0 small">
+            @forelse($charts['activity'] as $item)
+                <li class="d-flex justify-content-between gap-3 py-1">
+                    <span class="min-w-0">{{ $item['text'] }}</span>
+                    <time class="text-secondary">{{ $item['at'] }}</time>
+                </li>
+            @empty
+                <li class="text-secondary">Aucune activité récente.</li>
+            @endforelse
+        </ul>
+    </div>
 </section>
+<script type="application/json" id="en-statuses">@json($charts['statuses'])</script>
+<script type="application/json" id="en-profiles">@json($charts['profiles'])</script>
+<script type="application/json" id="en-providers">@json($charts['payments'])</script>

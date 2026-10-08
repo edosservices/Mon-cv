@@ -4,16 +4,25 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h2 class="h4 mb-0">Mes WiFi Zones</h2>
     @unless($first)
-        <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">+ Nouvelle WiFi Zone</a>
+        @if($zoneLimitReached)
+            <button type="button" class="btn biz-btn" data-bs-toggle="modal" data-bs-target="#zoneUpgradeModal">+ Nouvelle WiFi Zone</button>
+        @else
+            <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">+ Nouvelle WiFi Zone</a>
+        @endif
     @endunless
 </div>
 
 @if($first)
     <section class="card border-0 shadow-sm">
         <div class="card-body">
-            <h3 class="h5">Crée ta première WiFi Zone</h3>
-            <p class="text-secondary mb-3">Un nom et une adresse suffisent. Les réglages avancés restent masqués.</p>
-            <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">Créer ma zone</a>
+            <h3 class="h5">Aucune WiFi Zone</h3>
+            <p class="mb-1">Crée ta première WiFi Zone</p>
+            <p class="text-secondary mb-3">Créez votre première zone WiFi pour commencer. Un nom et une adresse suffisent.</p>
+            @if($zoneLimitReached)
+                <button type="button" class="btn biz-btn" data-bs-toggle="modal" data-bs-target="#zoneUpgradeModal">Créer ma zone</button>
+            @else
+                <a class="btn biz-btn" href="{{ route('wifi-zones.create') }}">Créer ma zone</a>
+            @endif
         </div>
     </section>
 @else
@@ -43,7 +52,9 @@
                             <x-ui.badge :class="$zone->status === 'active' ? 'is-active' : 'is-inactive'">{{ $zone->status === 'active' ? 'Active' : 'Inactive' }}</x-ui.badge>
                         </div>
                         <p class="text-secondary mb-2">{{ $zone->location ?: 'Localisation non renseignée' }}</p>
-                        <p class="mb-2">{{ $zone->plans()->count() }} forfaits · {{ $zone->vouchers_count }} tickets · {{ (int) ($clientCounts[$zone->id] ?? 0) }} clients</p>
+                        @php $router = $routers->first(); @endphp
+                        <p class="mb-1">{{ $routerState === 'active' ? 'Routeur connecté' : $routerLabel }}@if($router) · {{ $router->name }}@endif</p>
+                        <p class="mb-2">{{ (int) $zone->active_plans_count }} forfaits actifs · {{ $zone->vouchers_count }} tickets · {{ (int) ($clientCounts[$zone->id] ?? 0) }} clients</p>
                         <p class="mb-3"><x-ui.badge :class="'is-'.$routerState">{{ $routerLabel }}</x-ui.badge></p>
                         <div class="d-flex flex-wrap gap-2">
                             @if($zone->status === 'active')
@@ -66,5 +77,9 @@
             </div>
         @endforeach
     </div>
+@endif
+@if($zoneLimitReached)
+    @include('subscription.upgrade-modal')
+    @include('subscription.partials.pay-modal')
 @endif
 @endsection

@@ -39,9 +39,9 @@
     </label>
     <label class="text-sm font-semibold">Nombre de tickets par page
         <select class="mt-1 w-full rounded-xl border px-3 py-3" name="per_page">
-            <option value="4">4 tickets / page</option>
-            <option value="6" selected>6 tickets / page</option>
-            <option value="8">8 tickets / page</option>
+            @foreach(\App\Services\TicketSheet::layoutOptions() as $value => $label)
+                <option value="{{ $value }}" @selected((int) $value === \App\Services\TicketSheet::ECONOMICAL)>{{ $label }}</option>
+            @endforeach
         </select>
     </label>
     <label class="text-sm font-semibold">Impression groupée
@@ -98,16 +98,16 @@
                                 <form method="POST" action="{{ route('vouchers.print') }}">@csrf
                                     <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
                                     <input type="hidden" name="template" value="moderne">
-                                    <input type="hidden" name="per_page" value="6">
+                                    <input type="hidden" name="per_page" value="{{ \App\Services\TicketSheet::ECONOMICAL }}">
                                     <button>Imprimer</button>
                                 </form>
                                 <form method="POST" action="{{ route('vouchers.sheet-pdf') }}">@csrf
                                     <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
                                     <input type="hidden" name="template" value="moderne">
-                                    <input type="hidden" name="per_page" value="6">
+                                    <input type="hidden" name="per_page" value="{{ \App\Services\TicketSheet::ECONOMICAL }}">
                                     <button>PDF</button>
                                 </form>
-                                <a href="{{ route('vouchers.generate', ['wifi_zone_id' => $voucher->wifi_zone_id, 'plan_id' => $voucher->plan_id, 'template' => 'moderne', 'per_page' => 6]) }}">Dupliquer la configuration</a>
+                                <a href="{{ route('vouchers.generate', ['wifi_zone_id' => $voucher->wifi_zone_id, 'plan_id' => $voucher->plan_id, 'template' => 'moderne', 'per_page' => \App\Services\TicketSheet::ECONOMICAL]) }}">Dupliquer la configuration</a>
                                 @if(in_array($voucher->status, ['available', 'active'], true))
                                     <form method="POST" action="{{ route('vouchers.destroy', $voucher) }}">@csrf @method('DELETE')
                                         <input type="hidden" name="stay" value="1">

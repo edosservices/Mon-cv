@@ -6,6 +6,7 @@ use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Services\AuditLogger;
 use App\Services\PlanLimiter;
+use App\Services\SubscriptionCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -13,9 +14,12 @@ use Illuminate\Validation\Rule;
 
 class WifiZoneController extends Controller
 {
-    public function index()
+    public function index(PlanLimiter $limits, SubscriptionCatalog $catalog)
     {
-        $zones = WifiZone::withCount('vouchers')->latest()->get();
+        $zones = WifiZone::with('mikrotiks')->withCount([
+            'vouchers',
+            'plans as active_plans_count' => fn ($query) => $query->where('status', 'active'),
+        ])->latest()->get();
         $clients = Voucher::query()
             ->whereNotNull('customer_id')
             ->selectRaw('wifi_zone_id, count(distinct customer_id) as aggregate')
@@ -26,14 +30,16 @@ class WifiZoneController extends Controller
             'zones' => $zones,
             'clientCounts' => $clients,
             'first' => $zones->isEmpty(),
+            ...$this->quotaView($limits, $catalog),
         ]);
     }
 
-    public function create()
+    public function create(PlanLimiter $limits, SubscriptionCatalog $catalog)
     {
         return view('wifi-zones.form', [
             'zone' => new WifiZone(['status' => 'active']),
             'first' => WifiZone::query()->doesntExist(),
+            ...$this->quotaView($limits, $catalog),
         ]);
     }
 
@@ -76,6 +82,19 @@ class WifiZoneController extends Controller
         $wifiZone->delete();
 
         return redirect()->route('wifi-zones.index')->with('status', 'WiFi Zone archivée.');
+    }
+
+    /**
+     * @return array{zoneLimitReached: bool, subscription: mixed, plans: mixed, catalog: SubscriptionCatalog}
+     */
+    private function quotaView(PlanLimiter $limits, SubscriptionCatalog $catalog): array
+    {
+        return [
+            'zoneLimitReached' => $limits->zoneLimitReached(),
+            'subscription' => $catalog->current(),
+            'plans' => $catalog->activePlans(),
+            'catalog' => $catalog,
+        ];
     }
 
     private function validated(Request $request, ?WifiZone $zone = null): array

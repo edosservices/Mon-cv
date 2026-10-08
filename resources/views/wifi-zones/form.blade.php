@@ -67,4 +67,19 @@
         <button class="btn biz-btn mt-4">{{ $first ? 'Créer ma zone' : 'Enregistrer' }}</button>
     </div>
 </form>
+@if(($zoneLimitReached ?? false) || $errors->has('subscription_limit_reached'))
+    @include('subscription.upgrade-modal')
+    @include('subscription.partials.pay-modal')
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var dialog = document.getElementById('zoneUpgradeModal');
+                if (!dialog || !window.bootstrap || !window.bootstrap.Modal) {
+                    return;
+                }
+                window.bootstrap.Modal.getOrCreateInstance(dialog).show();
+            });
+        </script>
+    @endpush
+@endif
 @endsection

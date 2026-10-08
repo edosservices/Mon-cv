@@ -51,6 +51,8 @@
             <h2 class="font-semibold">{{ $router->name }}</h2>
             <p class="mt-2">Identity {{ $missing($router->identity) }}</p>
             <p>RouterOS {{ $missing($router->routeros_version) }}</p>
+            <p>Ce routeur est associé à :</p>
+            <p>WiFi Zone : {{ $router->wifiZone->name ?? 'Non détecté' }}</p>
             <p>Zone {{ $router->wifiZone->name ?? 'Non détecté' }}</p>
             <p>HotSpot {{ $missing($router->hotspot_server) }}</p>
             <p>DNS {{ filled($dns) ? $dns : 'DNS non configuré' }}</p>
@@ -123,17 +125,28 @@
             <h2 class="font-semibold">Profils HotSpot</h2>
             <form method="POST" action="{{ route('mikrotiks.profiles', $router) }}">@csrf<button class="rounded-xl border px-3 py-2">Synchroniser les profils</button></form>
         </div>
-        <p class="mt-1 text-slate-500">Un forfait Laravel n’est pas un profil RouterOS.</p>
+        <p class="mt-1 text-slate-500">Profils MikroTik disponibles. Un forfait Laravel n’est pas un profil RouterOS.</p>
         @forelse($router->profiles as $profile)
-            @php $raw = $profile->raw ?? []; @endphp
+            @php
+                $raw = $profile->raw ?? [];
+                $linkedPlan = $plans->first(fn ($plan) => $plan->mikrotik_profile === $profile->name && $plan->status === 'active');
+            @endphp
             <article class="mt-3 rounded-xl bg-slate-50 p-3">
                 <p class="font-semibold">{{ $profile->name }}</p>
                 <p>Rate Limit : {{ $profile->rate_limit ?: 'Non détecté' }}</p>
+                <p>Pool : {{ $raw['address-pool'] ?? 'none' }}</p>
+                <p>Queue : {{ $raw['parent-queue'] ?? 'none' }}</p>
                 <p>Session Timeout : {{ $raw['session-timeout'] ?? 'Non détecté' }}</p>
                 <p>Idle Timeout : {{ $raw['idle-timeout'] ?? 'Non détecté' }}</p>
                 <p>Keepalive Timeout : {{ $raw['keepalive-timeout'] ?? 'Non détecté' }}</p>
                 <p>Shared users : {{ $profile->shared_users ?? 'Non détecté' }}</p>
                 <p>Statut : {{ ($raw['disabled'] ?? 'false') === 'true' ? 'désactivé' : 'actif' }}</p>
+                @if($linkedPlan)
+                    <p>Forfait LIMETE : {{ $linkedPlan->name }} — {{ \App\Support\Money::shop($linkedPlan->price, $linkedPlan->currency) }}</p>
+                @else
+                    <p>Forfait LIMETE : Non associé</p>
+                    <a class="mt-2 inline-block rounded-xl border bg-white px-3 py-2" href="{{ route('plans.create', ['wifi_zone_id' => $router->wifi_zone_id, 'mikrotik_profile' => $profile->name]) }}">Associer un forfait</a>
+                @endif
             </article>
         @empty
             <p class="mt-3">Non détecté</p>

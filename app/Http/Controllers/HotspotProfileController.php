@@ -40,10 +40,19 @@ class HotspotProfileController extends Controller
     public function store(Request $request, MikrotikService $mikrotik, MikrotikPreparation $preparation, TicketAssist $assist)
     {
         $data = $this->validated($request, $mikrotik, $preparation);
-        $plan = Plan::create($this->attributes($data));
-        $warning = $this->sync($data, $mikrotik, $preparation, $assist);
+        $warning = null;
+        $notice = null;
+        if ($data['sync'] ?? false) {
+            $result = $this->sync($data, $mikrotik, $preparation, $assist);
+            if ($result['blocked']) {
+                return back()->with('warning', $result['message'])->withInput();
+            }
+            $warning = $result['warning'];
+            $notice = $result['notice'];
+        }
+        Plan::create($this->attributes($data));
 
-        return redirect()->route('entrepreneur.profiles')->with($warning ? 'warning' : 'status', $warning ?? 'Profil enregistré.');
+        return redirect()->route('entrepreneur.profiles')->with($warning ? 'warning' : 'status', $warning ?? $notice ?? 'Profil enregistré.');
     }
 
     public function edit(Plan $plan, MikrotikService $mikrotik)
@@ -215,31 +224,60 @@ class HotspotProfileController extends Controller
     }
 
     /**
+     * La synchro est faite avant l’enregistrement local.
+     * Un routeur injoignable n’est pas annoncé comme synchronisé.
+     *
      * @param  array<string, mixed>  $data
+     * @return array{blocked: bool, warning: ?string, notice: ?string, message: ?string}
      */
-    private function sync(array $data, MikrotikService $mikrotik, MikrotikPreparation $preparation, TicketAssist $assist): ?string
+    private function sync(array $data, MikrotikService $mikrotik, MikrotikPreparation $preparation, TicketAssist $assist): array
     {
-        if (! ($data['sync'] ?? false)) {
-            return null;
-        }
         $router = $this->router((int) $data['wifi_zone_id']);
         if (! $router) {
-            return 'Routeur hors ligne. Le profil est enregistré dans LIMETE.';
+            return [
+                'blocked' => false,
+                'warning' => 'Routeur hors ligne. Le profil est enregistré dans LIMETE.',
+                'notice' => null,
+                'message' => null,
+            ];
         }
+
+        $input = [
+            'profile_name' => $data['name'],
+            'session_timeout' => $data['time_limit'] ?: $data['validity'],
+            'rate_limit' => $data['rate_limit'],
+            'shared_users' => max(1, (int) $data['shared_users']),
+            'address_pool' => $data['address_pool'] ?? 'none',
+            'parent_queue' => $data['parent_queue'] ?? 'none',
+        ];
 
         try {
-            $preparation->apply($router, 'profile', [
-                'profile_name' => $data['name'],
-                'session_timeout' => $data['time_limit'] ?: $data['validity'],
-                'rate_limit' => $data['rate_limit'],
-                'shared_users' => max(1, (int) $data['shared_users']),
-            ]);
-            $mikrotik->getHotspotProfiles($router);
-        } catch (Throwable $exception) {
-            return $assist->readable($exception);
-        }
+            $notice = $preparation->apply($router, 'profile', $input);
+            $found = null;
+            foreach ($mikrotik->getHotspotProfiles($router) as $row) {
+                if (($row['name'] ?? '') === $data['name']) {
+                    $found = $row;
+                    break;
+                }
+            }
+            if ($found === null || ! $preparation->echoedProfileMatches($found, $input)) {
+                throw new RuntimeException('Profil introuvable.');
+            }
 
-        return null;
+            return ['blocked' => false, 'warning' => null, 'notice' => $notice, 'message' => null];
+        } catch (Throwable $exception) {
+            $message = $assist->readable($exception);
+            if ($message === 'Routeur hors ligne.') {
+                return [
+                    'blocked' => false,
+                    'warning' => 'Routeur hors ligne. Le profil est enregistré dans LIMETE.',
+                    'notice' => null,
+                    'message' => null,
+                ];
+            }
+
+            return ['blocked' => true, 'warning' => null, 'notice' => null, 'message' => $message];
+        }
     }
 
     private function router(int $zoneId): ?Mikrotik

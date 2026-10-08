@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Voucher;
+use App\Services\TicketSheet;
 use App\Services\VoucherGenerator;
 use App\Support\QrCodes;
 use App\Support\TenantManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\Support\Platform;
 use Tests\TestCase;
 
@@ -317,6 +319,89 @@ class VoucherBatchTest extends TestCase
         $this->assertStringNotContainsString($tickets[1]->username, $html);
         $this->assertStringNotContainsString($tickets[1]->password, $html);
         $this->assertStringNotContainsString('Sortir', $html);
+    }
+
+    public function test_economical_a4_sheet_prints_the_logo_and_a_direct_hotspot_qr(): void
+    {
+        [$user, $zone, $plan] = $this->shop();
+        app(TenantManager::class)->set($user->tenant_id);
+        $tickets = app(VoucherGenerator::class)->create($zone, $plan, 16);
+        $router = Platform::router($user, $zone);
+        $router->forceFill(['dns' => 'limetewifi.cd', 'status' => 'online'])->save();
+        $relative = 'logos/eco-'.$user->tenant_id.'.png';
+        Storage::disk('public')->put($relative, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
+        $user->tenant->forceFill(['logo_path' => $relative])->save();
+
+        try {
+            $zone->refresh();
+            $this->assertSame('https://limetewifi.cd/login', $zone->captiveLoginUrl());
+            $access = $zone->hotspotAccessUrl($tickets[0]->username, $tickets[0]->password);
+            $this->assertSame(
+                'http://limetewifi.cd/login?username='.$tickets[0]->username.'&password='.$tickets[0]->password,
+                $access
+            );
+
+            $built = app(TicketSheet::class)->pages(collect($tickets), 'moderne', 15);
+            $this->assertSame(15, $built['per_page']);
+            $this->assertCount(2, $built['pages']);
+            $this->assertCount(15, $built['pages'][0]);
+            $this->assertCount(1, $built['pages'][1]);
+            $this->assertSame(1, $built['pages'][0][0]['number']);
+            $this->assertSame(16, $built['pages'][1][0]['number']);
+
+            $html = $this->actingAs($user)->post('/vouchers/print', [
+                'ids' => [$tickets[0]->id],
+                'template' => 'moderne',
+                'per_page' => 15,
+            ])->assertOk()->getContent();
+
+            $this->assertStringContainsString('layout-15', $html);
+            $this->assertStringContainsString('data-layout="economique"', $html);
+            $this->assertStringContainsString('data-access="hotspot"', $html);
+            $this->assertStringContainsString('[1]', $html);
+            $this->assertStringContainsString('Alice Wifi', $html);
+            $this->assertStringContainsString('Username', $html);
+            $this->assertStringContainsString('Password', $html);
+            $this->assertStringContainsString($tickets[0]->username, $html);
+            $this->assertSame(1, substr_count($html, $tickets[0]->password));
+            $this->assertStringNotContainsString($tickets[1]->username, $html);
+            $this->assertStringNotContainsString($tickets[1]->password, $html);
+            $this->assertStringContainsString('1d FC 1,000.00', $html);
+            $this->assertStringContainsString('Login: http://limetewifi.cd', $html);
+            $this->assertStringNotContainsString((string) $access, $html);
+            $this->assertStringNotContainsString('username=', $html);
+            $this->assertStringContainsString('data:image/png;base64,', $html);
+            $this->assertStringContainsString('<svg', $html);
+            $this->assertStringContainsString('size: A4 portrait', $html);
+            $this->assertStringContainsString('page-break-inside: avoid', $html);
+
+            $this->actingAs($user)->post('/vouchers/pdf-sheet', [
+                'ids' => [$tickets[0]->id],
+                'template' => 'moderne',
+                'per_page' => 15,
+            ])->assertOk()->assertHeader('content-type', 'application/pdf');
+        } finally {
+            Storage::disk('public')->delete($relative);
+        }
+    }
+
+    public function test_economical_sheet_uses_the_public_ticket_when_the_hotspot_dns_is_missing(): void
+    {
+        [$user, $zone, $plan] = $this->shop('Sans Dns', 'sans-dns@example.com');
+        app(TenantManager::class)->set($user->tenant_id);
+        $ticket = app(VoucherGenerator::class)->create($zone, $plan, 1)[0];
+
+        $html = $this->actingAs($user)->post('/vouchers/print', [
+            'ids' => [$ticket->id],
+            'template' => 'classique',
+            'per_page' => 15,
+        ])->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-access="ticket"', $html);
+        $this->assertStringNotContainsString('Login: http://', $html);
+        $this->assertStringContainsString($ticket->username, $html);
+        $this->assertSame(1, substr_count($html, $ticket->password));
+        $this->assertStringContainsString('Sans Dns', $html);
     }
 
     public function test_dashboard_and_ticket_list_expose_the_fast_actions(): void

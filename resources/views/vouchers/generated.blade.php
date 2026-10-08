@@ -3,7 +3,7 @@
 @section('content')
 @php
     $template = $batch['template'] ?? 'moderne';
-    $perPage = (int) ($batch['per_page'] ?? 6);
+    $perPage = (int) ($batch['per_page'] ?? \App\Services\TicketSheet::ECONOMICAL);
 @endphp
 <div class="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-slate-600">{{ $vouchers->count() }} ticket(s). Cochez ceux à imprimer ensemble.</p>
@@ -21,7 +21,7 @@
     </label>
     <label class="text-sm font-semibold">Nombre de tickets par page
         <select class="mt-1 w-full rounded-xl border px-3 py-3" name="per_page">
-            @foreach([4 => '4 tickets / page', 6 => '6 tickets / page', 8 => '8 tickets / page'] as $value => $label)
+            @foreach(\App\Services\TicketSheet::layoutOptions() as $value => $label)
                 <option value="{{ $value }}" @selected($perPage === $value)>{{ $label }}</option>
             @endforeach
         </select>
@@ -42,44 +42,71 @@
     <button class="rounded-xl border px-4 py-3 text-sm font-semibold">Télécharger tous</button>
 </form>
 
+<p class="no-print mb-3 text-sm font-semibold">{{ $vouchers->count() }} tickets générés avec succès.</p>
 <label class="no-print mb-3 inline-flex items-center gap-2 text-sm font-semibold"><input type="checkbox" id="select-all" checked> Tout sélectionner</label>
-
-<div class="space-y-3">
-    @foreach($vouchers as $voucher)
-        <article class="rounded-2xl bg-white p-4 text-sm shadow-sm">
-            <div class="flex flex-wrap items-start justify-between gap-2">
-                <label class="inline-flex items-center gap-2 font-semibold">
-                    <input class="ticket-check" form="ticket-bulk" type="checkbox" name="ids[]" value="{{ $voucher->id }}" checked> Sélectionner
-                </label>
-                <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold">{{ $voucher->statusLabel() }}</span>
-            </div>
-            <p class="mt-2 font-semibold">{{ $voucher->username }}</p>
-            <p>{{ $voucher->plan->name ?? '' }} · {{ $voucher->wifiZone->name ?? '' }}</p>
-            <p>{{ \App\Support\Money::format($voucher->price_amount, $voucher->currency) }} · {{ $voucher->plan->validityLabel() ?? '' }}</p>
-            <p>Créé le {{ $voucher->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</p>
-            <div class="mt-3 flex flex-wrap gap-2">
+@php
+    $boardPages = max(1, (int) ceil($vouchers->count() / 24));
+    $boardPage = min($boardPages, max(1, (int) request('page', 1)));
+    $board = $vouchers->forPage($boardPage, 24);
+@endphp
+<div class="ticket-board">
+    @foreach($board as $voucher)
+        <article class="ticket-card">
+            <img src="{{ asset('brand/logo-limete-wifi-manager.png') }}" alt="LIMETE WIFI">
+            <label class="no-print">
+                <input class="ticket-check" form="ticket-bulk" type="checkbox" name="ids[]" value="{{ $voucher->id }}" checked> Sélectionner
+            </label>
+            <strong>{{ $voucher->username }}</strong>
+            <p>{{ $voucher->plan->name ?? '' }}</p>
+            <p>{{ $voucher->plan->validityLabel() ?? '' }}</p>
+            <p>{{ \App\Support\Money::shop($voucher->price_amount, $voucher->currency) }}</p>
+            <p>{{ $voucher->wifiZone->name ?? '' }}</p>
+            @if($voucher->sync_status === 'synced')
+                <p>Synchronisé</p>
+            @else
+                <p>Synchronisation en attente</p>
+                @if($voucher->sync_error)
+                    <p>{{ $voucher->sync_error }}</p>
+                @endif
+            @endif
+            <p class="no-print">{{ $voucher->statusLabel() }} · Créé le {{ $voucher->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</p>
+            <div class="ticket-qr" aria-label="QR du ticket">{!! \App\Support\QrCodes::svg(route('tickets.public', $voucher->public_token)) !!}</div>
+            <div class="no-print ticket-actions">
                 <form method="POST" action="{{ route('vouchers.print') }}">@csrf
                     <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
                     <input type="hidden" name="template" value="{{ $template }}">
                     <input type="hidden" name="per_page" value="{{ $perPage }}">
-                    <button class="rounded-lg border px-3 py-2">Imprimer</button>
+                    <button>Imprimer</button>
                 </form>
                 <form method="POST" action="{{ route('vouchers.sheet-pdf') }}">@csrf
                     <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
                     <input type="hidden" name="template" value="{{ $template }}">
                     <input type="hidden" name="per_page" value="{{ $perPage }}">
-                    <button class="rounded-lg border px-3 py-2">PDF</button>
+                    <button>PDF</button>
                 </form>
                 @if(in_array($voucher->status, ['available', 'active'], true))
                     <form method="POST" action="{{ route('vouchers.destroy', $voucher) }}">@csrf @method('DELETE')
                         <input type="hidden" name="stay" value="1">
-                        <button class="rounded-lg border px-3 py-2 text-red-700">Supprimer</button>
+                        <button>Supprimer</button>
                     </form>
                 @endif
             </div>
         </article>
     @endforeach
 </div>
+@if($boardPages > 1)
+    <nav class="ticket-pages no-print" aria-label="Pages de tickets">
+        @if($boardPage > 1)
+            <a href="{{ request()->fullUrlWithQuery(['page' => $boardPage - 1]) }}">←</a>
+        @endif
+        @for($page = 1; $page <= $boardPages; $page++)
+            <a href="{{ request()->fullUrlWithQuery(['page' => $page]) }}" @if($page === $boardPage) aria-current="page" @endif>{{ $page }}</a>
+        @endfor
+        @if($boardPage < $boardPages)
+            <a href="{{ request()->fullUrlWithQuery(['page' => $boardPage + 1]) }}">→</a>
+        @endif
+    </nav>
+@endif
 @endsection
 @push('scripts')
 <script>

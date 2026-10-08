@@ -26,13 +26,16 @@
             'plans' => $profile['plans'] ?? [],
         ];
     }
+    $askedProfile = (string) request('profile', '');
+    $askedCard = collect($cards)->firstWhere('name', $askedProfile);
+    $showPlan = is_array($askedCard) && empty($askedCard['ready']);
 @endphp
 
-<section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
+<section class="tg-card tg-advanced">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="text-lg font-semibold">Générer depuis un profil</h2>
-            <p class="mt-1 text-sm text-slate-600">Le profil remplit la durée, le prix et le débit. Il reste la data à indiquer.</p>
+            <p class="mt-1 text-sm text-slate-600">Recherche dans le catalogue du routeur sélectionné. Le prix et le débit viennent du serveur, pas du navigateur.</p>
         </div>
         @if($quick['last'])
             <button class="min-h-14 rounded-xl border px-4 py-3 font-semibold" type="button" data-use-profile="{{ $quick['last'] }}">Utiliser {{ $quick['last'] }}</button>
@@ -44,7 +47,7 @@
     @if($cards === [])
         <p class="mt-3 text-sm text-slate-500">Aucun profil nommé n’est encore lié à un forfait ou lu sur le MikroTik.</p>
     @else
-        <details class="mt-4" id="quick-detailed">
+        <details class="mt-4" id="quick-detailed" @if($showPlan) open @endif>
             <summary class="cursor-pointer text-sm font-semibold">Autres réglages</summary>
         <form class="mt-4 grid gap-4" method="POST" action="{{ route('vouchers.quick.preview') }}" data-quick-form>
             @csrf
@@ -132,13 +135,13 @@
 
             <button class="min-h-14 rounded-xl bg-electric px-4 py-3 font-semibold text-white" type="submit" @disabled($limit < 1)>Aperçu</button>
         </form>
-        <div class="mt-4 grid gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4" data-plan-panel hidden>
+        <div class="mt-4 grid gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4" data-plan-panel @unless($showPlan) hidden @endunless>
             <p class="text-sm font-semibold text-amber-950" data-plan-notice>{{ \App\Services\TicketQuick::MISSING_PLAN }}</p>
             <div class="grid gap-3" data-plan-technical></div>
             <form class="grid gap-3" method="POST" action="{{ route('vouchers.quick.plan') }}" data-plan-create>
                 @csrf
                 <input type="hidden" name="wifi_zone_id" value="{{ $quickZone->id }}">
-                <input type="hidden" name="profile" value="">
+                <input type="hidden" name="profile" value="{{ $showPlan ? $askedProfile : '' }}">
                 <p class="text-sm text-slate-700">Complétez uniquement le forfait commercial. Les paramètres techniques restent ceux du profil MikroTik.</p>
                 <div class="grid gap-3 sm:grid-cols-2">
                     <label class="text-sm font-semibold">Validity
@@ -165,7 +168,7 @@
             <form class="grid gap-3" method="POST" action="{{ route('vouchers.quick.link') }}" data-plan-link>
                 @csrf
                 <input type="hidden" name="wifi_zone_id" value="{{ $quickZone->id }}">
-                <input type="hidden" name="profile" value="">
+                <input type="hidden" name="profile" value="{{ $showPlan ? $askedProfile : '' }}">
                 <label class="text-sm font-semibold">Forfait compatible
                     <select class="mt-1 w-full rounded-xl border bg-white px-3 py-3 text-base" name="plan_id" data-plan-select required></select>
                 </label>

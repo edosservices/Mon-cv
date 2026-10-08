@@ -153,6 +153,32 @@ class WifiZone extends Model
      */
     public function captiveLoginUrl(): ?string
     {
+        $host = $this->hotspotLoginHost();
+
+        return $host ? 'https://'.$host.'/login' : null;
+    }
+
+    /**
+     * Lien MikroTik qui connecte ce ticket, au format du portail captif.
+     * Le mot de passe ne doit être placé que dans le QR, jamais dans le texte imprimé.
+     */
+    public function hotspotAccessUrl(string $username, string $password): ?string
+    {
+        $host = $this->hotspotLoginHost();
+        $username = trim($username);
+        $password = trim($password);
+        if ($host === null || $username === '' || $password === '') {
+            return null;
+        }
+
+        return 'http://'.$host.'/login?'.http_build_query([
+            'username' => $username,
+            'password' => $password,
+        ], '', '&', PHP_QUERY_RFC3986);
+    }
+
+    public function hotspotLoginHost(): ?string
+    {
         $this->loadMissing('mikrotiks');
         $checker = app(\App\Services\Mikrotik\MikrotikService::class);
         $routers = $this->mikrotiks
@@ -166,7 +192,7 @@ class WifiZone extends Model
             foreach ([$router->dns, $router->detail('dns_name')] as $host) {
                 $host = strtolower(trim((string) $host));
                 if ($checker->isSafeDns($host)) {
-                    return 'https://'.$host.'/login';
+                    return $host;
                 }
             }
         }

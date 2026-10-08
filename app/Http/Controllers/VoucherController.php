@@ -80,6 +80,7 @@ class VoucherController extends Controller
             'zones' => $zones,
             'durations' => $zones->mapWithKeys(fn (WifiZone $zone) => [$zone->id => $assist->durations($zone)]),
             'quickZone' => $zone,
+            'quickRouter' => $zone?->mikrotiks()->where('is_active', true)->orderBy('id')->first(),
             'quick' => $catalog,
             'templates' => TicketTemplates::options(),
             'limit' => $limits->voucherBatchLimit(),
@@ -92,7 +93,7 @@ class VoucherController extends Controller
                         ? request()->string('template')->toString()
                         : (string) request()->user()?->tenant?->ticket_style
                 ),
-                'per_page' => in_array(request()->integer('per_page'), [4, 6, 8], true) ? request()->integer('per_page') : 6,
+                'per_page' => TicketSheet::normalizePerPage(request()->integer('per_page')),
             ],
         ]);
     }
@@ -144,7 +145,7 @@ class VoucherController extends Controller
                 'wifi_zone_id' => $zone->id,
                 'plan_id' => $created[0]->plan_id,
                 'template' => 'moderne',
-                'per_page' => 6,
+                'per_page' => TicketSheet::ECONOMICAL,
                 'count' => count($created),
             ],
         ]);
@@ -152,27 +153,39 @@ class VoucherController extends Controller
         return redirect()->route('vouchers.generated')->with('status', count($created).' tickets créés.');
     }
 
-    public function quickExpress(Request $request, TicketQuick $quick, TicketAssist $assist)
+    public function quickExpress(Request $request, TicketQuick $quick, TicketAssist $assist, MikrotikPreparation $preparation, MikrotikService $mikrotik)
     {
         $data = $request->validate([
             'wifi_zone_id' => ['required', 'integer'],
             'profile' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/'],
             'qty' => ['required', 'integer', 'min:1', 'max:100'],
+            'server' => ['nullable', 'string', 'max:32'],
+            'time_limit' => ['nullable', 'string', 'max:32'],
+            'data_mb' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'comment' => ['nullable', 'string', 'max:120'],
         ], [
             'profile.regex' => 'Paramètres incompatibles.',
         ]);
         $zone = WifiZone::findOrFail($data['wifi_zone_id']);
+        try {
+            $time = $preparation->normalizedTime($data['time_limit'] ?? null);
+        } catch (RuntimeException) {
+            throw ValidationException::withMessages(['time_limit' => 'Paramètres incompatibles.']);
+        }
+        $unlimited = ! filled($data['data_mb'] ?? null);
         $input = [
             'wifi_zone_id' => $zone->id,
             'profile' => $data['profile'],
-            'server' => 'all',
+            'server' => filled($data['server'] ?? null) ? $data['server'] : 'all',
             'mode' => 'generate',
             'qty' => (int) $data['qty'],
             'prefix' => 'LM',
             'length' => 4,
             'charset' => 'mixed',
             'draft' => (string) Str::uuid(),
-            'data_unlimited' => true,
+            'data_unlimited' => $unlimited,
+            'data_value' => $unlimited ? null : (int) $data['data_mb'],
+            'data_unit' => 'MB',
         ];
 
         try {
@@ -182,13 +195,17 @@ class VoucherController extends Controller
         }
 
         if (! empty($result['needs_plan'])) {
-            return view('vouchers.quick-link', [
-                'zone' => $zone,
-                'preview' => $result,
-            ]);
+            return $this->redirectToPlan($zone, $data['profile']);
         }
 
         $created = $result['vouchers'];
+        $comment = $this->userComment($data, '', $time);
+        if (filled($time) || trim((string) ($data['comment'] ?? '')) !== '') {
+            foreach ($created as $index => $voucher) {
+                $this->applyUserFields($mikrotik, $assist, $zone, $voucher, $time, $comment);
+                $created[$index] = $voucher->refresh();
+            }
+        }
         if (count($created) === 1) {
             return redirect()->route('vouchers.assist.show', $created[0])->with('status', 'Ticket créé et enregistré.');
         }
@@ -199,7 +216,7 @@ class VoucherController extends Controller
                 'wifi_zone_id' => $zone->id,
                 'plan_id' => $created[0]->plan_id,
                 'template' => 'moderne',
-                'per_page' => 6,
+                'per_page' => TicketSheet::ECONOMICAL,
                 'count' => count($created),
             ],
         ]);
@@ -253,10 +270,7 @@ class VoucherController extends Controller
         }
 
         if (! empty($result['needs_plan'])) {
-            return view('vouchers.quick-link', [
-                'zone' => $zone,
-                'preview' => $result,
-            ]);
+            return $this->redirectToPlan($zone, $data['profile']);
         }
 
         /** @var Voucher $voucher */
@@ -420,6 +434,17 @@ class VoucherController extends Controller
         $data = $this->validatedBatch($request);
         $zone = WifiZone::findOrFail($data['wifi_zone_id']);
         $plan = Plan::findOrFail($data['plan_id']);
+        if ($plan->wifi_zone_id && (int) $plan->wifi_zone_id !== (int) $zone->id) {
+            throw ValidationException::withMessages([
+                'plan_id' => 'Ce forfait n’appartient pas à cette WiFi Zone.',
+            ]);
+        }
+        if ($plan->status !== 'active') {
+            throw ValidationException::withMessages([
+                'plan_id' => 'Ce forfait n’est pas actif.',
+            ]);
+        }
+        set_time_limit(120);
         $created = $batch->generate($zone->id, $plan->id, (int) $data['count']);
         $summary = $mikrotik->provisionMany($created);
         $audit->record('vouchers.created', $zone, null, [
@@ -605,7 +630,7 @@ class VoucherController extends Controller
             'ids' => ['required', 'array', 'min:1', 'max:100'],
             'ids.*' => ['integer'],
             'template' => ['required', Rule::in(TicketTemplates::keys())],
-            'per_page' => ['required', Rule::in([4, 6, 8])],
+            'per_page' => ['required', Rule::in(array_keys(TicketSheet::layoutOptions()))],
             'templates' => ['nullable', 'array'],
             'templates.*' => ['nullable', Rule::in(TicketTemplates::keys())],
         ]);
@@ -808,7 +833,7 @@ class VoucherController extends Controller
     {
         $request->merge([
             'template' => $request->input('template', TicketTemplates::MODERN),
-            'per_page' => $request->input('per_page', 6),
+            'per_page' => $request->input('per_page', TicketSheet::ECONOMICAL),
         ]);
 
         return $request->validate([
@@ -816,7 +841,7 @@ class VoucherController extends Controller
             'plan_id' => ['required', 'integer'],
             'count' => ['required', 'integer', 'min:1', 'max:100'],
             'template' => ['required', Rule::in(TicketTemplates::keys())],
-            'per_page' => ['required', Rule::in([4, 6, 8])],
+            'per_page' => ['required', Rule::in(array_keys(TicketSheet::layoutOptions()))],
         ], [
             'count.max' => 'La quantité maximale est de :max tickets par génération.',
             'count.min' => 'Indiquez au moins un ticket.',
@@ -827,6 +852,16 @@ class VoucherController extends Controller
             'template' => 'modèle',
             'per_page' => 'disposition',
         ]);
+    }
+
+    private function redirectToPlan(WifiZone $zone, string $profile)
+    {
+        return redirect()
+            ->route('vouchers.generate', [
+                'wifi_zone_id' => $zone->id,
+                'profile' => $profile,
+            ])
+            ->with('warning', TicketQuick::MISSING_PLAN);
     }
 
     private function provisionMessage(int $count, array $summary): string

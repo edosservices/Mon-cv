@@ -49,12 +49,25 @@
         .layout-8 .code { font-size: 11px; }
         .layout-8 .qr { width: 52px; }
         .layout-8 .fields { padding: 4px 6px; }
+        table.eco-grid { width: 100%; border-collapse: separate; border-spacing: 1.4mm; }
+        td.eco-slot { width: 33.33%; vertical-align: top; }
+        table.eco { width: 100%; border: 1px dashed #8ea0b5; border-collapse: collapse; background: #fff; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+        table.eco td { padding: 0 1.2mm; }
+        .eco-num { font-size: 8px; font-weight: 700; color: #3d516b; padding-top: 1.2mm; }
+        .eco-logo { height: 7mm; width: auto; display: block; margin: 0.6mm auto; }
+        .eco-business { font-size: 9px; font-weight: 700; letter-spacing: .02em; padding-bottom: 0.6mm; }
+        .eco-label { font-size: 7px; letter-spacing: .04em; text-transform: uppercase; color: #5c6e86; }
+        .eco-cred { font-size: 12px; font-weight: 700; letter-spacing: .03em; word-break: break-all; }
+        .eco-offer { font-size: 8px; font-weight: 700; padding-top: 0.8mm; }
+        .eco-qr { width: 22mm; margin: 0.8mm auto 0; }
+        .eco-qr svg { width: 100%; height: auto; display: block; }
+        .eco-login { font-size: 7px; color: #10233f; word-break: break-all; padding-bottom: 1.2mm; }
         @media print {
             .no-print { display: none !important; }
             body { background: #fff; }
             .page { width: auto; margin: 0; page-break-after: always; break-after: page; }
             .page:last-child { page-break-after: auto; break-after: auto; }
-            .ticket, td.slot, tr { page-break-inside: avoid; break-inside: avoid; }
+            .ticket, table.eco, td.slot, td.eco-slot, tr { page-break-inside: avoid; break-inside: avoid; }
         }
     </style>
 </head>
@@ -76,18 +89,33 @@
     @endunless
     @foreach($pages as $page)
         <section class="page">
-            <table class="grid">
-                @foreach(array_chunk($page, 2) as $row)
-                    <tr>
-                        @foreach($row as $ticket)
-                            <td class="slot">@include('vouchers.templates.'.$ticket['template'], ['ticket' => $ticket])</td>
-                        @endforeach
-                        @if(count($row) === 1)
-                            <td class="slot"></td>
-                        @endif
-                    </tr>
-                @endforeach
-            </table>
+            @if((int) $perPage === \App\Services\TicketSheet::ECONOMICAL)
+                <table class="eco-grid">
+                    @foreach(array_chunk($page, 3) as $row)
+                        <tr>
+                            @foreach($row as $ticket)
+                                <td class="eco-slot">@include('vouchers.templates.economique', ['ticket' => $ticket])</td>
+                            @endforeach
+                            @for($pad = count($row); $pad < 3; $pad++)
+                                <td class="eco-slot"></td>
+                            @endfor
+                        </tr>
+                    @endforeach
+                </table>
+            @else
+                <table class="grid">
+                    @foreach(array_chunk($page, 2) as $row)
+                        <tr>
+                            @foreach($row as $ticket)
+                                <td class="slot">@include('vouchers.templates.'.$ticket['template'], ['ticket' => $ticket])</td>
+                            @endforeach
+                            @if(count($row) === 1)
+                                <td class="slot"></td>
+                            @endif
+                        </tr>
+                    @endforeach
+                </table>
+            @endif
         </section>
     @endforeach
 </body>

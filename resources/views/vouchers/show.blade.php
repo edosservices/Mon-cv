@@ -8,7 +8,7 @@
         <form method="POST" action="{{ route('vouchers.print') }}" class="inline">@csrf
             <input type="hidden" name="ids[]" value="{{ $voucher->id }}">
             <input type="hidden" name="template" value="moderne">
-            <input type="hidden" name="per_page" value="4">
+            <input type="hidden" name="per_page" value="{{ \App\Services\TicketSheet::ECONOMICAL }}">
             <button class="rounded-lg border px-4 py-2 text-sm">Imprimer</button>
         </form>
         <a class="inline-block rounded-lg border px-4 py-2 text-sm" href="{{ route('vouchers.generate', ['wifi_zone_id' => $voucher->wifi_zone_id, 'plan_id' => $voucher->plan_id, 'template' => 'moderne', 'per_page' => 4]) }}">Dupliquer la configuration</a>

@@ -3,10 +3,88 @@
 namespace App\Services\Mikrotik;
 
 use RuntimeException;
+use Throwable;
 
 class RouterOsClient implements HotspotRouter
 {
+    /** @var array<string, resource> */
+    private array $sessions = [];
+
     public function command(string $host, int $port, string $username, string $password, array $words, int $timeout = 5, bool $secure = false): array
+    {
+        $key = $this->sessionKey($host, $port, $secure);
+        if (isset($this->sessions[$key])) {
+            try {
+                $this->writeSentence($this->sessions[$key], $words);
+
+                return $this->readSentences($this->sessions[$key]);
+            } catch (Throwable $exception) {
+                $this->drop($key);
+                throw $exception;
+            }
+        }
+
+        $socket = $this->connect($host, $port, $timeout, $secure);
+
+        try {
+            $this->login($socket, $username, $password);
+            $this->writeSentence($socket, $words);
+
+            return $this->readSentences($socket);
+        } finally {
+            fclose($socket);
+        }
+    }
+
+    public function open(string $host, int $port, string $username, string $password, int $timeout = 5, bool $secure = false): void
+    {
+        $key = $this->sessionKey($host, $port, $secure);
+        if (isset($this->sessions[$key])) {
+            return;
+        }
+
+        $socket = $this->connect($host, $port, $timeout, $secure);
+
+        try {
+            $this->login($socket, $username, $password);
+        } catch (Throwable $exception) {
+            fclose($socket);
+            throw $exception;
+        }
+
+        $this->sessions[$key] = $socket;
+    }
+
+    public function close(): void
+    {
+        foreach (array_keys($this->sessions) as $key) {
+            $this->drop($key);
+        }
+    }
+
+    private function sessionKey(string $host, int $port, bool $secure): string
+    {
+        return ($secure ? '1' : '0').'|'.strtolower($host).'|'.$port;
+    }
+
+    /**
+     * @param  resource  $socket
+     */
+    private function login($socket, string $username, string $password): void
+    {
+        $this->writeSentence($socket, ['/login', '=name='.$username, '=password='.$password]);
+        $login = $this->readSentences($socket);
+
+        if ($this->hasTrap($login)) {
+            throw new RuntimeException($this->trapMessage($login));
+        }
+
+        if ($this->hasChallenge($login)) {
+            throw new RuntimeException('Ce routeur utilise un ancien mode de connexion. RouterOS 6.43 ou plus récent est requis.');
+        }
+    }
+
+    private function connect(string $host, int $port, int $timeout, bool $secure)
     {
         $error = '';
         $socket = $secure
@@ -19,24 +97,16 @@ class RouterOsClient implements HotspotRouter
 
         stream_set_timeout($socket, $timeout);
 
-        try {
-            $this->writeSentence($socket, ['/login', '=name='.$username, '=password='.$password]);
-            $login = $this->readSentences($socket);
+        return $socket;
+    }
 
-            if ($this->hasTrap($login)) {
-                throw new RuntimeException($this->trapMessage($login));
-            }
-
-            if ($this->hasChallenge($login)) {
-                throw new RuntimeException('Ce routeur utilise un ancien mode de connexion. RouterOS 6.43 ou plus récent est requis.');
-            }
-
-            $this->writeSentence($socket, $words);
-
-            return $this->readSentences($socket);
-        } finally {
-            fclose($socket);
+    private function drop(string $key): void
+    {
+        if (isset($this->sessions[$key]) && is_resource($this->sessions[$key])) {
+            fclose($this->sessions[$key]);
         }
+
+        unset($this->sessions[$key]);
     }
 
     private function openSecure(string $host, int $port, int $timeout, ?string &$error = null)

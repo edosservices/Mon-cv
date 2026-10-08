@@ -1,13 +1,75 @@
 @extends('layouts.app')
 @section('heading', 'Générer')
 @section('content')
+<div class="tg">
 @include('vouchers.assist-steps', ['step' => 1])
+@php
+    $routerOn = $quickZone && $quickRouter && empty($quick['offline']);
+@endphp
+<header class="tg-hero">
+    <div>
+        <p class="tg-kicker">Limete WiFi</p>
+        <h2>Générer des tickets</h2>
+        <p class="tg-lead">Créez plusieurs tickets WiFi en quelques secondes.</p>
+    </div>
+    @if($quickZone)
+        <div class="tg-pills">
+            <span class="tg-pill">{{ $quickZone->name }}</span>
+            @if($quickRouter)
+                <span class="tg-pill"><span class="tg-dot {{ $routerOn ? 'is-on' : '' }}"></span>{{ $routerOn ? 'Routeur connecté' : 'Hors ligne' }}</span>
+            @endif
+        </div>
+    @endif
+</header>
+@if($quickZone)
+    <section class="tg-card">
+        <div class="tg-card-head">
+            <span class="tg-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12a7 7 0 0 1 14 0"/><path d="M8 12a4 4 0 0 1 8 0"/><circle cx="12" cy="16" r="1.2" fill="currentColor"/></svg></span>
+            <div>
+                <h2>1. Routeur</h2>
+                <p>Le catalogue est relu sur le routeur de la zone choisie.</p>
+            </div>
+        </div>
+        <form class="tg-grid" method="GET" action="{{ url()->current() }}" data-tg-zone>
+            <label class="tg-label" for="catalog-zone">WiFi Zone / routeur
+                <select id="catalog-zone" name="wifi_zone_id" onchange="var n=this.form.querySelector('[data-tg-zone-wait]'); if(n) n.hidden=false; this.form.submit();">
+                    @foreach($zones as $zone)
+                        <option value="{{ $zone->id }}" @selected((int) $quickZone->id === (int) $zone->id)>{{ $zone->name }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <div class="tg-router-box">
+                <span class="text-sm font-semibold">Routeur</span>
+                @if($quickRouter)
+                    <strong class="tg-router-name">Routeur sélectionné : {{ $quickRouter->name }}</strong>
+                    <small>{{ $quickRouter->host }}</small>
+                @else
+                    <strong>Aucun routeur actif sur cette zone. Le catalogue local est utilisé s’il existe.</strong>
+                @endif
+            </div>
+            @if($quick['notice'])
+                <p class="tg-note">{{ $quick['notice'] }}</p>
+            @endif
+            <p class="tg-hint" data-tg-zone-wait hidden>Chargement du catalogue…</p>
+        </form>
+    </section>
+    @include('vouchers.sale')
+@endif
+
+@php
+    $askedProfile = (string) request('profile', '');
+    $openPlan = $askedProfile !== '' && collect($quick['profiles'] ?? [])->contains(
+        fn ($profile) => ($profile['name'] ?? '') === $askedProfile && empty($profile['ready'])
+    );
+@endphp
+<details class="tg-advanced" @if($openPlan) open @endif>
+    <summary>Options avancées</summary>
 @if($quickZone)
     @include('vouchers.express')
     @include('vouchers.quick')
 @endif
 
-<section class="mb-8 rounded-2xl bg-white p-4 shadow-sm">
+<section class="tg-card">
     <h2 class="text-lg font-semibold">Choisir la durée</h2>
     <p class="mt-1 text-sm text-slate-600">Seules les durées de vos forfaits sont proposées.</p>
     @forelse($zones as $zone)
@@ -43,7 +105,7 @@
     $planId = old('plan_id', $prefill['plan_id']);
     $count = old('count', $prefill['count'] ?: ($limit > 0 ? min(20, $limit) : 1));
     $template = old('template', $prefill['template'] ?: 'moderne');
-    $perPage = (int) old('per_page', $prefill['per_page'] ?: 6);
+    $perPage = (int) old('per_page', $prefill['per_page'] ?: \App\Services\TicketSheet::ECONOMICAL);
 @endphp
 
 @if($limit < 1)
@@ -52,7 +114,7 @@
     <p class="mb-4 text-sm text-slate-600">Maximum {{ $limit }} tickets par génération pour votre abonnement. Les identifiants, les mots de passe, les jetons et les QR sont créés automatiquement.</p>
 @endif
 
-<form method="POST" action="{{ route('vouchers.store') }}" class="grid gap-4 rounded-2xl bg-white p-4 shadow-sm">
+<form method="POST" action="{{ route('vouchers.store') }}" class="tg-card tg-batch">
     @csrf
     <label class="text-sm font-semibold">WiFi Zone
         <select class="mt-1 w-full rounded-xl border px-3 py-3" name="wifi_zone_id" id="zone" required @disabled($zones->isEmpty() || $limit < 1)>
@@ -92,13 +154,16 @@
     <fieldset class="text-sm font-semibold">
         <legend>Nombre de tickets par page</legend>
         <div class="mt-2 flex flex-wrap gap-3 font-normal">
-            @foreach([4, 6, 8] as $layout)
-                <label class="inline-flex items-center gap-2"><input type="radio" name="per_page" value="{{ $layout }}" @checked($perPage === $layout)> {{ $layout }} tickets / page</label>
+            @foreach(\App\Services\TicketSheet::layoutOptions() as $layout => $label)
+                <label class="inline-flex items-center gap-2"><input type="radio" name="per_page" value="{{ $layout }}" @checked($perPage === (int) $layout)> {{ $label }}</label>
             @endforeach
         </div>
+        <p class="mt-2 text-xs font-normal text-slate-600">15 tickets tiennent sur une page A4. Le logo se règle dans <a href="{{ route('business.edit') }}">Mon business</a>. Le QR ouvre directement l’accès internet.</p>
     </fieldset>
-    <button class="rounded-xl bg-electric px-4 py-3 font-semibold text-white" @disabled($zones->isEmpty() || $plans->isEmpty() || $limit < 1)>Générer les tickets</button>
+    <button class="tg-cta" @disabled($zones->isEmpty() || $plans->isEmpty() || $limit < 1)>Générer les tickets</button>
 </form>
+</details>
+</div>
 @endsection
 @push('scripts')
 <script>
