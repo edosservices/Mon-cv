@@ -111,12 +111,26 @@ class IkeePayCheckoutTest extends TestCase
         $this->from('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->post('/wifi/'.$zone->slug, [
                 'plan_id' => $plan->id,
+                'phone' => '+243810001111',
+                'email' => 'pas-un-email',
                 'provider' => 'ikeepay',
                 'amount' => '5.00',
             ])->assertRedirect('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertSessionHasErrors('email');
 
         $this->assertDatabaseCount('sales', 0);
+        $this->assertDatabaseCount('vouchers', 0);
+
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'phone' => '+243810001111',
+            'provider' => 'ikeepay',
+            'amount' => '5.00',
+        ])->assertRedirect();
+
+        $sale = \App\Models\Sale::withoutGlobalScope('tenant')->first();
+        $this->assertSame('1000.00', number_format((float) $sale->total_amount, 2, '.', ''));
+        $this->assertSame('CDF', $sale->currency);
         $this->assertDatabaseCount('vouchers', 0);
     }
 }

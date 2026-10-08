@@ -8,6 +8,7 @@ use App\Models\Voucher;
 use App\Models\WifiZone;
 use App\Rules\CustomerPhone;
 use App\Services\AuditLogger;
+use App\Services\CaptivePortal;
 use App\Services\Mikrotik\MikrotikService;
 use App\Services\Payments\IkeePayCatalog;
 use App\Services\Payments\IkeePayGateway;
@@ -20,18 +21,28 @@ use Illuminate\Http\Request;
 
 class WifiShopController extends Controller
 {
-    public function show(string $slug)
+    public function show(Request $request, string $slug, CaptivePortal $portal)
     {
         $zone = $this->zone($slug);
+        $portal->capture($request, $zone);
+        $phone = $this->rememberedPhone($zone);
 
         return view('shop.show', [
             'zone' => $zone,
             'plans' => $this->plans($zone),
             'providers' => app(PaymentManager::class)->enabledProviders(),
-            'knownPhone' => $this->rememberedPhone($zone),
-            'activeVoucher' => $this->rememberedVouchers($zone)->first(fn ($voucher) => $voucher->status === 'active'),
+            'knownPhone' => $phone,
+            'activeVoucher' => $this->activeVoucher($zone, $phone),
             'step' => 0,
         ]);
+    }
+
+    public function portal(Request $request, string $slug, CaptivePortal $portal)
+    {
+        $zone = $this->zone($slug);
+        $portal->capture($request, $zone);
+
+        return redirect()->route('shop.show', $zone->slug);
     }
 
     public function plan(string $slug, int $plan)
@@ -53,15 +64,8 @@ class WifiShopController extends Controller
         $plan = $this->plans($zone)->firstWhere('id', $plan);
         abort_unless($plan, 404);
 
-        $data = $request->validate([
-            'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
-            'email' => ['nullable', 'email', 'max:160'],
-        ], [
-            'email.email' => 'Indiquez une adresse e-mail valide.',
-        ]);
-
-        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
+        $data = $request->validate($this->customerRules(true), $this->customerMessages());
+        $data = $this->normalizeCustomer($data);
         session([$this->draftKey($zone, $plan) => $data]);
 
         return redirect()->route('shop.pay', [$zone->slug, $plan->id]);
@@ -105,8 +109,10 @@ class WifiShopController extends Controller
         $data = $request->validate([
             'plan_id' => ['required', 'integer'],
             'name' => ['nullable', 'string', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:30', new CustomerPhone],
-            'email' => ['nullable', 'email', 'max:160', 'required_if:provider,ikeepay'],
+            'phone' => ['required', 'string', 'max:30', new CustomerPhone],
+            'payer_phone' => ['required_if:purchase_for,other', 'nullable', 'string', 'max:30', new CustomerPhone],
+            'purchase_for' => ['nullable', 'in:self,other'],
+            'email' => ['nullable', 'email', 'max:160'],
             'provider' => ['required', 'in:manual,airtel_money,orange_money,mpesa,card,unipay,ikeepay'],
             'transaction_reference' => ['nullable', 'string', 'max:80'],
             'country' => ['nullable', 'string', 'size:2'],
@@ -115,13 +121,18 @@ class WifiShopController extends Controller
         ], [
             'provider.required' => 'Choisissez un moyen de paiement.',
             'provider.in' => 'Ce moyen de paiement n’est pas disponible.',
-            'email.required_if' => 'Indiquez une adresse e-mail pour payer avec iKeePay.',
             'email.email' => 'Indiquez une adresse e-mail valide.',
+            'phone.required' => 'Indiquez le numéro du bénéficiaire.',
+            'payer_phone.required_if' => 'Indiquez le numéro qui paie.',
         ]);
 
         $plan = $this->plans($zone)->firstWhere('id', (int) $data['plan_id']);
         abort_unless($plan, 404);
-        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone($data['phone']) : null;
+        $data = $this->normalizeCustomer($data);
+        $captive = app(CaptivePortal::class)->current($zone);
+        if ($captive) {
+            $data['captive_session_id'] = $captive->id;
+        }
 
         if (filled($data['operator'] ?? null) || filled($data['country'] ?? null)) {
             $data['country'] = strtoupper((string) ($data['country'] ?? ''));
@@ -449,6 +460,71 @@ class WifiShopController extends Controller
         $key = $bucket.'.'.$zone->id;
         $tokens = array_values(array_unique([...session($key, []), $token]));
         session([$key => array_slice($tokens, -20)]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerRules(bool $phoneRequired): array
+    {
+        return [
+            'name' => ['nullable', 'string', 'max:120'],
+            'phone' => [$phoneRequired ? 'required' : 'nullable', 'string', 'max:30', new CustomerPhone],
+            'payer_phone' => ['required_if:purchase_for,other', 'nullable', 'string', 'max:30', new CustomerPhone],
+            'purchase_for' => ['nullable', 'in:self,other'],
+            'email' => ['nullable', 'email', 'max:160'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function customerMessages(): array
+    {
+        return [
+            'email.email' => 'Indiquez une adresse e-mail valide.',
+            'phone.required' => 'Indiquez le numéro du bénéficiaire.',
+            'payer_phone.required_if' => 'Indiquez le numéro qui paie.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeCustomer(array $data): array
+    {
+        $data['purchase_for'] = ($data['purchase_for'] ?? 'self') === 'other' ? 'other' : 'self';
+        $data['phone'] = filled($data['phone'] ?? null) ? $this->normalizePhone((string) $data['phone']) : null;
+        $data['payer_phone'] = filled($data['payer_phone'] ?? null) ? $this->normalizePhone((string) $data['payer_phone']) : null;
+        if ($data['purchase_for'] === 'self') {
+            $data['payer_phone'] = $data['phone'];
+        }
+
+        return $data;
+    }
+
+    private function activeVoucher(WifiZone $zone, ?string $phone): ?Voucher
+    {
+        $remembered = $this->rememberedVouchers($zone)->first(fn ($voucher) => $voucher->status === 'active' && ($voucher->expires_at === null || $voucher->expires_at->isFuture()));
+        if ($remembered) {
+            return $remembered;
+        }
+
+        if (! filled($phone)) {
+            return null;
+        }
+
+        return Voucher::query()
+            ->where('wifi_zone_id', $zone->id)
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->whereHas('customer', fn ($query) => $query->where('phone', $phone))
+            ->with('plan')
+            ->latest('id')
+            ->first();
     }
 
     private function rememberedPhone(WifiZone $zone): ?string

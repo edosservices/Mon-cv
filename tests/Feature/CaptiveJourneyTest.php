@@ -377,6 +377,8 @@ JS;
         $this->assertContains('limete.example', $hosts);
         $this->assertContains('wa.me', $hosts);
         $this->assertContains('api.whatsapp.com', $hosts);
+        $this->assertContains('api.ikeepay.com', $hosts);
+        $this->assertContains('www.ikeepay.com', $hosts);
         $this->assertNotContains('*', $hosts);
         $this->assertNotContains('0.0.0.0/0', $hosts);
     }

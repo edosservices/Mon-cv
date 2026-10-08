@@ -153,6 +153,7 @@ class ClientAccountTest extends TestCase
 
         $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [
             'name' => 'Passant',
+            'phone' => '+243810009999',
         ])->assertRedirect('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement');
 
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
@@ -162,6 +163,7 @@ class ClientAccountTest extends TestCase
         $this->post('/wifi/'.$zone->slug, [
             'plan_id' => $plan->id,
             'name' => 'Passant',
+            'phone' => '+243810009999',
             'provider' => 'airtel_money',
         ])->assertRedirect();
 

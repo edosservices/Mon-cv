@@ -382,7 +382,9 @@ $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
     ->assertOk()
     ->assertSee('Sélection du forfait');
 
-        $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [])->assertRedirect();
+        $this->post('/wifi/'.$zone->slug.'/forfait/'.$plan->id, [
+            'phone' => '+243810004444',
+        ])->assertRedirect();
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertOk()
             ->assertSee('Paiement')
@@ -393,6 +395,7 @@ $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
             ->assertSee('Carte');
         $this->post('/wifi/'.$zone->slug, [
             'plan_id' => $plan->id,
+            'phone' => '+243810004444',
             'provider' => 'airtel_money',
         ])->assertRedirect();
 

@@ -12,10 +12,13 @@
     <section class="panel celebrate-panel">
         <p class="confirm-mark mx-auto mb-3" aria-hidden="true">✓</p>
         <div class="alert alert-success d-inline-flex align-items-center gap-2 mb-3" role="status">
-            <span class="dot" aria-hidden="true"></span> Paiement confirmé
+            <span class="dot" aria-hidden="true"></span> PAYÉ — Paiement confirmé
         </div>
         <h1>Votre ticket est prêt.</h1>
-        <p class="lede">Votre connexion est maintenant active.</p>
+        <p class="lede">Le serveur a confirmé le paiement. La connexion est active.</p>
+        @if($sale->purchase_for === 'other' && filled($sale->beneficiary_phone))
+            <p class="help">Connexion achetée pour : {{ $sale->beneficiary_phone }}</p>
+        @endif
         <dl class="summary text-start">
             <div>
                 <dt>Forfait</dt>
@@ -38,12 +41,45 @@
                 </div>
             @endif
             <div>
+                <dt>Identifiant du ticket</dt>
+                <dd>{{ $voucher->public_token }}</dd>
+            </div>
+            <div>
                 <dt>Identifiant</dt>
                 <dd>{{ $voucher->username }}</dd>
             </div>
+            <div>
+                <dt>Mot de passe</dt>
+                <dd>{{ $voucher->password }}</dd>
+            </div>
+            <div>
+                <dt>Zone WiFi</dt>
+                <dd>{{ $zone->displayLabel() }}</dd>
+            </div>
         </dl>
-        <a class="btn btn-primary btn-lg rounded-pill w-100" href="{{ $zone->captiveLoginUrl() ?: '#connexion' }}">Se connecter maintenant</a>
+        @php
+            $connectUrl = $zone->hotspotAccessUrl($voucher->username, (string) $voucher->password) ?: ($zone->captiveLoginUrl() ?: '#connexion');
+            $share = $voucher->shareText();
+            if ($sale->purchase_for === 'other' && filled($sale->beneficiary_phone)) {
+                $share = "Connexion achetée pour : {$sale->beneficiary_phone}\n".$share;
+            }
+            $share .= "\nMot de passe : ".$voucher->password;
+        @endphp
+        <a class="btn btn-primary btn-lg rounded-pill w-100" href="{{ $connectUrl }}">Se connecter</a>
+        <button class="btn btn-outline-primary btn-lg rounded-pill w-100" type="button" data-copy="{{ $share }}">Copier le ticket</button>
+        <a class="btn btn-outline-primary btn-lg rounded-pill w-100" href="https://wa.me/?text={{ rawurlencode($share) }}">Partager le ticket</a>
         <a class="btn btn-outline-primary btn-lg rounded-pill w-100" href="{{ route('tickets.public', $voucher->public_token) }}">Voir mon ticket</a>
+        <script>
+            document.querySelectorAll('[data-copy]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var text = button.getAttribute('data-copy') || '';
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(text);
+                    }
+                    button.textContent = 'Ticket copié';
+                });
+            });
+        </script>
     </section>
     @include('vouchers.ticket')
     @include('vouchers.network')

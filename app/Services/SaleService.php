@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Enums\PaymentStatus;
 use App\Jobs\SyncHotspotUser;
+use App\Models\CaptiveSession;
 use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Sale;
 use App\Models\Voucher;
+use App\Models\WifiSession;
 use App\Models\WifiZone;
 use App\Notifications\PlatformNotification;
 use App\Services\Payments\PaymentManager;
@@ -30,16 +32,23 @@ class SaleService
         }
 
         return DB::transaction(function () use ($zone, $plan, $customer, $provider, $reference) {
+            $beneficiaryPhone = filled($customer['phone'] ?? null) ? (string) $customer['phone'] : null;
+            $purchaseFor = ($customer['purchase_for'] ?? 'self') === 'other' ? 'other' : 'self';
+            $payerPhone = $purchaseFor === 'other'
+                ? (filled($customer['payer_phone'] ?? null) ? (string) $customer['payer_phone'] : null)
+                : $beneficiaryPhone;
+            $captive = $this->captiveFor($zone, $customer['captive_session_id'] ?? null);
+
             $buyer = null;
-            if (filled($customer['phone'] ?? null) || filled($customer['name'] ?? null) || filled($customer['email'] ?? null)) {
+            if (filled($beneficiaryPhone) || filled($customer['name'] ?? null) || filled($customer['email'] ?? null)) {
                 $buyer = Customer::query()
-                    ->when(filled($customer['phone'] ?? null), fn ($query) => $query->where('phone', $customer['phone']))
+                    ->when(filled($beneficiaryPhone), fn ($query) => $query->where('phone', $beneficiaryPhone))
                     ->first();
 
                 if (! $buyer) {
                     $buyer = Customer::create([
                         'name' => $customer['name'] ?? null,
-                        'phone' => $customer['phone'] ?? null,
+                        'phone' => $beneficiaryPhone,
                         'email' => $customer['email'] ?? null,
                     ]);
                 } elseif (filled($customer['email'] ?? null)) {
@@ -55,6 +64,10 @@ class SaleService
                 'currency' => $plan->currency ?: config('limete.currency'),
                 'status' => 'pending',
                 'channel' => 'public',
+                'purchase_for' => $purchaseFor,
+                'payer_phone' => $payerPhone,
+                'beneficiary_phone' => $beneficiaryPhone,
+                'captive_session_id' => $captive?->id,
             ]);
 
             $payment = Payment::create([
@@ -69,7 +82,7 @@ class SaleService
 
             $this->payments->gateway($provider)->createPayment($payment, [
                 'transaction_reference' => $reference,
-                'customer_phone' => $customer['phone'] ?? null,
+                'customer_phone' => $payerPhone ?: $beneficiaryPhone,
                 'customer_name' => $customer['name'] ?? null,
                 'customer_email' => $customer['email'] ?? null,
                 'country' => $customer['country'] ?? null,
@@ -89,6 +102,21 @@ class SaleService
             ]);
 
             $sale->forceFill(['payment_id' => $payment->id])->save();
+            $payment->refresh();
+            $payment->forceFill([
+                'metadata' => array_merge($payment->metadata ?? [], [
+                    'purchase_for' => $purchaseFor,
+                    'payer_phone' => $payerPhone,
+                    'beneficiary_phone' => $beneficiaryPhone,
+                    'operator' => $customer['operator'] ?? ($payment->metadata['operator'] ?? null),
+                    'wifi_zone_id' => $zone->id,
+                    'plan_id' => $plan->id,
+                    'captive_session_id' => $captive?->id,
+                    'device_mac' => $captive?->mac_address,
+                    'device_ip' => $captive?->ip_address,
+                    'mikrotik_id' => $captive?->mikrotik_id,
+                ]),
+            ])->save();
             $sale->items()->create([
                 'plan_id' => $plan->id,
                 'amount' => $sale->total_amount,
@@ -124,8 +152,25 @@ class SaleService
             $voucher = $item?->voucher;
             if (! $voucher && $item) {
                 $voucher = $this->vouchers->create($sale->wifiZone, $item->plan, 1, true)[0];
-                $voucher->forceFill(['customer_id' => $sale->customer_id])->save();
+                $captive = $this->captiveFor($sale->wifiZone, $sale->captive_session_id);
+                $voucher->forceFill([
+                    'customer_id' => $sale->customer_id,
+                    'mac_address' => $captive?->mac_address,
+                ])->save();
                 $item->forceFill(['voucher_id' => $voucher->id])->save();
+                if ($captive) {
+                    WifiSession::create([
+                        'wifi_zone_id' => $sale->wifi_zone_id,
+                        'mikrotik_id' => $captive->mikrotik_id,
+                        'voucher_id' => $voucher->id,
+                        'plan_id' => $item->plan_id,
+                        'username' => $voucher->username,
+                        'ip_address' => $captive->ip_address,
+                        'mac_address' => $captive->mac_address,
+                        'started_at' => now(),
+                        'router_session_id' => $captive->hotspot_username,
+                    ]);
+                }
                 $this->audit->record('voucher.activated', $voucher, null, [
                     'activated_at' => $voucher->activated_at?->toIso8601String(),
                     'expires_at' => $voucher->expires_at?->toIso8601String(),
@@ -191,6 +236,18 @@ class SaleService
         $this->audit->record('sale.counter', $sale);
 
         return $sale->load('items.voucher');
+    }
+
+    private function captiveFor(WifiZone $zone, mixed $id): ?CaptiveSession
+    {
+        if (! is_numeric($id)) {
+            return null;
+        }
+
+        return CaptiveSession::query()
+            ->where('wifi_zone_id', $zone->id)
+            ->whereNotNull('verified_at')
+            ->find((int) $id);
     }
 
     private function internalReference(): string

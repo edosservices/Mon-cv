@@ -49,6 +49,10 @@
                     <dt>Temps restant</dt>
                     <dd>{{ $activeVoucher->remainingLabel() }}</dd>
                 </div>
+                <div>
+                    <dt>Volume</dt>
+                    <dd>{{ $activeVoucher->plan?->unlimited_data ? 'Illimité' : 'Selon le forfait' }}</dd>
+                </div>
                 @if($activeVoucher->expires_at)
                     <div>
                         <dt>Expiration</dt>
@@ -56,6 +60,7 @@
                     </div>
                 @endif
             </dl>
+            <a class="btn btn-primary btn-lg rounded-pill w-100 mb-2" href="{{ route('tickets.public', $activeVoucher->public_token) }}">Voir le ticket</a>
             <a class="btn btn-outline-primary btn-lg rounded-pill w-100" href="#forfaits">Acheter une autre connexion</a>
         </div>
     </section>
@@ -140,7 +145,14 @@
                             <input id="phone-{{ $plan->id }}" class="form-control" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone') }}" placeholder="812 345 678" required>
                         </div>
                     @endif
-                    <label class="form-label fw-bold mt-3" for="email-{{ $plan->id }}">E-mail <span class="fw-normal">(pour iKeePay)</span></label>
+                    <fieldset class="mt-3">
+                        <legend class="form-label fw-bold">Pour qui ?</legend>
+                        <label class="d-flex gap-2"><input type="radio" name="purchase_for" value="self" @checked(old('purchase_for', 'self') === 'self')> Pour moi</label>
+                        <label class="d-flex gap-2"><input type="radio" name="purchase_for" value="other" @checked(old('purchase_for') === 'other')> Pour quelqu’un d’autre</label>
+                    </fieldset>
+                    <label class="form-label fw-bold mt-3" for="payer-{{ $plan->id }}">Numéro qui paie <span class="fw-normal">(si c’est pour quelqu’un d’autre)</span></label>
+                    <input id="payer-{{ $plan->id }}" class="form-control" name="payer_phone" type="tel" inputmode="tel" value="{{ old('payer_phone') }}" placeholder="+243">
+                    <label class="form-label fw-bold mt-3" for="email-{{ $plan->id }}">E-mail <span class="fw-normal">(facultatif, ce n’est pas un compte)</span></label>
                     <input id="email-{{ $plan->id }}" class="form-control" name="email" type="email" autocomplete="email" value="{{ old('email') }}" maxlength="160" placeholder="client@mail.com">
                     <fieldset class="pay-choices">
                         <legend>Moyen de paiement</legend>

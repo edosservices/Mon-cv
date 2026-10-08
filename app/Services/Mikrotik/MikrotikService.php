@@ -434,6 +434,7 @@ class MikrotikService
             try {
                 $this->createHotspotUser($router, $voucher, ! $remembered, $profile, $server);
                 $remembered = true;
+                $this->bindVerifiedDevice($router, $voucher);
             } catch (Throwable $exception) {
                 $error = $this->redact($exception->getMessage(), [$router->password, $voucher->password]);
             }
@@ -679,6 +680,23 @@ class MikrotikService
         }
 
         return $applied;
+    }
+
+    public function hotspotHostMatches(Mikrotik $router, string $mac, string $ip): bool
+    {
+        $this->assertOwned($router);
+        $mac = strtoupper($mac);
+        $rows = $this->records($this->command($router, ['/ip/hotspot/host/print', '?mac-address='.$mac]));
+
+        foreach ($rows as $row) {
+            $rowMac = strtoupper(str_replace('-', ':', (string) ($row['mac-address'] ?? '')));
+            $rowIp = (string) ($row['address'] ?? '');
+            if ($rowMac === $mac && $rowIp === $ip) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function createUser(Mikrotik $router, Voucher $voucher): void
@@ -988,6 +1006,8 @@ class MikrotikService
         $hosts = [];
         foreach ([
             parse_url((string) config('app.url'), PHP_URL_HOST),
+            parse_url((string) config('services.ikeepay.base_url'), PHP_URL_HOST),
+            parse_url((string) config('services.ikeepay.checkout_url'), PHP_URL_HOST),
             $router->dns,
             $router->detail('dns_name'),
         ] as $host) {
@@ -1000,6 +1020,20 @@ class MikrotikService
         }
 
         return array_values(array_unique($hosts));
+    }
+
+    private function bindVerifiedDevice(Mikrotik $router, Voucher $voucher): void
+    {
+        $mac = strtoupper(str_replace('-', ':', (string) $voucher->mac_address));
+        if (! preg_match('/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/', $mac)) {
+            return;
+        }
+
+        try {
+            $this->updateHotspotUser($router, $voucher->username, ['mac-address' => $mac]);
+        } catch (Throwable) {
+            // Le compte hotspot existe déjà. L'accès reste possible avec l'identifiant du ticket.
+        }
     }
 
     private function safeHost(string $host): bool

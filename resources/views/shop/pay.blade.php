@@ -23,7 +23,11 @@
     </dl>
     <p class="plan-offer">{{ $plan->internetLabel() }}</p>
     <p class="plan-price">{{ \App\Support\Money::shop($plan->price, $plan->currency) }}</p>
-    <p class="help">Client : {{ $customer['phone'] ?: 'Achat sans compte' }}</p>
+    <p class="help">Achat sans compte.</p>
+    <p class="help">Bénéficiaire : {{ $customer['phone'] ?: '—' }}</p>
+    @if(($customer['purchase_for'] ?? 'self') === 'other')
+        <p class="help">Paiement depuis : {{ $customer['payer_phone'] ?? '—' }}</p>
+    @endif
     @if(filled($customer['email'] ?? null))
         <p class="help">E-mail : {{ $customer['email'] }}</p>
     @endif
@@ -33,6 +37,8 @@
     @csrf
     <input type="hidden" name="plan_id" value="{{ $plan->id }}">
     <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
+    <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
+    <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
     <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
     <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
     <h2>Payer avec iKeePay</h2>
@@ -67,6 +73,8 @@
     @csrf
     <input type="hidden" name="plan_id" value="{{ $plan->id }}">
     <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
+    <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
+    <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
     <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
     <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
     <h2>Comment souhaitez-vous payer ?</h2>
