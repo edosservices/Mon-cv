@@ -495,14 +495,14 @@ html {
     text-decoration: none;
 }
 .ikeepay-frame {
-    display: block;
-    width: min(100%, 32rem);
-    height: min(85vh, 46rem);
+    display: none;
+    width: min(100%, 28.125rem);
+    height: min(90vh, 46rem);
     margin: 1rem auto 0;
     border: 0;
-    border-radius: 1rem;
-    background: white;
+    background: transparent;
 }
+.ikeepay-frame.is-ready { display: block; }
 @media (max-width: 720px) {
     .ikeepay-panel { padding-inline: 0.6rem; }
     .ikeepay-frame {

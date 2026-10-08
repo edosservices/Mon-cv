@@ -50,11 +50,16 @@ class IkeePayGateway implements PaymentGateway
             return $payment->refresh();
         }
 
+        $inline = ($payment->metadata['flow'] ?? null) === 'inline';
+        $path = $inline
+            ? '/checkout/'.rawurlencode($reference)
+            : '/h2h-verify/'.rawurlencode($reference);
+
         try {
             $response = Http::withHeaders($this->headers($secret))
                 ->acceptJson()
                 ->timeout(20)
-                ->get($this->endpoint('/h2h-verify/'.rawurlencode($reference)));
+                ->get($this->endpoint($path));
         } catch (ConnectionException) {
             return $payment->refresh();
         }
@@ -64,6 +69,10 @@ class IkeePayGateway implements PaymentGateway
         }
 
         $body = $response->json();
+        if ($inline) {
+            return $this->settleInlineStatus($payment, $body, 'checkout-verify');
+        }
+
         $data = is_array($body['data'] ?? null) ? $body['data'] : [];
         $status = $data['status'] ?? null;
         $external = $data['external_reference'] ?? null;
@@ -106,6 +115,10 @@ class IkeePayGateway implements PaymentGateway
     {
         // La documentation iKeePay ne fournit aucune signature webhook.
         $payload = json_decode($rawBody, true);
+        if (is_array($payload) && ($payload['event'] ?? null) === 'payment.success' && ! array_key_exists('data', $payload)) {
+            return $this->inlineNotice($payload);
+        }
+
         $data = is_array($payload) ? ($payload['data'] ?? null) : null;
         $event = is_array($payload) ? ($payload['event'] ?? null) : null;
 
@@ -183,9 +196,8 @@ class IkeePayGateway implements PaymentGateway
         $email = trim((string) ($context['customer_email'] ?? ''));
         $catalog = app(IkeePayCatalog::class);
 
-        // Le H2H documenté dans le projet n'exige customer_email pour aucun opérateur.
+        // Le contrat H2H n'exige customer_email pour aucun opérateur.
         // Le champ n'est ajouté que lorsqu'un e-mail a été fourni.
-        // L'e-mail reste obligatoire uniquement pour le widget inline, dont l'URL contient ce paramètre.
         if (! $catalog->allows($country, $operator) || $phone === '') {
             return $this->markFailed($payment, 'Les informations du paiement mobile sont incomplètes. Aucun ticket n’a été créé.');
         }
@@ -310,6 +322,72 @@ class IkeePayGateway implements PaymentGateway
         ])->save();
 
         return $payment->refresh();
+    }
+
+    /**
+     * Réponse documentée du checkout inline : event, ikeepay_ref, order_id, amount, currency, status.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private function settleInlineStatus(Payment $payment, array $body, string $source): Payment
+    {
+        if (($body['order_id'] ?? null) !== $payment->internal_reference) {
+            return $payment->refresh();
+        }
+
+        try {
+            $notice = $this->inlineNotice($body);
+        } catch (\InvalidArgumentException) {
+            return $payment->refresh();
+        }
+
+        $notice = new PaymentNotice(
+            internalReference: $notice->internalReference,
+            providerReference: $notice->providerReference,
+            amount: $notice->amount,
+            currency: $notice->currency,
+            status: $notice->status,
+            raw: array_merge($notice->raw, ['source' => $source]),
+        );
+        app(PaymentSettlement::class)->apply($this->provider(), $notice);
+
+        return $payment->refresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function inlineNotice(array $payload): PaymentNotice
+    {
+        $reference = $payload['order_id'] ?? null;
+        $providerReference = $payload['ikeepay_ref'] ?? null;
+        $currency = $payload['currency'] ?? null;
+        $status = $payload['status'] ?? null;
+
+        if (($payload['event'] ?? null) !== 'payment.success' || $status !== 'completed') {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        if (! is_string($reference) || $reference === '' || ! is_string($providerReference) || $providerReference === '') {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        if (! is_string($currency) || $currency === '' || ! isset($payload['amount']) || ! is_numeric($payload['amount'])) {
+            throw new \InvalidArgumentException('Notification iKeePay invalide.');
+        }
+
+        return new PaymentNotice(
+            internalReference: $reference,
+            providerReference: $providerReference,
+            amount: $this->money($payload['amount']),
+            currency: strtoupper($currency),
+            status: PaymentStatus::Success->value,
+            raw: [
+                'event' => 'payment.success',
+                'status' => 'completed',
+                'provider_reference' => $providerReference,
+            ],
+        );
     }
 
     private function localStatus(string $status): string

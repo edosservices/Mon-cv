@@ -264,16 +264,21 @@ class WifiShopController extends Controller
             return redirect()->route('shop.order', [$zone->slug, $sale->public_token]);
         }
 
+        $checkoutUrl = (string) config('services.ikeepay.checkout_url');
+        $scheme = parse_url($checkoutUrl, PHP_URL_SCHEME);
+        $host = parse_url($checkoutUrl, PHP_URL_HOST);
+
         return view('shop.ikeepay', [
             'zone' => $zone,
             'sale' => $sale,
             'amount' => number_format((float) $payment->amount, 2, '.', ''),
             'currency' => strtoupper((string) $payment->currency),
             'orderId' => (string) $payment->internal_reference,
-            'email' => (string) ($sale->customer?->email ?? ''),
             'publicKey' => $zone->tenant?->ikeepayPublicKey() ?? '',
-            'checkoutUrl' => (string) config('services.ikeepay.checkout_url'),
+            'checkoutUrl' => $checkoutUrl,
+            'checkoutOrigin' => is_string($scheme) && is_string($host) ? $scheme.'://'.$host : '',
             'returnUrl' => route('shop.order', [$zone->slug, $sale->public_token]),
+            'refreshUrl' => route('shop.payment.refresh', [$zone->slug, $sale->public_token]),
         ]);
     }
 

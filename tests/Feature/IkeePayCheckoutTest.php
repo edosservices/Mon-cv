@@ -25,7 +25,8 @@ class IkeePayCheckoutTest extends TestCase
         config([
             'services.ikeepay.public_key' => $this->publicKey,
             'services.ikeepay.secret_key' => $this->secret,
-            'services.ikeepay.checkout_url' => 'https://www.ikeepay.com/checkout/v1/inline',
+            'services.ikeepay.checkout_url' => 'https://ikeepay.com/checkout/v1/inline',
+            'services.ikeepay.base_url' => 'https://api.ikeepay.com',
         ]);
     }
 
@@ -74,13 +75,18 @@ class IkeePayCheckoutTest extends TestCase
         $page = $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'/ikeepay');
         $page->assertOk()
             ->assertSee($this->publicKey, false)
-            ->assertSee('https://www.ikeepay.com/checkout/v1/inline', false)
+            ->assertSee('https://ikeepay.com/checkout/v1/inline', false)
+            ->assertSee('data-origin="https://ikeepay.com"', false)
             ->assertSee('1000.00', false)
             ->assertSee('CDF', false)
             ->assertSee($payment->internal_reference, false)
-            ->assertSee('client@mail.com', false)
-            ->assertSee("event.origin !== 'https://www.ikeepay.com'", false)
+            ->assertSee('redirect_url', false)
+            ->assertSee('ikeepay-ready', false)
             ->assertSee('ikeepay-success', false)
+            ->assertSee('ikeepay-close', false)
+            ->assertDontSee('email:', false)
+            ->assertDontSee('client@mail.com', false)
+            ->assertDontSee('Paiement validé', false)
             ->assertDontSee($this->secret, false)
             ->assertDontSee('pk_global_must_not_appear', false)
             ->assertDontSee('ORDER_test_', false)
@@ -139,5 +145,109 @@ class IkeePayCheckoutTest extends TestCase
         $this->assertSame('1000.00', number_format((float) $sale->total_amount, 2, '.', ''));
         $this->assertSame('CDF', $sale->currency);
         $this->assertDatabaseCount('vouchers', 0);
+
+        $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'/ikeepay')
+            ->assertOk()
+            ->assertSee('id="ikeepay-frame"', false)
+            ->assertDontSee('ne peut pas s’ouvrir', false);
+    }
+
+    public function test_the_documented_inline_webhook_confirms_the_sale_once(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $sale = $this->inlineSale();
+        $payment = $sale->payment;
+
+        $payload = [
+            'event' => 'payment.success',
+            'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
+            'order_id' => $payment->internal_reference,
+            'amount' => 1000,
+            'currency' => 'CDF',
+            'status' => 'completed',
+        ];
+
+        $this->postJson('/payments/ikeepay/webhook', $payload)->assertOk();
+        $this->postJson('/payments/ikeepay/webhook', $payload)->assertOk();
+
+        $sale->refresh();
+        $this->assertSame('paid', $sale->status);
+        $this->assertSame('success', $payment->fresh()->status);
+        $this->assertSame('IKP-H2H-B5C9EC0E', $payment->fresh()->provider_reference);
+        $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+        Bus::assertDispatchedTimes(SyncHotspotUser::class, 1);
+    }
+
+    public function test_an_inline_webhook_with_the_wrong_amount_creates_no_ticket(): void
+    {
+        Bus::fake();
+        $sale = $this->inlineSale();
+
+        $this->postJson('/payments/ikeepay/webhook', [
+            'event' => 'payment.success',
+            'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
+            'order_id' => $sale->payment->internal_reference,
+            'amount' => 1,
+            'currency' => 'CDF',
+            'status' => 'completed',
+        ])->assertStatus(422);
+
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Bus::assertNotDispatched(SyncHotspotUser::class);
+    }
+
+    public function test_inline_verify_uses_get_checkout_and_the_entrepreneur_secret(): void
+    {
+        Bus::fake();
+        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
+        $sale = $this->inlineSale();
+        $payment = $sale->payment;
+
+        Http::fake([
+            'https://api.ikeepay.com/checkout/'.$payment->internal_reference => Http::response([
+                'event' => 'payment.success',
+                'ikeepay_ref' => 'IKP-H2H-B5C9EC0E',
+                'order_id' => $payment->internal_reference,
+                'amount' => 1000,
+                'currency' => 'CDF',
+                'status' => 'completed',
+            ]),
+        ]);
+
+        $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
+            ->assertRedirect();
+
+        $this->assertSame('paid', $sale->fresh()->status);
+        $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.ikeepay.com/checkout/'.$payment->internal_reference
+            && $request->method() === 'GET'
+            && $request->hasHeader('x-api-key', $this->secret)
+            && ! $request->hasHeader('x-api-key', 'GLOBAL-KEY-MUST-NOT-BE-USED'));
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/h2h-verify/'));
+
+        $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
+            ->assertRedirect();
+        $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+    }
+
+    private function inlineSale(): Sale
+    {
+        $owner = Platform::entrepreneur('Alice Wifi', 'alice-inline-'.uniqid().'@example.com');
+        $owner->tenant->forceFill([
+            'ikeepay_public_key' => $this->publicKey,
+            'ikeepay_secret_key' => $this->secret,
+        ])->save();
+        $zone = Platform::zone($owner, 'Limete');
+        $plan = Platform::plan($owner, $zone);
+
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'phone' => '+243810004242',
+            'provider' => 'ikeepay',
+        ])->assertRedirect();
+
+        return Sale::withoutGlobalScope('tenant')->with('payment', 'wifiZone')->firstOrFail();
     }
 }

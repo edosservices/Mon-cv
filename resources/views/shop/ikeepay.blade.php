@@ -8,62 +8,58 @@
     </div>
     <p class="help" id="ikeepay-wait">Ouverture du paiement…</p>
     <p class="help">{{ $amount }} {{ $currency }} · {{ $orderId }}</p>
-    @if($publicKey === '' || $email === '')
+    @if($publicKey === '' || $checkoutOrigin === '')
         <p class="help">Le checkout iKeePay ne peut pas s’ouvrir. Le paiement reste en attente.</p>
     @else
         <iframe
             id="ikeepay-frame"
             class="ikeepay-frame"
             title="Checkout iKeePay"
+            allowtransparency="true"
             data-checkout-url="{{ $checkoutUrl }}"
+            data-origin="{{ $checkoutOrigin }}"
             data-public-key="{{ $publicKey }}"
             data-amount="{{ $amount }}"
             data-currency="{{ $currency }}"
             data-order-id="{{ $orderId }}"
-            data-email="{{ $email }}"
-            data-return-url="{{ $returnUrl }}"
+            data-redirect-url="{{ $returnUrl }}"
         ></iframe>
+        <form id="ikeepay-refresh" method="POST" action="{{ $refreshUrl }}">
+            @csrf
+        </form>
     @endif
 </section>
-@if($publicKey !== '' && $email !== '')
+@if($publicKey !== '' && $checkoutOrigin !== '')
     <script>
         (function () {
             var frame = document.getElementById('ikeepay-frame');
             var wait = document.getElementById('ikeepay-wait');
-            var returnUrl = frame.getAttribute('data-return-url');
             var params = new URLSearchParams({
                 pk: frame.getAttribute('data-public-key'),
                 amount: frame.getAttribute('data-amount'),
                 currency: frame.getAttribute('data-currency'),
                 order_id: frame.getAttribute('data-order-id'),
-                email: frame.getAttribute('data-email')
+                redirect_url: frame.getAttribute('data-redirect-url')
             });
             frame.src = frame.getAttribute('data-checkout-url') + '?' + params.toString();
 
-            function messageName(data) {
-                if (typeof data === 'string') {
-                    return data;
-                }
-                if (data && typeof data === 'object') {
-                    return data.event || data.type || data.name || '';
-                }
-                return '';
-            }
-
             window.addEventListener('message', function (event) {
-                if (event.origin !== 'https://www.ikeepay.com') {
+                if (event.origin !== frame.getAttribute('data-origin') || typeof event.data !== 'string') {
                     return;
                 }
-                var name = messageName(event.data);
-                if (name === 'ikeepay-ready') {
+                if (event.data === 'ikeepay-ready') {
                     if (wait) {
                         wait.hidden = true;
                     }
                     frame.classList.add('is-ready');
                     return;
                 }
-                if (name === 'ikeepay-close' || name === 'ikeepay-success') {
-                    window.location.assign(returnUrl);
+                if (event.data === 'ikeepay-success') {
+                    document.getElementById('ikeepay-refresh').submit();
+                    return;
+                }
+                if (event.data === 'ikeepay-close') {
+                    window.location.assign(@json($returnUrl));
                 }
             });
         }());
