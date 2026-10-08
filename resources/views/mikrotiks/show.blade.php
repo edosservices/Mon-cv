@@ -33,6 +33,7 @@
     <span class="text-slate-500">Dernière vérification {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</span>
 </p>
 @if($router->last_error)<p class="mb-3 break-words text-sm text-amber-800">{{ $router->last_error }}</p>@endif
+<p class="mb-3 text-sm text-slate-600">Le test de connexion est effectué depuis le serveur Limete WiFi. Une adresse privée comme 192.168.x.x peut être accessible depuis votre téléphone ou ordinateur connecté au MikroTik, mais inaccessible depuis le serveur.</p>
 <div class="mb-4 flex flex-wrap gap-2 text-sm">
     <form method="POST" action="{{ route('mikrotiks.test', $router) }}">@csrf<button class="rounded-xl border bg-white px-4 py-3 font-semibold">Tester la connexion</button></form>
     <form method="POST" action="{{ route('mikrotiks.sync', $router) }}">@csrf<button class="rounded-xl border bg-white px-4 py-3 font-semibold">Synchroniser maintenant</button></form>
@@ -46,6 +47,23 @@
 </nav>
 
 @if($tab === 'overview')
+    <article class="mb-3 rounded-2xl bg-white p-4 text-sm shadow-sm">
+        <h2 class="font-semibold">Fiche MikroTik</h2>
+        <p class="mt-2">Nom {{ $router->name }}</p>
+        <p>Description {{ filled($router->description) ? $router->description : '—' }}</p>
+        <p class="break-all">Host / IP {{ $router->host }}</p>
+        <p class="break-all">DNS {{ filled($router->dns) ? $router->dns : '—' }}</p>
+        <p>Port API {{ $router->api_port ?: 8728 }}</p>
+        <p>Port API-SSL {{ $router->api_ssl_port ?: 8729 }}</p>
+        <p>Type de connexion {{ $router->connection_type === 'api-ssl' ? 'API-SSL' : 'API' }}</p>
+        <p>Utilisateur {{ $router->username }}</p>
+        <p>Timeout {{ $router->timeout ?: 5 }} s</p>
+        <p>Statut {{ $router->status === 'online' ? 'Connecté' : ($router->status === 'error' ? 'Erreur' : ($router->status === 'unknown' ? 'Inconnu' : 'Hors ligne')) }}</p>
+        <p>Identity {{ filled($router->identity) ? $router->identity : '—' }}</p>
+        <p>last_seen_at {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</p>
+        <p class="break-words">last_error {{ filled($router->last_error) ? $router->last_error : 'Aucune' }}</p>
+        <p>last_synced_at {{ $router->last_synced_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</p>
+    </article>
     <section class="grid gap-3 sm:grid-cols-2">
         <article class="rounded-2xl bg-white p-4 text-sm shadow-sm">
             <h2 class="font-semibold">{{ $router->name }}</h2>
@@ -76,16 +94,21 @@
 @if($tab === 'connection')
     <article class="rounded-2xl bg-white p-4 text-sm shadow-sm">
         <h2 class="font-semibold">Connexion RouterOS</h2>
-        <p class="mt-2 break-all">Host {{ $router->host }}</p>
-        <p>Port API {{ $router->api_port }}</p>
+        <p class="mt-2">Nom {{ $router->name }}</p>
+        <p>Description {{ filled($router->description) ? $router->description : '—' }}</p>
+        <p class="break-all">Host / IP {{ $router->host }}</p>
+        <p class="break-all">DNS {{ filled($router->dns) ? $router->dns : '—' }}</p>
+        <p>Port API {{ $router->api_port ?: 8728 }}</p>
         <p>Port API-SSL {{ $router->api_ssl_port ?: 8729 }}</p>
-        <p>Type {{ $router->connection_type === 'api-ssl' ? 'API-SSL' : 'API' }}</p>
-        <p>Username {{ $router->username }}</p>
+        <p>Type de connexion {{ $router->connection_type === 'api-ssl' ? 'API-SSL' : 'API' }}</p>
+        <p>Utilisateur {{ $router->username }}</p>
         <p>Password enregistré, jamais affiché</p>
         <p>Timeout {{ $router->timeout ?: 5 }} s</p>
-        <p>Statut routeur {{ $router->is_active ? 'actif' : 'inactif' }}</p>
-        <p class="mt-2">Dernière vérification {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore vérifié' }}</p>
-        @if($router->last_error)<p class="mt-1 break-words text-amber-800">{{ $router->last_error }}</p>@endif
+        <p>Statut {{ $router->status === 'online' ? 'Connecté' : ($router->status === 'error' ? 'Erreur' : ($router->status === 'unknown' ? 'Inconnu' : 'Hors ligne')) }}</p>
+        <p>Identity {{ filled($router->identity) ? $router->identity : '—' }}</p>
+        <p>last_seen_at {{ $router->last_seen_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</p>
+        <p class="break-words">last_error {{ filled($router->last_error) ? $router->last_error : 'Aucune' }}</p>
+        <p>last_synced_at {{ $router->last_synced_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? 'pas encore' }}</p>
     </article>
 @endif
 

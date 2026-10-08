@@ -13,6 +13,7 @@
     $pools = collect($probe['pools'] ?? [])->pluck('name')->filter()->implode(', ');
 @endphp
 <section class="mt-4 min-w-0 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
+    <p class="font-semibold">✓ Connexion réussie</p>
     <p class="font-semibold">✓ MikroTik détecté</p>
     <p class="mt-1 font-semibold">Informations détectées</p>
     <dl class="mt-3 space-y-1">
