@@ -156,12 +156,12 @@
                     <input id="email-{{ $plan->id }}" class="form-control" name="email" type="email" autocomplete="email" value="{{ old('email') }}" maxlength="160" placeholder="client@mail.com">
                     @if($ikeepayReady ?? false)
                         <input type="hidden" name="provider" value="ikeepay">
-                        <p class="help mt-3">iKeePay présente les moyens de paiement disponibles. Le ticket est créé après la confirmation du serveur.</p>
+                        <p class="help mt-3">Choisissez votre mode de paiement. La page sécurisée affiche les moyens disponibles.</p>
                     @else
-                        <p class="help mt-3">Le checkout iKeePay de cette zone n’est pas configuré. Aucune commande ne sera créée.</p>
+                        <p class="help mt-3">Le paiement en ligne de cette zone n’est pas encore disponible. Aucune commande ne sera créée.</p>
                     @endif
                     <div class="sheet-actions">
-                        <button class="btn btn-primary btn-lg rounded-pill w-100" type="submit" data-busy="Paiement en cours" @disabled(! ($ikeepayReady ?? false))>Payer avec iKeePay — {{ $price }}</button>
+                        <button class="btn btn-primary btn-lg rounded-pill w-100" type="submit" data-busy="Paiement en cours" @disabled(! ($ikeepayReady ?? false))>Payer — {{ $price }}</button>
                         <a class="back text-center" href="{{ route('shop.plan', [$zone->slug, $plan->id]) }}">Modifier le numéro</a>
                     </div>
                 </form>

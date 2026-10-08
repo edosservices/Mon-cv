@@ -251,7 +251,6 @@ class WifiShopController extends Controller
             'amount' => number_format((float) $payment->amount, 2, '.', ''),
             'currency' => strtoupper((string) $payment->currency),
             'orderId' => (string) $payment->internal_reference,
-            'email' => (string) ($sale->customer?->email ?? ''),
             'publicKey' => $zone->tenant?->ikeepayPublicKey() ?? '',
             'checkoutUrl' => $checkoutUrl,
             'checkoutOrigin' => is_string($scheme) && is_string($host) ? $scheme.'://'.$host : '',

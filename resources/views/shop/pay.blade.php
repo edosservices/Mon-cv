@@ -43,15 +43,15 @@
         <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
         <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
         <input type="hidden" name="provider" value="ikeepay">
-        <h2>Payer avec iKeePay</h2>
-        <p class="help">iKeePay présente les moyens de paiement disponibles. Le montant vient du forfait. Aucun ticket n’est créé avant la confirmation du serveur.</p>
-        <button class="btn btn-primary" type="submit">Payer avec iKeePay</button>
+        <h2>Choisissez votre mode de paiement</h2>
+        <p class="help">La page de paiement sécurisée affiche les moyens disponibles. Votre ticket WiFi sera créé après confirmation.</p>
+        <button class="btn btn-primary" type="submit">Payer</button>
     </form>
 @else
     <section class="panel">
-        <h2>Paiement iKeePay indisponible</h2>
-        <p class="help">Le checkout iKeePay de cette zone n’est pas configuré. Aucune commande ne sera créée.</p>
-        <button class="btn btn-primary" type="button" disabled>Payer avec iKeePay</button>
+        <h2>Paiement indisponible</h2>
+        <p class="help">Le paiement en ligne de cette zone n’est pas encore disponible. Aucune commande ne sera créée.</p>
+        <button class="btn btn-primary" type="button" disabled>Payer</button>
     </section>
 @endif
 @endsection

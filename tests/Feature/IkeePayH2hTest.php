@@ -68,7 +68,7 @@ class IkeePayH2hTest extends TestCase
             'services.ikeepay.public_key' => 'pk_test_public_only',
             'services.ikeepay.secret_key' => $this->secret,
             'services.ikeepay.base_url' => 'https://api.ikeepay.com',
-            'services.ikeepay.checkout_url' => 'https://www.ikeepay.com/checkout/v1/inline',
+            'services.ikeepay.checkout_url' => 'https://ikeepay.com/checkout/v1/inline',
             'ikeepay.countries' => [
                 'CI' => ['ORANGE', 'MTN', 'WAVE', 'MOOV', 'MOBICASH'],
             ],
@@ -111,7 +111,7 @@ class IkeePayH2hTest extends TestCase
             ->assertOk()
             ->assertSee('https://pay.example/wave', false)
             ->assertSee('Continuer le paiement', false)
-            ->assertDontSee('Revenir au paiement iKeePay', false)
+            ->assertDontSee('Revenir au paiement', false)
             ->assertDontSee($this->secret, false);
 
         $this->get('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/ikeepay')
@@ -455,7 +455,9 @@ class IkeePayH2hTest extends TestCase
 
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
             ->assertOk()
-            ->assertSee('Paiement envoyé à iKeePay', false)
+            ->assertSee('Confirmation du paiement…', false)
+            ->assertSee('Paiement sécurisé', false)
+            ->assertDontSee('Paiement envoyé à iKeePay', false)
             ->assertDontSee('pas configuré', false)
             ->assertDontSee('Votre ticket est prêt', false);
     }

@@ -14,7 +14,7 @@
         <div class="alert alert-success d-inline-flex align-items-center gap-2 mb-3" role="status">
             <span class="dot" aria-hidden="true"></span> PAYÉ — Paiement confirmé
         </div>
-        <h1>Votre ticket est prêt.</h1>
+        <h1>Votre ticket WiFi est prêt.</h1>
         <p class="lede">Le serveur a confirmé le paiement. La connexion est active.</p>
         @if($sale->purchase_for === 'other' && filled($sale->beneficiary_phone))
             <p class="help">Connexion achetée pour : {{ $sale->beneficiary_phone }}</p>
@@ -99,7 +99,7 @@
     <section class="panel">
         <div class="alert alert-danger" role="alert">{{ $payment->status === 'cancelled' ? 'Paiement annulé' : 'Paiement échoué' }}</div>
         <h1>Le paiement n’a pas été confirmé</h1>
-        <p class="help">Aucun ticket n’a été activé. Vous pouvez recommencer depuis la boutique.</p>
+        <p class="help">Le paiement n’a pas été confirmé. Aucun montant n’a été validé sur votre commande.</p>
         <a class="btn btn-primary btn-lg rounded-pill w-100" href="{{ route('shop.show', $zone->slug) }}">Réessayer</a>
     </section>
 @else
@@ -107,11 +107,11 @@
         <div class="alert alert-info d-flex align-items-center gap-3" role="status">
             <div class="spinner-border text-info" role="status" aria-hidden="true"></div>
             <div>
-                <strong class="d-block">Paiement en attente</strong>
-                <span>Paiement en cours</span>
+                <strong class="d-block">Paiement en cours…</strong>
+                <span>Paiement en attente</span>
             </div>
         </div>
-        <h1>Paiement en cours</h1>
+        <h1>Confirmation du paiement…</h1>
         <dl class="summary text-start">
             <div>
                 <dt>Montant</dt>
@@ -127,17 +127,16 @@
             </div>
             <div>
                 <dt>Moyen de paiement</dt>
-                <dd>{{ $provider }}@if(filled($payment->metadata['operator'] ?? null)) — {{ $payment->metadata['operator'] }}@endif</dd>
+                <dd>{{ $payment?->provider === 'ikeepay' ? 'Paiement sécurisé' : $provider }}</dd>
             </div>
         </dl>
         @if($payment?->transaction_reference)
             <p class="help">Référence communiquée : {{ $payment->transaction_reference }}</p>
         @endif
-        <p class="help">Statut : {{ \App\Enums\PaymentStatus::tryFrom($payment->status ?? '')?->label() ?? 'En attente' }}</p>
-        <p class="help">{{ $payment->metadata['note'] ?? 'Le ticket apparaîtra après confirmation du paiement.' }}</p>
+        <p class="help">Confirmation du paiement…</p>
         <p class="help">Le serveur confirme le paiement. Cette page ne le transforme pas en succès.</p>
+        <p class="help">Votre ticket WiFi apparaîtra lorsque le paiement sera confirmé.</p>
         @if($payment?->provider === 'ikeepay')
-            <p class="help">Le paiement iKeePay reste en attente jusqu’à la confirmation du serveur.</p>
             @php
                 $paymentLink = $payment->metadata['payment_link'] ?? null;
                 $paymentLink = is_string($paymentLink) && str_starts_with($paymentLink, 'https://') ? $paymentLink : null;
@@ -146,7 +145,7 @@
                 <a class="btn btn-primary" href="{{ $paymentLink }}">Continuer le paiement</a>
             @endif
             @if(($payment->metadata['flow'] ?? 'inline') !== 'h2h')
-                <a class="btn btn-primary" href="{{ route('shop.ikeepay', [$zone->slug, $sale->public_token]) }}">Revenir au paiement iKeePay</a>
+                <a class="btn btn-primary" href="{{ route('shop.ikeepay', [$zone->slug, $sale->public_token]) }}">Revenir au paiement</a>
             @endif
         @endif
         <form method="POST" action="{{ route('shop.payment.refresh', [$zone->slug, $sale->public_token]) }}" data-wait>

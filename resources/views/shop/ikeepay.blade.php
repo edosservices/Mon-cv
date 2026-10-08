@@ -1,20 +1,20 @@
 @extends('layouts.shop')
-@section('title', 'Paiement iKeePay — '.$zone->name)
+@section('title', 'Paiement — '.$zone->name)
 @section('content')
 <section class="panel ikeepay-panel" aria-labelledby="ikeepay-title">
     <div class="ikeepay-bar">
-        <h1 id="ikeepay-title">Paiement iKeePay</h1>
+        <h1 id="ikeepay-title">Paiement en cours…</h1>
         <a class="btn ikeepay-close" href="{{ $returnUrl }}">Fermer</a>
     </div>
-    <p class="help" id="ikeepay-wait">Ouverture du paiement…</p>
+    <p class="help" id="ikeepay-wait">Confirmation du paiement…</p>
     <p class="help">{{ $amount }} {{ $currency }} · {{ $orderId }}</p>
     @if($publicKey === '' || $checkoutOrigin === '')
-        <p class="help">Le checkout iKeePay ne peut pas s’ouvrir. Le paiement reste en attente.</p>
+        <p class="help">Le paiement n’a pas été confirmé. Aucun montant n’a été validé sur votre commande.</p>
     @else
         <iframe
             id="ikeepay-frame"
             class="ikeepay-frame"
-            title="Checkout iKeePay"
+            title="Paiement sécurisé"
             allowtransparency="true"
             data-checkout-url="{{ $checkoutUrl }}"
             data-origin="{{ $checkoutOrigin }}"
@@ -22,7 +22,6 @@
             data-amount="{{ $amount }}"
             data-currency="{{ $currency }}"
             data-order-id="{{ $orderId }}"
-            data-email="{{ $email }}"
             data-redirect-url="{{ $returnUrl }}"
         ></iframe>
         <form id="ikeepay-refresh" method="POST" action="{{ $refreshUrl }}">
@@ -41,10 +40,6 @@
                 currency: frame.getAttribute('data-currency'),
                 order_id: frame.getAttribute('data-order-id')
             };
-            var email = frame.getAttribute('data-email');
-            if (email) {
-                fields.email = email;
-            }
             var redirectUrl = frame.getAttribute('data-redirect-url');
             if (redirectUrl) {
                 fields.redirect_url = redirectUrl;
