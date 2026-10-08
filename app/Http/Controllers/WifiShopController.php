@@ -30,9 +30,6 @@ class WifiShopController extends Controller
         return view('shop.show', [
             'zone' => $zone,
             'plans' => $this->plans($zone),
-            'providers' => $this->guestProviders(),
-            'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
-            'unavailableH2h' => app(IkeePayCatalog::class)->unavailableShopMethods(),
             'ikeepayReady' => filled($zone->tenant?->ikeepayPublicKey()),
             'knownPhone' => $phone,
             'activeVoucher' => $this->activeVoucher($zone, $phone),
@@ -91,9 +88,6 @@ class WifiShopController extends Controller
             'zone' => $zone,
             'plan' => $plan,
             'customer' => $draft,
-            'providers' => $this->guestProviders(),
-            'ikeepayChoices' => app(IkeePayCatalog::class)->choices(),
-            'unavailableH2h' => app(IkeePayCatalog::class)->unavailableShopMethods(),
             'ikeepayReady' => filled($zone->tenant?->ikeepayPublicKey()),
             'step' => 2,
         ]);
@@ -145,31 +139,6 @@ class WifiShopController extends Controller
         $plan = $this->plans($zone)->firstWhere('id', (int) $data['plan_id']);
         abort_unless($plan, 404);
         $data = $this->normalizeCustomer($data);
-        $catalog = app(IkeePayCatalog::class);
-
-        if (array_key_exists($data['provider'], $catalog->providerOperators())) {
-            $choice = $catalog->h2hChoiceFor($data['provider']);
-            if ($choice === null) {
-                $operator = $catalog->providerOperators()[$data['provider']];
-                $matches = 0;
-                foreach ($catalog->countries() as $operators) {
-                    if (in_array($operator, $operators, true)) {
-                        $matches++;
-                    }
-                }
-                $reason = $matches > 1
-                    ? 'Plusieurs pays iKeePay autorisent l’opérateur '.$operator.'. Choisissez le pays dans la liste iKeePay. Aucune demande n’a été envoyée.'
-                    : 'Ce moyen passe par iKeePay. L’opérateur '.$operator.' n’est autorisé pour aucun pays de la configuration H2H. Aucune demande n’a été envoyée.';
-
-                return back()->withErrors([
-                    'provider' => $reason,
-                ])->withInput();
-            }
-
-            $data['provider'] = 'ikeepay';
-            $data['country'] = $choice['country'];
-            $data['operator'] = $choice['operator'];
-        }
 
         if (in_array($data['provider'], ['airtel_money', 'orange_money', 'mpesa', 'card'], true)) {
             return back()->withErrors([
@@ -188,6 +157,14 @@ class WifiShopController extends Controller
                 'provider' => 'Le checkout iKeePay de cet entrepreneur n’est pas configuré. Aucune demande n’a été envoyée.',
             ])->withInput();
         }
+
+        if ($data['provider'] === 'ikeepay' && ! filled($data['operator'] ?? null)) {
+            $existing = $this->openInlineSale($zone, $plan, $data);
+            if ($existing) {
+                return redirect()->route('shop.ikeepay', [$zone->slug, $existing->public_token]);
+            }
+        }
+
         $captive = app(CaptivePortal::class)->current($zone);
         if ($captive) {
             $data['captive_session_id'] = $captive->id;
@@ -274,6 +251,7 @@ class WifiShopController extends Controller
             'amount' => number_format((float) $payment->amount, 2, '.', ''),
             'currency' => strtoupper((string) $payment->currency),
             'orderId' => (string) $payment->internal_reference,
+            'email' => (string) ($sale->customer?->email ?? ''),
             'publicKey' => $zone->tenant?->ikeepayPublicKey() ?? '',
             'checkoutUrl' => $checkoutUrl,
             'checkoutOrigin' => is_string($scheme) && is_string($host) ? $scheme.'://'.$host : '',
@@ -553,13 +531,22 @@ class WifiShopController extends Controller
     }
 
     /**
-     * @return array<string, string>
+     * @param  array<string, mixed>  $data
      */
-    private function guestProviders(): array
+    private function openInlineSale(WifiZone $zone, Plan $plan, array $data): ?Sale
     {
-        return collect(app(PaymentManager::class)->enabledProviders())
-            ->reject(fn ($label, string $key) => in_array($key, ['airtel_money', 'orange_money', 'mpesa', 'card'], true))
-            ->all();
+        return Sale::query()
+            ->where('wifi_zone_id', $zone->id)
+            ->where('status', 'pending')
+            ->where('beneficiary_phone', $data['phone'])
+            ->where('payer_phone', $data['payer_phone'] ?? $data['phone'])
+            ->where('created_at', '>=', now()->subMinutes(20))
+            ->whereHas('items', fn ($query) => $query->where('plan_id', $plan->id)->whereNull('voucher_id'))
+            ->whereHas('payment', function ($query): void {
+                $query->where('provider', 'ikeepay')->where('status', 'pending');
+            })
+            ->latest('id')
+            ->first();
     }
 
     /**

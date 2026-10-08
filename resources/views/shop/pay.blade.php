@@ -42,71 +42,16 @@
         <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
         <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
         <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
+        <input type="hidden" name="provider" value="ikeepay">
         <h2>Payer avec iKeePay</h2>
-        <p class="help">Le montant vient du forfait. Le checkout iKeePay s’ouvre ensuite. Le ticket attend la confirmation du serveur.</p>
-        <button class="btn btn-primary" type="submit" name="provider" value="ikeepay">Payer avec iKeePay</button>
+        <p class="help">iKeePay présente les moyens de paiement disponibles. Le montant vient du forfait. Aucun ticket n’est créé avant la confirmation du serveur.</p>
+        <button class="btn btn-primary" type="submit">Payer avec iKeePay</button>
     </form>
+@else
+    <section class="panel">
+        <h2>Paiement iKeePay indisponible</h2>
+        <p class="help">Le checkout iKeePay de cette zone n’est pas configuré. Aucune commande ne sera créée.</p>
+        <button class="btn btn-primary" type="button" disabled>Payer avec iKeePay</button>
+    </section>
 @endif
-
-@if(($ikeepayChoices ?? []) !== [])
-    <form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
-        @csrf
-        <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-        <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
-        <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
-        <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
-        <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
-        <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
-        <h2>Paiement mobile iKeePay</h2>
-        <p class="help">La confirmation envoie la demande à iKeePay avec le montant du forfait. Le ticket est créé après la confirmation du serveur.</p>
-        <label class="field" for="ikeepay_method">Pays et opérateur
-            <select id="ikeepay_method" name="ikeepay_method" required>
-                @foreach($ikeepayChoices as $choice)
-                    <option value="{{ $choice['country'] }}|{{ $choice['operator'] }}">{{ $choice['country'] }} — {{ $choice['label'] }}</option>
-                @endforeach
-            </select>
-        </label>
-        <label class="field" for="otp">Code OTP <span>(si l’opérateur le demande)</span>
-            <input id="otp" name="otp" value="{{ old('otp') }}" inputmode="numeric" maxlength="12" autocomplete="one-time-code">
-        </label>
-        <button class="btn btn-primary" type="submit" name="provider" value="ikeepay">Payer avec cet opérateur</button>
-    </form>
-@endif
-
-<form class="panel" method="POST" action="{{ route('shop.checkout', $zone->slug) }}" data-wait>
-    @csrf
-    <input type="hidden" name="plan_id" value="{{ $plan->id }}">
-    <input type="hidden" name="phone" value="{{ old('phone', $customer['phone']) }}">
-    <input type="hidden" name="payer_phone" value="{{ old('payer_phone', $customer['payer_phone'] ?? '') }}">
-    <input type="hidden" name="purchase_for" value="{{ old('purchase_for', $customer['purchase_for'] ?? 'self') }}">
-    <input type="hidden" name="name" value="{{ old('name', $customer['name'] ?? '') }}">
-    <input type="hidden" name="email" value="{{ old('email', $customer['email'] ?? '') }}">
-    <h2>Comment souhaitez-vous payer ?</h2>
-    <p class="help">Aucun ticket n’est créé avant la confirmation du paiement.</p>
-    @if(($unavailableH2h ?? []) !== [])
-        <div class="choices">
-            @foreach($unavailableH2h as $method)
-                <label class="choice">
-                    <input type="radio" disabled>
-                    <span>{{ $method['label'] }} — Indisponible</span>
-                </label>
-                <p class="help">{{ $method['reason'] }}</p>
-            @endforeach
-        </div>
-    @endif
-    <div class="choices">
-        @foreach($providers as $key => $label)
-            @continue($key === 'ikeepay')
-            <label class="choice">
-                <input type="radio" name="provider" value="{{ $key }}" @checked(old('provider', 'manual') === $key) required>
-                <span>{{ $label }}</span>
-            </label>
-        @endforeach
-    </div>
-    <label class="field" for="transaction_reference">Référence <span>(si vous l’avez)</span>
-        <input id="transaction_reference" name="transaction_reference" type="text" value="{{ old('transaction_reference') }}" maxlength="80" placeholder="Reçu ou référence comptoir">
-    </label>
-    <p class="help">Confirmation : le ticket n’est créé qu’après la réponse officielle du moyen de paiement.</p>
-    <button class="btn btn-primary" type="submit">Confirmer et payer</button>
-</form>
 @endsection

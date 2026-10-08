@@ -22,6 +22,7 @@
             data-amount="{{ $amount }}"
             data-currency="{{ $currency }}"
             data-order-id="{{ $orderId }}"
+            data-email="{{ $email }}"
             data-redirect-url="{{ $returnUrl }}"
         ></iframe>
         <form id="ikeepay-refresh" method="POST" action="{{ $refreshUrl }}">
@@ -34,13 +35,21 @@
         (function () {
             var frame = document.getElementById('ikeepay-frame');
             var wait = document.getElementById('ikeepay-wait');
-            var params = new URLSearchParams({
+            var fields = {
                 pk: frame.getAttribute('data-public-key'),
                 amount: frame.getAttribute('data-amount'),
                 currency: frame.getAttribute('data-currency'),
-                order_id: frame.getAttribute('data-order-id'),
-                redirect_url: frame.getAttribute('data-redirect-url')
-            });
+                order_id: frame.getAttribute('data-order-id')
+            };
+            var email = frame.getAttribute('data-email');
+            if (email) {
+                fields.email = email;
+            }
+            var redirectUrl = frame.getAttribute('data-redirect-url');
+            if (redirectUrl) {
+                fields.redirect_url = redirectUrl;
+            }
+            var params = new URLSearchParams(fields);
             frame.src = frame.getAttribute('data-checkout-url') + '?' + params.toString();
 
             window.addEventListener('message', function (event) {

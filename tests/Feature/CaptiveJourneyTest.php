@@ -370,14 +370,14 @@ JS;
         $router->update(['dns' => 'limete.example']);
         app(TenantManager::class)->set($user->tenant_id);
 
-        config(['services.ikeepay.checkout_url' => 'https://ikeepay.com/checkout/v1/inline']);
+        config(['services.ikeepay.checkout_url' => 'https://www.ikeepay.com/checkout/v1/inline']);
         $hosts = app(MikrotikService::class)->portalHostsFor($router->fresh('wifiZone'));
 
         $this->assertContains(parse_url((string) config('app.url'), PHP_URL_HOST), $hosts);
         $this->assertContains('limete.example', $hosts);
         $this->assertContains('api.ikeepay.com', $hosts);
-        $this->assertContains('ikeepay.com', $hosts);
-        $this->assertNotContains('www.ikeepay.com', $hosts);
+        $this->assertContains('www.ikeepay.com', $hosts);
+        $this->assertNotContains('ikeepay.com', $hosts);
         $this->assertNotContains('wa.me', $hosts);
         $this->assertNotContains('api.whatsapp.com', $hosts);
         $this->assertNotContains('web.whatsapp.com', $hosts);
@@ -417,11 +417,11 @@ JS;
             ->assertSee('Durée')
             ->assertSee('1 000 FC')
             ->assertSee('+243810002424')
-            ->assertSee('Airtel Money — Indisponible', false)
-            ->assertSee('Orange Money — Indisponible', false)
+            ->assertSee('Le checkout iKeePay de cette zone n’est pas configuré', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
             ->assertDontSee('M-Pesa')
-            ->assertDontSee('Carte bancaire')
-            ->assertSee('Paiement manuel / comptoir');
+            ->assertDontSee('Carte bancaire');
 
         config(['limete.payments.airtel_money.webhook_secret' => 'whsec-test']);
         app(TenantManager::class)->set($zone->tenant_id);

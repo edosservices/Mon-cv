@@ -409,10 +409,24 @@ class IkeePayH2hTest extends TestCase
         $this->fakePayin();
         [$zone, $plan] = $this->shop('airtel-h2h@example.com');
 
+        $this->from('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
+            ->post('/wifi/'.$zone->slug, [
+                'plan_id' => $plan->id,
+                'phone' => '+2250700000000',
+                'provider' => 'airtel_money',
+                'amount' => '5.00',
+                'currency' => 'USD',
+            ])->assertRedirect('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
+            ->assertSessionHasErrors('provider');
+        $this->assertSame(0, Payment::withoutGlobalScope('tenant')->count());
+        Http::assertNothingSent();
+
         $this->post('/wifi/'.$zone->slug, [
             'plan_id' => $plan->id,
             'phone' => '+2250700000000',
-            'provider' => 'airtel_money',
+            'provider' => 'ikeepay',
+            'country' => 'CI',
+            'operator' => 'AIRTEL',
             'amount' => '5.00',
             'currency' => 'USD',
         ])->assertRedirect('https://pay.example/wave');

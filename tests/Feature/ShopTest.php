@@ -33,8 +33,9 @@ class ShopTest extends TestCase
             ->assertSee('NUIT TEST')
             ->assertSee('2 750 FC')
             ->assertSee('Acheter')
-            ->assertSee('Airtel Money — Indisponible', false)
-            ->assertSee('Orange Money — Indisponible', false)
+            ->assertSee('Le checkout iKeePay de cette zone n’est pas configuré', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
             ->assertDontSee('value="ikeepay"', false)
             ->assertDontSee('500 FC');
 
@@ -63,15 +64,13 @@ class ShopTest extends TestCase
 
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertOk()
-            ->assertSee('Comment souhaitez-vous payer')
             ->assertSee('Payer avec iKeePay')
-            ->assertSee('Airtel Money — Indisponible', false)
-            ->assertSee('Orange Money — Indisponible', false)
-            ->assertSee('aucun pays iKeePay n’autorise l’opérateur AIRTEL', false)
-            ->assertSee('disabled', false)
+            ->assertSee('iKeePay présente les moyens de paiement disponibles', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
             ->assertDontSee('M-Pesa')
             ->assertDontSee('Carte bancaire')
-            ->assertSee('Paiement manuel / comptoir')
+            ->assertDontSee('Paiement manuel / comptoir')
             ->assertSee('+243810000222');
 
         $other = Platform::entrepreneur('Bob Wifi', 'bob-shop@example.com');

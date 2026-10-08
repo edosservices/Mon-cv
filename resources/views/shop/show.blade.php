@@ -154,33 +154,14 @@
                     <input id="payer-{{ $plan->id }}" class="form-control" name="payer_phone" type="tel" inputmode="tel" value="{{ old('payer_phone') }}" placeholder="+243">
                     <label class="form-label fw-bold mt-3" for="email-{{ $plan->id }}">E-mail <span class="fw-normal">(facultatif, ce n’est pas un compte)</span></label>
                     <input id="email-{{ $plan->id }}" class="form-control" name="email" type="email" autocomplete="email" value="{{ old('email') }}" maxlength="160" placeholder="client@mail.com">
-                    <fieldset class="pay-choices">
-                        <legend>Moyen de paiement</legend>
-                        <div class="d-grid gap-2 mt-2">
-                            @foreach($unavailableH2h ?? [] as $method)
-                                <label class="pay-option d-flex align-items-center gap-3">
-                                    <input class="form-check-input m-0" type="radio" disabled>
-                                    <span class="fw-semibold">{{ $method['label'] }} — Indisponible</span>
-                                </label>
-                                <p class="help mb-0">{{ $method['reason'] }}</p>
-                            @endforeach
-                            @foreach($ikeepayChoices ?? [] as $choice)
-                                <label class="pay-option d-flex align-items-center gap-3">
-                                    <input class="form-check-input m-0" type="radio" name="provider" value="ikeepay|{{ $choice['country'] }}|{{ $choice['operator'] }}" @checked(old('provider') === 'ikeepay|'.$choice['country'].'|'.$choice['operator']) required>
-                                    <span class="fw-semibold">{{ $choice['label'] }}</span>
-                                </label>
-                            @endforeach
-                            @foreach($providers as $key => $label)
-                                @continue($key === 'ikeepay' && ! ($ikeepayReady ?? false))
-                                <label class="pay-option d-flex align-items-center gap-3">
-                                    <input class="form-check-input m-0" type="radio" name="provider" value="{{ $key }}" @checked(old('provider', array_key_first($providers)) === $key) required>
-                                    <span class="fw-semibold">{{ $label }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </fieldset>
+                    @if($ikeepayReady ?? false)
+                        <input type="hidden" name="provider" value="ikeepay">
+                        <p class="help mt-3">iKeePay présente les moyens de paiement disponibles. Le ticket est créé après la confirmation du serveur.</p>
+                    @else
+                        <p class="help mt-3">Le checkout iKeePay de cette zone n’est pas configuré. Aucune commande ne sera créée.</p>
+                    @endif
                     <div class="sheet-actions">
-                        <button class="btn btn-primary btn-lg rounded-pill w-100" type="submit" data-busy="Paiement en cours">Payer maintenant — {{ $price }}</button>
+                        <button class="btn btn-primary btn-lg rounded-pill w-100" type="submit" data-busy="Paiement en cours" @disabled(! ($ikeepayReady ?? false))>Payer avec iKeePay — {{ $price }}</button>
                         <a class="back text-center" href="{{ route('shop.plan', [$zone->slug, $plan->id]) }}">Modifier le numéro</a>
                     </div>
                 </form>

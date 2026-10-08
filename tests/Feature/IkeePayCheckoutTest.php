@@ -25,7 +25,7 @@ class IkeePayCheckoutTest extends TestCase
         config([
             'services.ikeepay.public_key' => $this->publicKey,
             'services.ikeepay.secret_key' => $this->secret,
-            'services.ikeepay.checkout_url' => 'https://ikeepay.com/checkout/v1/inline',
+            'services.ikeepay.checkout_url' => 'https://www.ikeepay.com/checkout/v1/inline',
             'services.ikeepay.base_url' => 'https://api.ikeepay.com',
         ]);
     }
@@ -75,8 +75,8 @@ class IkeePayCheckoutTest extends TestCase
         $page = $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token.'/ikeepay');
         $page->assertOk()
             ->assertSee($this->publicKey, false)
-            ->assertSee('https://ikeepay.com/checkout/v1/inline', false)
-            ->assertSee('data-origin="https://ikeepay.com"', false)
+            ->assertSee('https://www.ikeepay.com/checkout/v1/inline', false)
+            ->assertSee('data-origin="https://www.ikeepay.com"', false)
             ->assertSee('1000.00', false)
             ->assertSee('CDF', false)
             ->assertSee($payment->internal_reference, false)
@@ -84,8 +84,7 @@ class IkeePayCheckoutTest extends TestCase
             ->assertSee('ikeepay-ready', false)
             ->assertSee('ikeepay-success', false)
             ->assertSee('ikeepay-close', false)
-            ->assertDontSee('email:', false)
-            ->assertDontSee('client@mail.com', false)
+            ->assertSee('client@mail.com', false)
             ->assertDontSee('Paiement validé', false)
             ->assertDontSee($this->secret, false)
             ->assertDontSee('pk_global_must_not_appear', false)
@@ -230,6 +229,21 @@ class IkeePayCheckoutTest extends TestCase
         $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
             ->assertRedirect();
         $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+    }
+
+    public function test_a_repeated_inline_checkout_reuses_the_pending_order(): void
+    {
+        Http::preventStrayRequests();
+        $sale = $this->inlineSale();
+
+        $this->post('/wifi/'.$sale->wifiZone->slug, [
+            'plan_id' => $sale->items()->first()->plan_id,
+            'phone' => '+243810004242',
+            'provider' => 'ikeepay',
+        ])->assertRedirect('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/ikeepay');
+
+        $this->assertSame(1, Sale::withoutGlobalScope('tenant')->count());
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
     }
 
     private function inlineSale(): Sale

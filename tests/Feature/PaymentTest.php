@@ -388,11 +388,12 @@ $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id)
         $this->get('/wifi/'.$zone->slug.'/forfait/'.$plan->id.'/paiement')
             ->assertOk()
             ->assertSee('Paiement')
-            ->assertSee('Paiement manuel / comptoir')
-            ->assertSee('Airtel Money — Indisponible', false)
-            ->assertSee('Orange Money — Indisponible', false)
+            ->assertSee('Le checkout iKeePay de cette zone n’est pas configuré', false)
+            ->assertDontSee('Airtel Money', false)
+            ->assertDontSee('Orange Money', false)
+            ->assertDontSee('Paiement manuel / comptoir')
             ->assertDontSee('M-Pesa')
-            ->assertSee('UniPay');
+            ->assertDontSee('UniPay');
         $this->post('/wifi/'.$zone->slug, [
             'plan_id' => $plan->id,
             'phone' => '+243810004444',
