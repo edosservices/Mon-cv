@@ -363,7 +363,7 @@ JS;
         $this->assertTrue($result->successful(), $result->errorOutput().$result->output());
     }
 
-    public function test_the_walled_garden_stays_limited_to_the_portal_shop_and_whatsapp(): void
+    public function test_the_walled_garden_stays_limited_to_the_portal_and_the_payment_hosts(): void
     {
         $user = Platform::entrepreneur('Alice Wifi', 'alice-garden@example.com');
         $zone = Platform::zone($user, 'Limete');
@@ -375,12 +375,17 @@ JS;
 
         $this->assertContains(parse_url((string) config('app.url'), PHP_URL_HOST), $hosts);
         $this->assertContains('limete.example', $hosts);
-        $this->assertContains('wa.me', $hosts);
-        $this->assertContains('api.whatsapp.com', $hosts);
         $this->assertContains('api.ikeepay.com', $hosts);
         $this->assertContains('www.ikeepay.com', $hosts);
+        $this->assertNotContains('wa.me', $hosts);
+        $this->assertNotContains('api.whatsapp.com', $hosts);
+        $this->assertNotContains('web.whatsapp.com', $hosts);
         $this->assertNotContains('*', $hosts);
         $this->assertNotContains('0.0.0.0/0', $hosts);
+        foreach ($hosts as $host) {
+            $this->assertFalse(str_contains($host, '*'));
+            $this->assertFalse(str_contains($host, '/'));
+        }
     }
 
     public function test_the_full_simulated_journey_keeps_the_zone_and_the_commercial_clock(): void

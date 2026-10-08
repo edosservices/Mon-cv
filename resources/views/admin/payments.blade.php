@@ -5,7 +5,7 @@
     @foreach($providers as $provider)
         <article class="rounded-2xl bg-white p-4 text-sm">
             <h2 class="font-semibold">{{ $provider['label'] }}</h2>
-            <p class="mt-1">{{ $provider['configured'] ? 'Configuré' : 'Non configuré' }}</p>
+            <p class="mt-1">{{ $provider['key'] === 'ikeepay' ? 'Clé par entrepreneur' : ($provider['configured'] ? 'Configuré' : 'Non configuré') }}</p>
             <p>{{ $provider['enabled'] ? 'Actif' : 'Désactivé' }}</p>
             <form method="POST" action="{{ route('admin.payments.providers', $provider['key']) }}" class="mt-3">
                 @csrf
@@ -25,7 +25,7 @@
                 <td>{{ \App\Support\Money::format($payment->amount, $payment->currency) }}</td>
                 <td>{{ $payment->provider }}<span class="block text-slate-500">{{ $payment->provider_reference }}</span></td>
                 <td>{{ $payment->metadata['operator'] ?? '—' }}</td>
-                <td>{{ $payment->metadata['beneficiary_phone'] ?? '—' }}<span class="block text-slate-500">{{ $payment->metadata['payer_phone'] ?? '' }}</span></td>
+                <td>{{ $payment->beneficiary_phone ?: ($payment->metadata['beneficiary_phone'] ?? '—') }}<span class="block text-slate-500">{{ $payment->payer_phone ?: ($payment->metadata['payer_phone'] ?? '') }}</span></td>
                 <td>{{ \App\Enums\PaymentStatus::tryFrom($payment->status)?->label() ?? $payment->status }}</td>
                 <td>
                     @if($payment->status === 'pending' && $payment->payable_type === \App\Models\Subscription::class)

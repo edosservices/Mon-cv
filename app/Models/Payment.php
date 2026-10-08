@@ -16,6 +16,7 @@ class Payment extends Model
 
     protected $fillable = [
         'tenant_id', 'payable_type', 'payable_id', 'amount', 'currency',
+        'payer_phone', 'beneficiary_phone',
         'provider', 'internal_reference', 'transaction_reference', 'provider_reference',
         'status', 'paid_at', 'metadata',
     ];

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PaymentStatus;
 use App\Jobs\SyncHotspotUser;
 use App\Models\Payment;
 use App\Models\Sale;
@@ -229,6 +230,8 @@ class IkeePayH2hTest extends TestCase
 
         $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
             ->assertRedirect();
+        $this->post('/wifi/'.$sale->wifiZone->slug.'/commande/'.$sale->public_token.'/actualiser')
+            ->assertRedirect();
 
         $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
         Bus::assertDispatchedTimes(SyncHotspotUser::class, 1);
@@ -342,6 +345,124 @@ class IkeePayH2hTest extends TestCase
         $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
     }
 
+    public function test_h2h_payin_omits_email_when_the_buyer_does_not_provide_one(): void
+    {
+        $this->fakePayin();
+        [$zone, $plan] = $this->shop('sans-email@example.com');
+        $payload = $this->order($plan);
+        unset($payload['email']);
+
+        $this->post('/wifi/'.$zone->slug, $payload)->assertRedirect('https://pay.example/wave');
+
+        $payment = Payment::withoutGlobalScope('tenant')->first();
+        $this->assertSame('pending', $payment->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return str_contains($request->url(), '/h2h-payin')
+                && ! array_key_exists('customer_email', $body)
+                && $body['phoneNumber'] === '2250700000000'
+                && $body['operator'] === 'ORANGE';
+        });
+    }
+
+    public function test_payin_uses_only_the_entrepreneur_secret(): void
+    {
+        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
+        $other = Platform::entrepreneur('Bob Wifi', 'bob-keys-'.uniqid().'@example.com');
+        $other->tenant->forceFill([
+            'ikeepay_public_key' => 'pk_bob',
+            'ikeepay_secret_key' => 'SECRET-BOB-DO-NOT-USE',
+        ])->save();
+
+        $this->pay();
+
+        Http::assertSent(fn ($request) => $request->hasHeader('x-api-key', $this->secret));
+        Http::assertNotSent(fn ($request) => $request->hasHeader('x-api-key', 'GLOBAL-KEY-MUST-NOT-BE-USED'));
+        Http::assertNotSent(fn ($request) => $request->hasHeader('x-api-key', 'SECRET-BOB-DO-NOT-USE'));
+    }
+
+    public function test_a_tenant_without_its_own_key_does_not_call_ikeepay(): void
+    {
+        config(['services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED']);
+        $owner = Platform::entrepreneur('Sans Cle', 'sans-cle-'.uniqid().'@example.com');
+        $zone = Platform::zone($owner, 'Sans cle');
+        $plan = Platform::plan($owner, $zone);
+
+        $this->post('/wifi/'.$zone->slug, $this->order($plan))->assertRedirect();
+
+        $payment = Payment::withoutGlobalScope('tenant')->first();
+        $this->assertSame('pending', $payment->status);
+        $this->assertStringContainsString('n’est pas configurée', (string) ($payment->metadata['note'] ?? ''));
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Http::assertNothingSent();
+    }
+
+    public function test_webhook_expired_is_rejected_and_a_local_expiry_creates_no_ticket(): void
+    {
+        $sale = $this->pay();
+
+        $this->postJson('/payments/ikeepay/webhook', $this->notice($sale->payment, 'expired'))
+            ->assertStatus(422);
+
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+
+        $sale->payment->transitionTo(PaymentStatus::Expired);
+        $sale->payment->save();
+
+        $this->postJson('/payments/ikeepay/webhook', $this->notice($sale->payment, 'completed'))
+            ->assertOk();
+
+        $this->assertSame('expired', $sale->payment->fresh()->status);
+        $this->assertSame('pending', $sale->fresh()->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Bus::assertNotDispatched(SyncHotspotUser::class);
+    }
+
+    public function test_a_tampered_plan_zone_or_tenant_does_not_create_a_ticket(): void
+    {
+        $sale = $this->pay();
+        $payment = $sale->payment;
+        $meta = $payment->metadata;
+        $meta['plan_id'] = 999999;
+        $payment->forceFill(['metadata' => $meta])->save();
+
+        $this->postJson('/payments/ikeepay/webhook', $this->notice($payment, 'completed'))->assertStatus(422);
+        $this->assertSame('pending', $payment->fresh()->status);
+
+        $meta['plan_id'] = $sale->items()->first()->plan_id;
+        $meta['wifi_zone_id'] = 999999;
+        $payment->forceFill(['metadata' => $meta])->save();
+        $this->postJson('/payments/ikeepay/webhook', $this->notice($payment->fresh(), 'completed'))->assertStatus(422);
+
+        $other = Platform::entrepreneur('Autre', 'autre-tenant-'.uniqid().'@example.com');
+        $sale->forceFill(['tenant_id' => $other->tenant_id])->save();
+        $meta['wifi_zone_id'] = $sale->wifi_zone_id;
+        $payment->forceFill(['metadata' => $meta])->save();
+        $this->postJson('/payments/ikeepay/webhook', $this->notice($payment->fresh(), 'completed'))->assertStatus(422);
+
+        $this->assertSame('pending', $payment->fresh()->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Bus::assertNotDispatched(SyncHotspotUser::class);
+    }
+
+    public function test_staff_cannot_confirm_an_ikeepay_sale_before_the_provider_does(): void
+    {
+        $sale = $this->pay();
+        $owner = $sale->wifiZone->tenant->users()->first();
+
+        $this->actingAs($owner)
+            ->post(route('sales.confirm', $sale))
+            ->assertRedirect();
+
+        $this->assertSame('pending', $sale->fresh()->status);
+        $this->assertSame('pending', $sale->payment->fresh()->status);
+        $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
+        Bus::assertNotDispatched(SyncHotspotUser::class);
+    }
+
     /**
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>
@@ -396,9 +517,13 @@ class IkeePayH2hTest extends TestCase
     /**
      * @return array{0: WifiZone, 1: \App\Models\Plan}
      */
-    private function shop(string $email = 'client@example.com'): array
+    private function shop(string $email = 'client@example.com', ?string $secret = null): array
     {
         $owner = Platform::entrepreneur('Alice Wifi', $email);
+        $owner->tenant->forceFill([
+            'ikeepay_public_key' => 'pk_test_public_only',
+            'ikeepay_secret_key' => $secret ?? $this->secret,
+        ])->save();
         $zone = Platform::zone($owner, 'Limete '.$email);
         $plan = Platform::plan($owner, $zone);
 

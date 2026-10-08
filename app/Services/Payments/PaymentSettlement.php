@@ -57,6 +57,12 @@ class PaymentSettlement
                 return 'rejected';
             }
 
+            if (! $this->saleMatches($payment)) {
+                $this->store($payment, 'rejected', $notice);
+
+                return 'rejected';
+            }
+
             $current = PaymentStatus::from($payment->status);
             $incoming = PaymentStatus::from($notice->status);
 
@@ -94,6 +100,41 @@ class PaymentSettlement
 
             return 'accepted';
         });
+    }
+
+    private function saleMatches(Payment $payment): bool
+    {
+        if ($payment->payable_type !== Sale::class) {
+            return true;
+        }
+
+        $sale = Sale::withoutGlobalScope('tenant')->with('items')->find($payment->payable_id);
+        if (! $sale || (int) $sale->tenant_id !== (int) $payment->tenant_id) {
+            return false;
+        }
+
+        $meta = $payment->metadata ?? [];
+        if (isset($meta['wifi_zone_id']) && (int) $meta['wifi_zone_id'] !== (int) $sale->wifi_zone_id) {
+            return false;
+        }
+
+        if (isset($meta['plan_id'])) {
+            $planId = $sale->items->first()?->plan_id;
+            if ($planId === null || (int) $meta['plan_id'] !== (int) $planId) {
+                return false;
+            }
+        }
+
+        if (! $this->sameAmount($sale->total_amount, $this->money($payment->amount)) || strtoupper((string) $sale->currency) !== strtoupper((string) $payment->currency)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function money(mixed $amount): string
+    {
+        return number_format((float) $amount, 2, '.', '');
     }
 
     private function sameAmount(mixed $expected, string $given): bool

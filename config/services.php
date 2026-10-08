@@ -47,8 +47,10 @@ return [
     ],
 
     /*
-    | iKeePay. La Secret Key reste dans .env et ne sort jamais vers le navigateur.
-    | Le checkout inline et le H2H Payin sont deux parcours séparés.
+    | iKeePay. Les clés marchandes sont enregistrées par entrepreneur.
+    | IKPAY_PUBLIC_KEY et IKPAY_SECRET_KEY ne sont pas utilisées pour encaisser.
+    | Seuls le domaine de l'API et l'URL du widget inline sont communs.
+    | Le widget inline exige un e-mail. Le H2H envoie customer_email seulement s'il est fourni.
     */
     'ikeepay' => [
         'public_key' => env('IKPAY_PUBLIC_KEY'),

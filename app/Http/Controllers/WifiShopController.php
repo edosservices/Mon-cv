@@ -212,7 +212,7 @@ class WifiShopController extends Controller
             'currency' => strtoupper((string) $payment->currency),
             'orderId' => (string) $payment->internal_reference,
             'email' => (string) ($sale->customer?->email ?? ''),
-            'publicKey' => (string) config('services.ikeepay.public_key'),
+            'publicKey' => $zone->tenant?->ikeepayPublicKey() ?? '',
             'checkoutUrl' => (string) config('services.ikeepay.checkout_url'),
             'returnUrl' => route('shop.order', [$zone->slug, $sale->public_token]),
         ]);

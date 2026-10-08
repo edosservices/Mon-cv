@@ -49,6 +49,8 @@ class GuestWifiPurchaseTest extends TestCase
         $this->assertSame('pending', $sale->status);
         $this->assertSame('+243810001111', $sale->beneficiary_phone);
         $this->assertSame('+243810001111', $sale->payer_phone);
+        $this->assertSame('+243810001111', $sale->payment->beneficiary_phone);
+        $this->assertSame('+243810001111', $sale->payment->payer_phone);
         $this->assertSame('1000.00', number_format((float) $sale->total_amount, 2, '.', ''));
         $this->assertSame('CDF', $sale->currency);
         $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
@@ -84,6 +86,9 @@ class GuestWifiPurchaseTest extends TestCase
         $this->assertSame('other', $sale->purchase_for);
         $this->assertSame('+243822222222', $sale->beneficiary_phone);
         $this->assertSame('+243811111111', $sale->payer_phone);
+        $this->assertSame('+243822222222', $sale->payment->beneficiary_phone);
+        $this->assertSame('+243811111111', $sale->payment->payer_phone);
+        $this->assertNotSame($sale->payment->payer_phone, $sale->payment->beneficiary_phone);
         $this->assertSame('+243822222222', $sale->customer->phone);
         $this->assertNotSame('+243811111111', $sale->customer->phone);
     }
@@ -139,11 +144,12 @@ class GuestWifiPurchaseTest extends TestCase
             ], 200),
         ]);
         config([
-            'services.ikeepay.secret_key' => 'SECRET-IKEE-DO-NOT-LEAK',
+            'services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED',
             'services.ikeepay.base_url' => 'https://api.ikeepay.com',
             'ikeepay.countries' => ['CI' => ['ORANGE']],
         ]);
         [$zone, $plan] = $this->shop();
+        $zone->tenant->forceFill(['ikeepay_secret_key' => 'SECRET-IKEE-DO-NOT-LEAK'])->save();
 
         $this->post('/wifi/'.$zone->slug, [
             'plan_id' => $plan->id,
@@ -176,7 +182,12 @@ class GuestWifiPurchaseTest extends TestCase
         $this->postJson('/payments/ikeepay/webhook', $completed)->assertOk();
 
         $this->assertSame(1, Voucher::withoutGlobalScope('tenant')->count());
+        $voucher = Voucher::withoutGlobalScope('tenant')->first();
+        $this->assertSame('+2250700000000', $voucher->payer_phone);
+        $this->assertSame('+2250700000000', $voucher->beneficiary_phone);
         $this->assertSame('paid', $sale->fresh()->status);
+        Http::assertSent(fn ($request) => $request->hasHeader('x-api-key', 'SECRET-IKEE-DO-NOT-LEAK'));
+        Http::assertNotSent(fn ($request) => $request->hasHeader('x-api-key', 'GLOBAL-KEY-MUST-NOT-BE-USED'));
         Bus::assertDispatchedTimes(SyncHotspotUser::class, 1);
         $this->get('/wifi/'.$zone->slug.'/commande/'.$sale->public_token)
             ->assertOk()
@@ -196,11 +207,12 @@ class GuestWifiPurchaseTest extends TestCase
             ], 200),
         ]);
         config([
-            'services.ikeepay.secret_key' => 'SECRET-IKEE-DO-NOT-LEAK',
+            'services.ikeepay.secret_key' => 'GLOBAL-KEY-MUST-NOT-BE-USED',
             'services.ikeepay.base_url' => 'https://api.ikeepay.com',
             'ikeepay.countries' => ['CI' => ['ORANGE']],
         ]);
         [$zone, $plan] = $this->shop();
+        $zone->tenant->forceFill(['ikeepay_secret_key' => 'SECRET-IKEE-DO-NOT-LEAK'])->save();
 
         $this->post('/wifi/'.$zone->slug, [
             'plan_id' => $plan->id,
@@ -211,8 +223,47 @@ class GuestWifiPurchaseTest extends TestCase
             'operator' => 'ORANGE',
         ])->assertRedirect();
 
+        $this->assertSame('failed', Payment::withoutGlobalScope('tenant')->first()->status);
         $this->assertSame(0, Voucher::withoutGlobalScope('tenant')->count());
         $this->assertSame(0, WifiSession::withoutGlobalScope('tenant')->count());
+    }
+
+    public function test_confirmed_vouchers_keep_the_payer_and_the_beneficiary_apart(): void
+    {
+        [$zone, $plan] = $this->shop();
+
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'phone' => '+243810001111',
+            'provider' => 'manual',
+        ])->assertRedirect();
+
+        $self = Sale::withoutGlobalScope('tenant')->with('payment')->first();
+        app(TenantManager::class)->set($zone->tenant_id);
+        app(\App\Services\SaleService::class)->confirm($self);
+        $selfVoucher = Voucher::withoutGlobalScope('tenant')->first();
+        $this->assertSame('+243810001111', $selfVoucher->payer_phone);
+        $this->assertSame('+243810001111', $selfVoucher->beneficiary_phone);
+
+        app(TenantManager::class)->forget();
+        $this->post('/wifi/'.$zone->slug, [
+            'plan_id' => $plan->id,
+            'purchase_for' => 'other',
+            'phone' => '+243822222222',
+            'payer_phone' => '+243811111111',
+            'provider' => 'manual',
+        ])->assertRedirect();
+
+        $other = Sale::withoutGlobalScope('tenant')->where('purchase_for', 'other')->with('payment')->first();
+        $this->assertNotSame($other->payer_phone, $other->beneficiary_phone);
+        $this->assertSame($other->payer_phone, $other->payment->payer_phone);
+        $this->assertSame($other->beneficiary_phone, $other->payment->beneficiary_phone);
+        app(TenantManager::class)->set($zone->tenant_id);
+        app(\App\Services\SaleService::class)->confirm($other);
+        $otherVoucher = Voucher::withoutGlobalScope('tenant')->where('beneficiary_phone', '+243822222222')->first();
+        $this->assertSame('+243811111111', $otherVoucher->payer_phone);
+        $this->assertSame('+243822222222', $otherVoucher->beneficiary_phone);
+        $this->assertSame(2, Voucher::withoutGlobalScope('tenant')->count());
     }
 
     public function test_the_portal_keeps_only_a_device_confirmed_by_the_zone_router(): void

@@ -15,6 +15,7 @@ class Voucher extends Model
 
     protected $fillable = [
         'tenant_id', 'wifi_zone_id', 'plan_id', 'mikrotik_id', 'customer_id', 'mac_address',
+        'payer_phone', 'beneficiary_phone',
         'public_token', 'username', 'password', 'status', 'activated_at',
         'expires_at', 'price_amount', 'currency', 'profile_snapshot', 'sync_status', 'sync_error',
     ];

@@ -75,6 +75,8 @@ class SaleService
                 'payable_id' => $sale->id,
                 'amount' => $sale->total_amount,
                 'currency' => $sale->currency,
+                'payer_phone' => $payerPhone,
+                'beneficiary_phone' => $beneficiaryPhone,
                 'provider' => $provider,
                 'internal_reference' => $this->internalReference(),
                 'status' => PaymentStatus::Pending->value,
@@ -138,6 +140,10 @@ class SaleService
             }
 
             $payment = $sale->payment;
+            if ($payment?->provider === 'ikeepay' && $payment->status !== PaymentStatus::Success->value) {
+                return $sale->fresh(['items.voucher', 'payment', 'customer']);
+            }
+
             if ($payment && $payment->status !== PaymentStatus::Success->value) {
                 $payment->transitionTo(PaymentStatus::Success);
                 $payment->save();
@@ -156,6 +162,8 @@ class SaleService
                 $voucher->forceFill([
                     'customer_id' => $sale->customer_id,
                     'mac_address' => $captive?->mac_address,
+                    'payer_phone' => $sale->payer_phone,
+                    'beneficiary_phone' => $sale->beneficiary_phone,
                 ])->save();
                 $item->forceFill(['voucher_id' => $voucher->id])->save();
                 if ($captive) {

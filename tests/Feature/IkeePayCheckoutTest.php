@@ -35,6 +35,11 @@ class IkeePayCheckoutTest extends TestCase
         Http::preventStrayRequests();
 
         $owner = Platform::entrepreneur('Alice Wifi', 'alice-ikeepay@example.com');
+        $owner->tenant->forceFill([
+            'ikeepay_public_key' => $this->publicKey,
+            'ikeepay_secret_key' => $this->secret,
+        ])->save();
+        config(['services.ikeepay.public_key' => 'pk_global_must_not_appear']);
         $zone = Platform::zone($owner, 'Limete');
         $plan = Platform::plan($owner, $zone);
 
@@ -77,6 +82,7 @@ class IkeePayCheckoutTest extends TestCase
             ->assertSee("event.origin !== 'https://www.ikeepay.com'", false)
             ->assertSee('ikeepay-success', false)
             ->assertDontSee($this->secret, false)
+            ->assertDontSee('pk_global_must_not_appear', false)
             ->assertDontSee('ORDER_test_', false)
             ->assertDontSee('markPaymentAsPaid', false);
 

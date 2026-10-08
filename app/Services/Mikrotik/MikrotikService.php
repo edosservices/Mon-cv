@@ -998,6 +998,9 @@ class MikrotikService
     }
 
     /**
+     * Hôtes autorisés avant paiement : portail Limete, DNS du routeur, API et widget iKeePay.
+     * Aucun accès Internet général, et aucun hôte qui n'est pas nécessaire au paiement.
+     *
      * @return array<int, string>
      */
     private function portalHosts(Mikrotik $router): array
@@ -1015,10 +1018,6 @@ class MikrotikService
                 $hosts[] = strtolower((string) $host);
             }
         }
-        foreach (['wa.me', 'api.whatsapp.com', 'web.whatsapp.com'] as $host) {
-            $hosts[] = $host;
-        }
-
         return array_values(array_unique($hosts));
     }
 

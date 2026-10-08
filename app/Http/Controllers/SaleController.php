@@ -106,6 +106,11 @@ class SaleController extends Controller
 
         abort_unless($sale->status === 'pending', 422);
         $sales->confirm($sale);
+        $sale->refresh();
+
+        if ($sale->status !== 'paid') {
+            return redirect()->route('sales.show', $sale)->with('warning', 'Le paiement iKeePay n’est pas confirmé. Aucun ticket n’a été créé.');
+        }
 
         return redirect()->route('sales.show', $sale)->with('status', 'Paiement confirmé et ticket généré.');
     }

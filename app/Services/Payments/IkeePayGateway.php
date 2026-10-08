@@ -37,7 +37,8 @@ class IkeePayGateway implements PaymentGateway
 
     public function verifyTransaction(Payment $payment): Payment
     {
-        if (! $this->configured()) {
+        $secret = $this->secretFor($payment);
+        if ($secret === null) {
             return $payment->refresh();
         }
 
@@ -50,7 +51,7 @@ class IkeePayGateway implements PaymentGateway
         }
 
         try {
-            $response = Http::withHeaders($this->headers())
+            $response = Http::withHeaders($this->headers($secret))
                 ->acceptJson()
                 ->timeout(20)
                 ->get($this->endpoint('/h2h-verify/'.rawurlencode($reference)));
@@ -179,15 +180,19 @@ class IkeePayGateway implements PaymentGateway
     {
         $country = strtoupper(trim((string) ($context['country'] ?? '')));
         $phone = PhoneNumbers::digits($context['customer_phone'] ?? null);
-        $email = (string) ($context['customer_email'] ?? '');
+        $email = trim((string) ($context['customer_email'] ?? ''));
         $catalog = app(IkeePayCatalog::class);
 
-        if (! $catalog->allows($country, $operator) || $phone === '' || $email === '') {
+        // Le H2H documenté dans le projet n'exige customer_email pour aucun opérateur.
+        // Le champ n'est ajouté que lorsqu'un e-mail a été fourni.
+        // L'e-mail reste obligatoire uniquement pour le widget inline, dont l'URL contient ce paramètre.
+        if (! $catalog->allows($country, $operator) || $phone === '') {
             return $this->markFailed($payment, 'Les informations du paiement mobile sont incomplètes. Aucun ticket n’a été créé.');
         }
 
-        if (! $this->configured()) {
-            return $this->keepPending($payment, $context, $country, $operator, 'La clé iKeePay n’est pas configurée. Aucun ticket n’a été créé.');
+        $secret = $this->secretFor($payment);
+        if ($secret === null) {
+            return $this->keepPending($payment, $context, $country, $operator, 'La clé iKeePay de cet entrepreneur n’est pas configurée. Aucun ticket n’a été créé.');
         }
 
         $payload = [
@@ -197,8 +202,10 @@ class IkeePayGateway implements PaymentGateway
             'phoneNumber' => $phone,
             'operator' => $operator,
             'external_reference' => (string) $payment->internal_reference,
-            'customer_email' => $email,
         ];
+        if ($email !== '') {
+            $payload['customer_email'] = $email;
+        }
 
         $otp = trim((string) ($context['otp'] ?? ''));
         if ($otp !== '') {
@@ -206,7 +213,7 @@ class IkeePayGateway implements PaymentGateway
         }
 
         try {
-            $response = Http::withHeaders($this->headers())
+            $response = Http::withHeaders($this->headers($secret))
                 ->asJson()
                 ->acceptJson()
                 ->timeout(20)
@@ -349,18 +356,20 @@ class IkeePayGateway implements PaymentGateway
         return $value;
     }
 
-    private function configured(): bool
+    private function secretFor(Payment $payment): ?string
     {
-        return filled(config('services.ikeepay.secret_key'));
+        $tenant = $payment->relationLoaded('tenant') ? $payment->tenant : $payment->tenant()->first();
+
+        return $tenant?->ikeepaySecret();
     }
 
     /**
      * @return array<string, string>
      */
-    private function headers(): array
+    private function headers(string $secret): array
     {
         return [
-            'x-api-key' => (string) config('services.ikeepay.secret_key'),
+            'x-api-key' => $secret,
             'Accept' => 'application/json',
         ];
     }
